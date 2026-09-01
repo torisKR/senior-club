@@ -201,6 +201,9 @@ merged manifest를 별도로 확인해야 합니다.
 
 Google Play 내부 트랙 AAB는 `play-internal` GitHub Environment를 사용하는
 [`android-play-internal.yml`](./.github/workflows/android-play-internal.yml)에서 수동으로만 빌드합니다.
+
+`main` push/merge production 배포는 `play-store-production` Environment와
+[`android-play-production.yml`](./.github/workflows/android-play-production.yml)으로 production 트랙 `draft`에 제출합니다.
 EAS CLI `21.3.0`과 정확한 검증 build ID를 사용하며, 선택 제출도 내부 트랙 `draft`까지만 허용합니다.
 
 ## Vercel + Railway 배포
