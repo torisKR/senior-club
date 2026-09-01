@@ -26,14 +26,18 @@ jobs:
     environment: play-store-production
     env:
       CI: "true"
-      EVIDENCE_DIR: ${{ runner.temp }}/android-play-production-evidence
-      EAS_PRODUCTION_ENV_FILE: ${{ runner.temp }}/senior-club-eas-production-${{ github.run_id }}-${{ github.run_attempt }}.env
       FINAL_SCREENSHOT_MANIFEST: store-listing/screenshots/final/ko-KR/manifest.json
       SUBMIT_TO_PLAY: ${{ github.event_name == 'push' || inputs.submit_to_play }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Prepare ephemeral release paths
+        run: |
+          set -euo pipefail
+          echo "EVIDENCE_DIR=$RUNNER_TEMP/android-play-production-evidence" >> "$GITHUB_ENV"
+          echo "EAS_PRODUCTION_ENV_FILE=$RUNNER_TEMP/senior-club-eas-production-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.env" >> "$GITHUB_ENV"
 
       - name: Fail if release configuration is missing
         env:
