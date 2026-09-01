@@ -1,0 +1,53 @@
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+/output/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+google-service-account*.json
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# local env files
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+
+# mobile release credentials
+apps/mobile/credentials.json
+apps/mobile/*.jks
+apps/mobile/*.keystore
+**/google-services.json
+
+apps/mobile/.git.bak-nested
+
+# local tooling / caches (never commit)
+.codegraph
+.omo/
+.playwright-cli/
+.pnpm-store/
+graphify-out/
+apps/mobile/.git.bak-nested/
+apps/mobile/.git.bak-nested
+apps/mobile/build-output/
+apps/mobile/dist-android/
+apps/mobile/.expo/
+**/node_modules/
+30.1.9:41825

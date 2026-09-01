@@ -1,0 +1,100 @@
+{
+  "expo": {
+    "name": "시니어클럽",
+    "slug": "club-senior",
+    "description": "같은 관심사를 가진 사람들과 모임을 만들고 관계를 이어가는 시니어 커뮤니티",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/senior-club-icon-v2.png",
+    "scheme": "clubsenior",
+    "userInterfaceStyle": "light",
+    "primaryColor": "#0E5142",
+    "android": {
+      "package": "com.toris.seniorclub",
+      "versionCode": 1,
+      "allowBackup": false,
+      "predictiveBackGestureEnabled": true,
+      "permissions": [],
+      "blockedPermissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS",
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.READ_CALL_LOG",
+        "android.permission.WRITE_CALL_LOG",
+        "android.permission.SEND_SMS",
+        "android.permission.READ_SMS",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.MANAGE_EXTERNAL_STORAGE",
+        "android.permission.QUERY_ALL_PACKAGES",
+        "android.permission.REQUEST_INSTALL_PACKAGES",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.USE_EXACT_ALARM",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#F7F4EC",
+        "foregroundImage": "./assets/images/senior-club-adaptive-foreground-v2.png",
+        "monochromeImage": "./assets/images/senior-club-monochrome-v2.png"
+      }
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/senior-club-favicon-v2.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraMavenRepos": [
+              "https://devrepo.kakao.com/nexus/content/groups/public/"
+            ]
+          }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/senior-club-notification-icon.png",
+          "color": "#0E5142",
+          "defaultChannel": "event-updates"
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F7F4EC",
+          "image": "./assets/images/senior-club-splash-v3.png",
+          "imageWidth": 196,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#F7F4EC"
+          }
+        }
+      ],
+      "expo-sqlite",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "89cbd11f-03c0-4d30-9062-295654924f59"
+      }
+    },
+    "owner": "tony3000"
+  }
+}

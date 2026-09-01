@@ -1,0 +1,463 @@
+import type {
+  Club,
+  Event,
+  EventApplication,
+  Interest,
+  InterestId,
+  UserProfile,
+} from "@/lib/types";
+
+export const INTERESTS: Interest[] = [
+  {
+    id: "hiking",
+    label: "등산",
+    emoji: "🥾",
+    description: "무리하지 않는 산행과 둘레길 걷기",
+  },
+  {
+    id: "photo",
+    label: "사진",
+    emoji: "📷",
+    description: "스마트폰과 카메라로 일상을 기록하기",
+  },
+  {
+    id: "history",
+    label: "역사",
+    emoji: "🏛️",
+    description: "현장을 걸으며 만나는 우리 역사",
+  },
+  {
+    id: "classical",
+    label: "클래식",
+    emoji: "🎻",
+    description: "함께 듣고 이야기하는 클래식 음악",
+  },
+  {
+    id: "gardening",
+    label: "원예",
+    emoji: "🌿",
+    description: "계절 식물과 집 안 작은 정원 가꾸기",
+  },
+  {
+    id: "rail-travel",
+    label: "철도여행",
+    emoji: "🚆",
+    description: "기차로 떠나는 여유로운 당일 여행",
+  },
+  {
+    id: "food",
+    label: "맛집",
+    emoji: "🍲",
+    description: "동네의 오래된 식당과 시장 탐방",
+  },
+  {
+    id: "volunteer",
+    label: "봉사",
+    emoji: "🤝",
+    description: "경험과 시간을 이웃과 나누는 활동",
+  },
+  {
+    id: "english",
+    label: "영어",
+    emoji: "🗣️",
+    description: "여행에서 바로 쓰는 생활 영어",
+  },
+  {
+    id: "reading",
+    label: "독서",
+    emoji: "📚",
+    description: "한 권을 천천히 읽고 생각 나누기",
+  },
+];
+
+export const CLUBS: Club[] = [
+  {
+    id: "club-slow-mountain",
+    slug: "slow-mountain",
+    title: "천천히 오르는 사람들",
+    category: "hiking",
+    description:
+      "속도보다 풍경과 대화를 소중히 여기는 서울 근교 산행 모임입니다.",
+    memberCount: 84,
+    eventCount: 18,
+    image: "/images/club-senior-hero.jpg",
+    leaderName: "박정호",
+    tags: ["초보 환영", "서울 근교", "안전 산행"],
+  },
+  {
+    id: "club-photo-walk",
+    slug: "photo-walk",
+    title: "빛을 걷는 사진산책",
+    category: "photo",
+    description:
+      "스마트폰 한 대로도 충분한, 도심 속 계절과 사람을 담는 사진 모임입니다.",
+    memberCount: 67,
+    eventCount: 14,
+    leaderName: "김선영",
+    tags: ["스마트폰 사진", "도심 산책", "작품 나눔"],
+  },
+  {
+    id: "club-seoul-history",
+    slug: "seoul-history",
+    title: "서울 골목 역사단",
+    category: "history",
+    description:
+      "익숙한 골목에 남아 있는 근현대사의 흔적을 해설사와 함께 찾습니다.",
+    memberCount: 51,
+    eventCount: 11,
+    leaderName: "오민석",
+    tags: ["문화해설", "근현대사", "도보 답사"],
+  },
+  {
+    id: "club-classic-tea",
+    slug: "classic-tea",
+    title: "차 한 잔의 클래식",
+    category: "classical",
+    description:
+      "연주를 듣고 곡에 얽힌 이야기를 편안하게 나누는 감상 모임입니다.",
+    memberCount: 92,
+    eventCount: 23,
+    image: "/images/event-classical.jpg",
+    leaderName: "이현주",
+    tags: ["해설 음악회", "초심자", "공연 동행"],
+  },
+  {
+    id: "club-green-balcony",
+    slug: "green-balcony",
+    title: "우리 집 작은 정원",
+    category: "gardening",
+    description:
+      "베란다와 창가에서 건강하게 키울 수 있는 계절 식물을 함께 배웁니다.",
+    memberCount: 46,
+    eventCount: 9,
+    image: "/images/event-gardening.jpg",
+    leaderName: "최미경",
+    tags: ["반려식물", "실습", "나눔"],
+  },
+  {
+    id: "club-rail-daytrip",
+    slug: "rail-daytrip",
+    title: "기차 타고 하루 여행",
+    category: "rail-travel",
+    description:
+      "복잡한 준비 없이 기차로 다녀오는 수도권 당일 여행 모임입니다.",
+    memberCount: 73,
+    eventCount: 16,
+    leaderName: "한재성",
+    tags: ["당일 여행", "대중교통", "지역 맛집"],
+  },
+  {
+    id: "club-page-friends",
+    slug: "page-friends",
+    title: "한 페이지 친구들",
+    category: "reading",
+    description:
+      "정해진 분량을 읽고 서로의 경험을 보태며 책을 깊게 만납니다.",
+    memberCount: 38,
+    eventCount: 12,
+    leaderName: "윤혜진",
+    tags: ["느린 독서", "에세이", "동네 모임"],
+  },
+];
+
+export const EVENTS: Event[] = [
+  {
+    id: "event-bukhansan-dullegil",
+    clubId: "club-slow-mountain",
+    clubSlug: "slow-mountain",
+    title: "북한산 둘레길, 여름 숲 천천히 걷기",
+    description:
+      "솔샘길 구간을 쉬엄쉬엄 걷습니다. 중간 쉼터에서 각자 준비한 간식을 나눠요.",
+    category: "hiking",
+    relatedInterests: ["photo", "history"],
+    location: "북한산 둘레길 솔샘길 입구",
+    address: "서울특별시 강북구 솔샘로 177",
+    region: "서울특별시",
+    district: "강북구",
+    date: "7월 25일 (토)",
+    startAt: "2026-07-25T08:30:00+09:00",
+    endAt: "2026-07-25T12:00:00+09:00",
+    capacity: 16,
+    participantCount: 11,
+    currentMembers: 11,
+    price: 5_000,
+    difficulty: "보통",
+    preparations: ["미끄럼 방지 운동화", "물 1L", "개인 간식", "모자"],
+    image: "/images/club-senior-hero.jpg",
+    leaderName: "박정호",
+    status: "recruiting",
+  },
+  {
+    id: "event-seoulforest-photo",
+    clubId: "club-photo-walk",
+    clubSlug: "photo-walk",
+    title: "서울숲 오후 빛 스마트폰 사진산책",
+    description:
+      "역광과 나무 그늘을 활용해 사진을 찍고, 카페에서 마음에 든 한 장을 함께 봅니다.",
+    category: "photo",
+    relatedInterests: ["hiking", "gardening"],
+    location: "서울숲 방문자센터 앞",
+    address: "서울특별시 성동구 뚝섬로 273",
+    region: "서울특별시",
+    district: "성동구",
+    date: "7월 22일 (수)",
+    startAt: "2026-07-22T16:00:00+09:00",
+    endAt: "2026-07-22T18:30:00+09:00",
+    capacity: 12,
+    participantCount: 9,
+    currentMembers: 9,
+    price: 10_000,
+    difficulty: "쉬움",
+    preparations: ["충전한 스마트폰 또는 카메라", "편한 신발"],
+    leaderName: "김선영",
+    status: "recruiting",
+  },
+  {
+    id: "event-seodaemun-history",
+    clubId: "club-seoul-history",
+    clubSlug: "seoul-history",
+    title: "서대문에서 만나는 독립운동 이야기",
+    description:
+      "독립문에서 서대문형무소역사관까지 전문 해설과 함께 약 2km를 걷습니다.",
+    category: "history",
+    relatedInterests: ["photo", "hiking"],
+    location: "독립문역 5번 출구",
+    address: "서울특별시 서대문구 통일로 251",
+    region: "서울특별시",
+    district: "서대문구",
+    date: "7월 29일 (수)",
+    startAt: "2026-07-29T10:00:00+09:00",
+    endAt: "2026-07-29T12:30:00+09:00",
+    capacity: 20,
+    participantCount: 14,
+    currentMembers: 14,
+    price: 8_000,
+    difficulty: "쉬움",
+    preparations: ["편한 신발", "물", "경로우대증 또는 신분증"],
+    leaderName: "오민석",
+    status: "recruiting",
+  },
+  {
+    id: "event-mozart-morning",
+    clubId: "club-classic-tea",
+    clubSlug: "classic-tea",
+    title: "해설로 듣는 모차르트의 아침",
+    description:
+      "피아노 소나타 두 곡을 해설과 함께 듣고, 처음 느낀 인상을 자유롭게 나눕니다.",
+    category: "classical",
+    relatedInterests: ["history", "reading"],
+    location: "세종문화회관 예인홀",
+    address: "서울특별시 종로구 세종대로 175",
+    region: "서울특별시",
+    district: "종로구",
+    date: "7월 18일 (토)",
+    startAt: "2026-07-18T15:00:00+09:00",
+    endAt: "2026-07-18T17:00:00+09:00",
+    capacity: 30,
+    participantCount: 24,
+    currentMembers: 24,
+    price: 20_000,
+    difficulty: "쉬움",
+    preparations: ["별도 준비물 없음"],
+    image: "/images/event-classical.jpg",
+    leaderName: "이현주",
+    status: "recruiting",
+  },
+  {
+    id: "event-herb-garden",
+    clubId: "club-green-balcony",
+    clubSlug: "green-balcony",
+    title: "향기로운 여름 허브 화분 만들기",
+    description:
+      "바질과 로즈마리를 직접 심고, 여름철 물주기와 가지치기 방법을 배웁니다.",
+    category: "gardening",
+    relatedInterests: ["food"],
+    location: "마포평생학습관 2층 공방",
+    address: "서울특별시 마포구 홍익로2길 16",
+    region: "서울특별시",
+    district: "마포구",
+    date: "7월 20일 (월)",
+    startAt: "2026-07-20T14:00:00+09:00",
+    endAt: "2026-07-20T16:00:00+09:00",
+    capacity: 10,
+    participantCount: 8,
+    currentMembers: 8,
+    price: 18_000,
+    difficulty: "쉬움",
+    preparations: ["흙이 묻어도 되는 앞치마", "작은 장갑"],
+    image: "/images/event-gardening.jpg",
+    leaderName: "최미경",
+    status: "recruiting",
+  },
+  {
+    id: "event-yangpyeong-rail",
+    clubId: "club-rail-daytrip",
+    clubSlug: "rail-daytrip",
+    title: "경의중앙선 타고 양평 물길 여행",
+    description:
+      "용산역에서 함께 출발해 세미원과 양수리 전통시장을 천천히 둘러봅니다.",
+    category: "rail-travel",
+    relatedInterests: ["hiking", "photo", "food"],
+    location: "용산역 3층 맞이방",
+    address: "서울특별시 용산구 한강대로23길 55",
+    region: "서울특별시",
+    district: "용산구",
+    date: "8월 1일 (토)",
+    startAt: "2026-08-01T08:40:00+09:00",
+    endAt: "2026-08-01T18:00:00+09:00",
+    capacity: 18,
+    participantCount: 17,
+    currentMembers: 17,
+    price: 35_000,
+    difficulty: "보통",
+    preparations: ["신분증", "교통카드", "물", "양산 또는 모자"],
+    leaderName: "한재성",
+    status: "recruiting",
+  },
+  {
+    id: "event-essay-reading",
+    clubId: "club-page-friends",
+    clubSlug: "page-friends",
+    title: "일요일 오전, 여행 에세이 한 장",
+    description:
+      "미리 읽지 않아도 됩니다. 현장에서 짧은 글을 읽고 기억에 남은 여행을 나눕니다.",
+    category: "reading",
+    relatedInterests: ["rail-travel", "history"],
+    location: "마포중앙도서관 세미나실",
+    address: "서울특별시 마포구 성산로 128",
+    region: "서울특별시",
+    district: "마포구",
+    date: "7월 19일 (일)",
+    startAt: "2026-07-19T10:30:00+09:00",
+    endAt: "2026-07-19T12:00:00+09:00",
+    capacity: 10,
+    participantCount: 10,
+    currentMembers: 10,
+    price: 5_000,
+    difficulty: "쉬움",
+    preparations: ["필기도구"],
+    leaderName: "윤혜진",
+    status: "closed",
+  },
+  {
+    id: "event-busan-market",
+    clubId: "club-rail-daytrip",
+    clubSlug: "rail-daytrip",
+    title: "KTX로 떠나는 부산 원도심 맛기행",
+    description:
+      "부산역에서 시작해 초량과 부평깡통시장의 오래된 가게를 찾아갑니다.",
+    category: "food",
+    relatedInterests: ["rail-travel", "history"],
+    location: "서울역 KTX 대합실",
+    address: "서울특별시 용산구 한강대로 405",
+    region: "서울특별시",
+    district: "용산구",
+    date: "8월 2일 (일)",
+    startAt: "2026-08-02T07:20:00+09:00",
+    endAt: "2026-08-02T21:00:00+09:00",
+    capacity: 14,
+    participantCount: 12,
+    currentMembers: 12,
+    price: 95_000,
+    difficulty: "도전",
+    preparations: ["신분증", "편한 신발", "개인 상비약"],
+    leaderName: "한재성",
+    status: "recruiting",
+  },
+  {
+    id: "event-spring-photo-archive",
+    clubId: "club-photo-walk",
+    clubSlug: "photo-walk",
+    title: "경의선숲길 봄 사진산책",
+    description: "연남동에서 공덕까지 봄빛을 기록했던 지난 모임입니다.",
+    category: "photo",
+    relatedInterests: ["hiking"],
+    location: "경의선숲길 연남동 구간",
+    address: "서울특별시 마포구 동교로41길 4",
+    region: "서울특별시",
+    district: "마포구",
+    date: "5월 16일 (토)",
+    startAt: "2026-05-16T15:00:00+09:00",
+    endAt: "2026-05-16T17:30:00+09:00",
+    capacity: 12,
+    participantCount: 12,
+    currentMembers: 12,
+    price: 8_000,
+    difficulty: "쉬움",
+    preparations: ["스마트폰 또는 카메라"],
+    leaderName: "김선영",
+    status: "completed",
+  },
+];
+
+export const CURRENT_USER: UserProfile = {
+  id: "user-hyeonja",
+  name: "이현자",
+  region: "서울특별시",
+  district: "마포구",
+  ageGroup: "60대",
+  interests: ["hiking", "photo", "history"],
+  role: "member",
+  onboardedAt: "2026-06-03T09:20:00+09:00",
+  appliedEventIds: ["event-mozart-morning"],
+  participationHistory: [
+    {
+      eventId: "event-spring-photo-archive",
+      clubId: "club-photo-walk",
+      category: "photo",
+      status: "attended",
+      attendedAt: "2026-05-16T15:00:00+09:00",
+    },
+    {
+      eventId: "event-inwangsan-spring",
+      clubId: "club-slow-mountain",
+      category: "hiking",
+      status: "attended",
+      attendedAt: "2026-04-18T09:00:00+09:00",
+      rating: 4,
+    },
+  ],
+};
+
+export const EVENT_APPLICATIONS: EventApplication[] = [
+  {
+    id: "application-mozart-hyeonja",
+    eventId: "event-mozart-morning",
+    userId: "user-hyeonja",
+    status: "approved",
+    appliedAt: "2026-07-12T13:24:00+09:00",
+    updatedAt: "2026-07-12T18:05:00+09:00",
+    approvedAt: "2026-07-12T18:05:00+09:00",
+  },
+];
+
+export function getInterestById(id: string): Interest | undefined {
+  return INTERESTS.find((interest) => interest.id === id);
+}
+
+export function getInterestLabel(id: string): string {
+  return getInterestById(id)?.label ?? id;
+}
+
+export function getClubById(id: string): Club | undefined {
+  return CLUBS.find((club) => club.id === id);
+}
+
+export function getClubBySlug(slug: string): Club | undefined {
+  return CLUBS.find((club) => club.slug === slug);
+}
+
+export function getEventById(id: string): Event | undefined {
+  return EVENTS.find((event) => event.id === id);
+}
+
+export function getEventsByClub(clubIdOrSlug: string): Event[] {
+  return EVENTS.filter(
+    (event) =>
+      event.clubId === clubIdOrSlug || event.clubSlug === clubIdOrSlug,
+  );
+}
+
+export function isInterestId(value: string): value is InterestId {
+  return INTERESTS.some((interest) => interest.id === value);
+}

@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "app": {
+    "name": "시니어클럽",
+    "packageName": "com.toris.seniorclub",
+    "version": "0.1.0"
+  },
+  "capture": {
+    "commit": "REPLACE_WITH_GIT_COMMIT_SHA",
+    "artifactFile": "REPLACE_WITH_SIGNED_APK_FILENAME",
+    "artifactSha256": "REPLACE_WITH_SIGNED_APK_SHA256",
+    "buildProfile": "preview",
+    "capturedAt": "REPLACE_WITH_ISO_8601_TIMESTAMP",
+    "locale": "ko-KR",
+    "timeZone": "Asia/Seoul",
+    "colorScheme": "light",
+    "fontScale": 1,
+    "animationsDisabled": true
+  },
+  "attestations": {
+    "capturedFromFinalUi": false,
+    "noOldBrandOrDemoCopy": false,
+    "noPersonalData": false,
+    "reviewerCanReachShownFeatures": false,
+    "contentRightsCleared": false,
+    "statusBarSanitized": false
+  },
+  "assetRoot": "final/ko-KR",
+  "sets": [
+    {
+      "deviceType": "phone",
+      "orientation": "portrait",
+      "width": 1080,
+      "height": 1920,
+      "files": [
+        {
+          "order": 1,
+          "path": "final/ko-KR/phone-01-home.png",
+          "screen": "home",
+          "sourceRoute": "/home",
+          "caption": "관심사로 내게 맞는 모임을 한눈에",
+          "altText": "관심사에 맞는 추천 모임과 오늘 일정을 보여 주는 시니어클럽 홈 화면"
+        },
+        {
+          "order": 2,
+          "path": "final/ko-KR/phone-02-event-detail.png",
+          "screen": "event-detail",
+          "sourceRoute": "/event/REPLACE_WITH_EVENT_ID",
+          "caption": "날짜·장소·난이도를 보고 편하게 신청",
+          "altText": "날짜, 장소, 난이도, 준비물과 참가 신청 상태를 확인하는 모임 상세 화면"
+        },
+        {
+          "order": 3,
+          "path": "final/ko-KR/phone-03-chat.png",
+          "screen": "chat",
+          "sourceRoute": "/chat?roomId=REPLACE_WITH_ROOM_ID",
+          "caption": "참여자와 채팅으로 함께 준비",
+          "altText": "모임 공지와 준비물을 나누는 승인 참여자 전용 채팅 화면"
+        },
+        {
+          "order": 4,
+          "path": "final/ko-KR/phone-04-applications.png",
+          "screen": "applications",
+          "sourceRoute": "/me",
+          "caption": "신청·승인 상태를 분명하게 확인",
+          "altText": "승인 대기, 참여 확정, 후기 작성 가능 상태를 모아 보여 주는 내 정보 화면"
+        },
+        {
+          "order": 5,
+          "path": "final/ko-KR/phone-05-review.png",
+          "screen": "review",
+          "sourceRoute": "/reviews/new?eventId=REPLACE_WITH_EVENT_ID",
+          "caption": "함께한 활동을 사진과 후기로 기록",
+          "altText": "참여한 모임의 평점, 사진과 내용을 입력하는 후기 작성 화면"
+        },
+        {
+          "order": 6,
+          "path": "final/ko-KR/phone-06-interests.png",
+          "screen": "interests",
+          "sourceRoute": "/onboarding",
+          "caption": "등산·사진·원예, 좋아하는 주제로 시작",
+          "altText": "등산, 사진, 역사, 클래식, 원예 등 좋아하는 관심사를 고르는 온보딩 화면"
+        }
+      ]
+    },
+    {
+      "deviceType": "tablet7",
+      "orientation": "portrait",
+      "width": 1080,
+      "height": 1920,
+      "files": [
+        {
+          "order": 1,
+          "path": "final/ko-KR/tablet-7-01-home.png",
+          "screen": "home",
+          "sourceRoute": "/home",
+          "caption": null,
+          "altText": "7인치 태블릿에서 관심사 추천과 오늘 일정을 보여 주는 시니어클럽 홈 화면"
+        },
+        {
+          "order": 2,
+          "path": "final/ko-KR/tablet-7-02-event-detail.png",
+          "screen": "event-detail",
+          "sourceRoute": "/event/REPLACE_WITH_EVENT_ID",
+          "caption": null,
+          "altText": "7인치 태블릿에서 모임 일정, 장소, 난이도와 준비물을 확인하는 상세 화면"
+        },
+        {
+          "order": 3,
+          "path": "final/ko-KR/tablet-7-03-chat.png",
+          "screen": "chat",
+          "sourceRoute": "/chat?roomId=REPLACE_WITH_ROOM_ID",
+          "caption": null,
+          "altText": "7인치 태블릿에서 모임 공지와 준비물을 나누는 참여자 채팅 화면"
+        },
+        {
+          "order": 4,
+          "path": "final/ko-KR/tablet-7-04-applications.png",
+          "screen": "applications",
+          "sourceRoute": "/me",
+          "caption": null,
+          "altText": "7인치 태블릿에서 모임 신청과 참여 상태를 모아 보여 주는 내 정보 화면"
+        }
+      ]
+    },
+    {
+      "deviceType": "tablet10",
+      "orientation": "portrait",
+      "width": 1440,
+      "height": 2560,
+      "files": [
+        {
+          "order": 1,
+          "path": "final/ko-KR/tablet-10-01-home.png",
+          "screen": "home",
+          "sourceRoute": "/home",
+          "caption": null,
+          "altText": "10인치 태블릿에서 관심사 추천과 오늘 일정을 보여 주는 시니어클럽 홈 화면"
+        },
+        {
+          "order": 2,
+          "path": "final/ko-KR/tablet-10-02-event-detail.png",
+          "screen": "event-detail",
+          "sourceRoute": "/event/REPLACE_WITH_EVENT_ID",
+          "caption": null,
+          "altText": "10인치 태블릿에서 모임 일정, 장소, 난이도와 준비물을 확인하는 상세 화면"
+        },
+        {
+          "order": 3,
+          "path": "final/ko-KR/tablet-10-03-chat.png",
+          "screen": "chat",
+          "sourceRoute": "/chat?roomId=REPLACE_WITH_ROOM_ID",
+          "caption": null,
+          "altText": "10인치 태블릿에서 모임 공지와 준비물을 나누는 참여자 채팅 화면"
+        },
+        {
+          "order": 4,
+          "path": "final/ko-KR/tablet-10-04-applications.png",
+          "screen": "applications",
+          "sourceRoute": "/me",
+          "caption": null,
+          "altText": "10인치 태블릿에서 모임 신청과 참여 상태를 모아 보여 주는 내 정보 화면"
+        }
+      ]
+    }
+  ]
+}

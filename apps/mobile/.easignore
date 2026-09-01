@@ -1,0 +1,50 @@
+node_modules/
+.expo/
+dist/
+store-listing/
+build-output/
+coverage/
+*.log
+*.aab
+README.md
+LICENSE
+
+# Local configuration and signing/provider credentials must never be uploaded
+# with the EAS build context. Production values are supplied through EAS env.
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.mobileprovision
+google-services.json
+google-services-*.json
+google-service-account.json
+google-service-account-*.json
+google-play-service-account.json
+google-play-service-account-*.json
+play-console-service-account.json
+play-console-service-account-*.json
+service-account-key.json
+credentials.json
+
+# Expo starter assets no longer referenced by the production app.
+assets/expo.icon/
+assets/images/android-icon-*.png
+assets/images/expo-*.png
+assets/images/icon.png
+assets/images/logo-glow.png
+assets/images/react-logo*.png
+assets/images/splash-icon.png
+assets/images/tabIcons/
+assets/images/tutorial-web.png
+
+# Superseded v1 brand files; retained locally for visual history only.
+assets/images/club-senior-adaptive.png
+assets/images/club-senior-icon.png
+assets/images/club-senior-splash.png
+assets/images/play-store-feature.png
+assets/images/senior-club-play-feature-v2.png

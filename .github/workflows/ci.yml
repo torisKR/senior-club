@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Web, API, and Android checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/senior_club?schema=public
+      AUTH_ACCESS_TOKEN_SECRET: ci-only-access-token-secret-at-least-32-characters
+      AUTH_OTP_PEPPER: ci-only-otp-pepper-secret-at-least-32-characters
+      AUTH_OTP_ENCRYPTION_KEY_BASE64: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      AUTH_DEV_OTP_EXPOSE: "false"
+      EMAIL_PROVIDER: console
+      PUSH_PROVIDER: disabled
+      OUTBOX_WORKER_ENABLED: "false"
+      NEXT_PUBLIC_APP_URL: https://web.invalid
+      SENIOR_CLUB_API_BASE_URL: https://api.invalid
+      CORS_ORIGINS: https://web.invalid
+      EXPO_PUBLIC_APP_ENV: development
+      EXPO_PUBLIC_API_URL: http://10.0.2.2:4000
+      EXPO_PUBLIC_WEB_URL: http://localhost:3000
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.14.2
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Prisma schema
+        run: pnpm prisma:validate
+
+      - name: Check web
+        run: |
+          pnpm lint
+          pnpm typecheck
+          pnpm test
+          pnpm build
+
+      - name: Check API
+        run: |
+          pnpm --filter @senior-club/api typecheck
+          pnpm --filter @senior-club/api test
+          pnpm --filter @senior-club/api build
+
+      - name: Check Android app
+        run: |
+          pnpm --filter mobile lint
+          pnpm --filter mobile typecheck
+          pnpm --filter mobile test:release-validators
+          pnpm --filter mobile validate:play-internal-workflow
+          pnpm --filter mobile validate:play-production-workflow
+          pnpm --filter mobile validate:play
+          pnpm --filter mobile validate:manifest
+          pnpm --filter mobile exec expo export --platform android --output-dir /tmp/senior-club-android-export
+
+      - name: Build API container
+        run: docker build --file apps/api/Dockerfile --tag senior-club-api:ci .
+
+      - name: Verify API container contract
+        run: |
+          docker run --rm --entrypoint node senior-club-api:ci -e "require('node:fs').accessSync('/app/dist/main.js')"
+          test "$(docker image inspect senior-club-api:ci --format '{{.Config.User}}')" = "node"

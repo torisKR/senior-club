@@ -1,0 +1,100 @@
+{
+  "cli": {
+    "version": "21.3.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "internal": {
+      "distribution": "internal",
+      "environment": "development",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "development"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "playInternalLocal": {
+      "extends": "playInternal",
+      "credentialsSource": "local",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_API_URL": "https://d33totqtaqpyfs.cloudfront.net",
+        "EXPO_PUBLIC_WEB_URL": "https://clubsenior.vercel.app"
+      }
+    },
+    "qaInternalLocal": {
+      "distribution": "internal",
+      "autoIncrement": true,
+      "credentialsSource": "local",
+      "environment": "production",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_API_URL": "https://d33totqtaqpyfs.cloudfront.net",
+        "EXPO_PUBLIC_WEB_URL": "https://clubsenior.vercel.app"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "kakaoQaLocal": {
+      "distribution": "internal",
+      "autoIncrement": true,
+      "credentialsSource": "local",
+      "environment": "development",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "development",
+        "EXPO_PUBLIC_API_URL": "https://d33totqtaqpyfs.cloudfront.net",
+        "EXPO_PUBLIC_WEB_URL": "https://clubsenior.vercel.app"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "playInternal": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "environment": "production",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "environment": "preview",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "preview"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "environment": "production",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  },
+  "submit": {
+    "playInternal": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    },
+    "production": {
+      "android": {
+        "track": "production",
+        "releaseStatus": "draft"
+      }
+    }
+  }
+}

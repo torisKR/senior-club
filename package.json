@@ -1,0 +1,56 @@
+{
+  "name": "senior-club",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.14.2",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prisma:validate": "prisma validate",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:seed": "tsx prisma/seed.ts",
+    "api:dev": "pnpm --dir apps/api dev",
+    "api:build": "pnpm --dir apps/api build",
+    "api:test": "pnpm --dir apps/api test",
+    "api:typecheck": "pnpm --dir apps/api typecheck",
+    "mobile:start": "pnpm --dir apps/mobile start",
+    "mobile:android": "pnpm --dir apps/mobile android",
+    "mobile:typecheck": "pnpm --dir apps/mobile typecheck",
+    "mobile:lint": "pnpm --dir apps/mobile lint",
+    "mobile:doctor": "pnpm --dir apps/mobile exec expo-doctor",
+    "mobile:test:release-validators": "pnpm --dir apps/mobile test:release-validators",
+    "release:android:preflight": "pnpm --dir apps/mobile release:android:preflight"
+  },
+  "dependencies": {
+    "@prisma/client": "7.8.0",
+    "clsx": "2.1.1",
+    "lucide-react": "1.25.0",
+    "next": "16.2.10",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "zod": "4.1.12"
+  },
+  "devDependencies": {
+    "@prisma/adapter-pg": "7.8.0",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.1",
+    "eslint-config-next": "16.2.10",
+    "prisma": "7.8.0",
+    "pg": "8.22.0",
+    "tailwindcss": "4.3.3",
+    "tsx": "4.23.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}

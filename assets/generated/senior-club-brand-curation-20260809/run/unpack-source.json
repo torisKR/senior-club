@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "kind": "sprite-gen-unpack-source",
+  "layout_source": "imported-pngs",
+  "cell": {
+    "width": 1254,
+    "height": 1254
+  },
+  "source_dir": "/Users/toris/projects/senior_club/assets/generated/senior-club-brand-curation-20260809/pngs",
+  "files": [
+    "01-generated-loop.png",
+    "02-generated-fellowship.png",
+    "03-existing-v2.png"
+  ],
+  "labels": [
+    "01-generated-loop",
+    "02-generated-fellowship",
+    "03-existing-v2"
+  ],
+  "groups": [
+    "logo"
+  ]
+}

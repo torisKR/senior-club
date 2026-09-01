@@ -1,0 +1,32 @@
+{
+  "ok": true,
+  "engine": "component-row",
+  "run_dir": "/Users/toris/projects/senior_club/assets/generated/senior-club-brand-curation-20260809/run",
+  "cell": {
+    "shape": "square",
+    "width": 1254,
+    "height": 1254,
+    "size": 1254,
+    "safe_margin": 0
+  },
+  "rows": [
+    {
+      "state": "logo",
+      "frames": 3,
+      "method": "imported-pngs",
+      "files": [
+        "frames/logo/frame-0.png",
+        "frames/logo/frame-1.png",
+        "frames/logo/frame-2.png"
+      ],
+      "labels": [
+        "01-generated-loop",
+        "02-generated-fellowship",
+        "03-existing-v2"
+      ],
+      "ok": true
+    }
+  ],
+  "errors": [],
+  "warnings": []
+}
