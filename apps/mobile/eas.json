@@ -20,7 +20,7 @@
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://d33totqtaqpyfs.cloudfront.net",
-        "EXPO_PUBLIC_WEB_URL": "https://senior.toris.kr"
+        "EXPO_PUBLIC_WEB_URL": "https://clubsenior.vercel.app"
       }
     },
     "qaInternalLocal": {
@@ -31,7 +31,7 @@
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://d33totqtaqpyfs.cloudfront.net",
-        "EXPO_PUBLIC_WEB_URL": "https://senior.toris.kr"
+        "EXPO_PUBLIC_WEB_URL": "https://clubsenior.vercel.app"
       },
       "android": {
         "buildType": "apk"
@@ -45,7 +45,7 @@
       "env": {
         "EXPO_PUBLIC_APP_ENV": "development",
         "EXPO_PUBLIC_API_URL": "https://d33totqtaqpyfs.cloudfront.net",
-        "EXPO_PUBLIC_WEB_URL": "https://senior.toris.kr"
+        "EXPO_PUBLIC_WEB_URL": "https://clubsenior.vercel.app"
       },
       "android": {
         "buildType": "apk"
