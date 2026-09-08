@@ -15,6 +15,7 @@ export default defineConfig([
     "dist/**",
     "apps/api/**",
     "apps/mobile/**",
+    ".github/scripts/**",
     "next-env.d.ts",
   ]),
 ]);
