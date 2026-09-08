@@ -8,7 +8,7 @@ const worker = resolve(openNext, "worker.js");
 
 await rm(dist, { recursive: true, force: true });
 await mkdir(resolve(dist, "server"), { recursive: true });
-await cp(openNext, resolve(dist, "server/.open-next"), { recursive: true, dereference: true });
+await cp(openNext, resolve(dist, "server"), { recursive: true, dereference: true });
 await cp(worker, resolve(dist, "server/index.js"), { dereference: true });
 await cp(resolve(openNext, "assets"), resolve(dist, "assets"), { recursive: true, dereference: true });
 
