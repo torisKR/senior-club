@@ -34,6 +34,7 @@ jobs:
       EXPO_PUBLIC_APP_ENV: development
       EXPO_PUBLIC_API_URL: http://10.0.2.2:4000
       EXPO_PUBLIC_WEB_URL: http://localhost:3000
+      KAKAO_NATIVE_APP_KEY: 0123456789abcdef0123456789abcdef
 
     steps:
       - name: Check out repository
