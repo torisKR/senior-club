@@ -63,6 +63,7 @@ jobs:
           pnpm typecheck
           pnpm test
           pnpm build
+          pnpm build:sites
 
       - name: Check API
         run: |

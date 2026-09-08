@@ -1,8 +1,13 @@
 name: Android Play production release
 
 on:
-  push:
-    branches: [main]
+  workflow_call:
+    inputs:
+      submit_to_play:
+        description: Submit the validated AAB to the Google Play production draft track
+        required: false
+        default: true
+        type: boolean
   workflow_dispatch:
     inputs:
       submit_to_play:

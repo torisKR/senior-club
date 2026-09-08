@@ -1,0 +1,138 @@
+name: Deploy main
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-2' }}
+  AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+  ECR_REPOSITORY: ${{ vars.AWS_ECR_REPOSITORY || 'senior-club-api' }}
+  ECS_CLUSTER: ${{ vars.AWS_ECS_CLUSTER || 'senior-club' }}
+  ECS_SERVICE: ${{ vars.AWS_ECS_SERVICE || 'senior-club-api' }}
+  ECS_TASK_DEFINITION: ${{ vars.AWS_ECS_TASK_DEFINITION || 'senior-club-api' }}
+  ECS_CONTAINER_NAME: ${{ vars.AWS_ECS_CONTAINER_NAME || 'api' }}
+
+jobs:
+  backend:
+    name: Build and deploy API to ECS
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Require AWS OIDC configuration
+        run: |
+          set -euo pipefail
+          if [[ -z "$AWS_ROLE_TO_ASSUME" ]]; then
+            echo "::error::Set the AWS_ROLE_TO_ASSUME repository secret to the least-privilege GitHub OIDC role ARN."
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          role-session-name: senior-club-main-${{ github.run_id }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push API image
+        id: image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          set -euo pipefail
+          image="$REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA"
+          docker build --file apps/api/Dockerfile --tag "$image" .
+          docker push "$image"
+          printf 'image=%s\n' "$image" >> "$GITHUB_OUTPUT"
+
+      - name: Render ECS task definition
+        run: |
+          set -euo pipefail
+          aws ecs describe-task-definition \
+            --task-definition "$ECS_TASK_DEFINITION" \
+            --query taskDefinition \
+            --output json > task-definition.json
+          node -e '
+            const fs = require("node:fs");
+            const path = "task-definition.json";
+            const value = JSON.parse(fs.readFileSync(path, "utf8"));
+            for (const key of ["taskDefinitionArn", "revision", "status", "requiresAttributes", "compatibilities", "registeredAt", "registeredBy"]) delete value[key];
+            fs.writeFileSync(path, JSON.stringify(value));
+          '
+
+      - name: Update API container image
+        id: render
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.ECS_CONTAINER_NAME }}
+          image: ${{ steps.image.outputs.image }}
+
+      - name: Deploy ECS service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+  sites-package:
+    name: Build ChatGPT Sites artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.14.2
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Sites Worker
+        run: pnpm build:sites
+
+      - name: Package Sites Worker
+        run: |
+          bash .github/scripts/package-site.sh . sites-worker.tar.gz
+
+      - name: Upload Sites artifact for native Sites publish
+        uses: actions/upload-artifact@v4
+        with:
+          name: senior-club-sites-${{ github.sha }}
+          path: sites-worker.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+  android:
+    name: Play production workflow
+    needs: [backend, sites-package]
+    if: ${{ needs.backend.result == 'success' && needs.sites-package.result == 'success' }}
+    uses: ./.github/workflows/android-play-production.yml
+    secrets: inherit
