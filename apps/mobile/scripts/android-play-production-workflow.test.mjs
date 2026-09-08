@@ -10,8 +10,10 @@ const workflowPath = path.join(
   'workflows',
   'android-play-production.yml',
 );
+const deployWorkflowPath = path.join(repositoryRoot, '.github', 'workflows', 'deploy-main.yml');
 const easConfigPath = path.join(repositoryRoot, 'apps', 'mobile', 'eas.json');
 const workflow = fs.readFileSync(workflowPath, 'utf8');
+const deployWorkflow = fs.readFileSync(deployWorkflowPath, 'utf8');
 const easConfig = JSON.parse(fs.readFileSync(easConfigPath, 'utf8'));
 
 function getStep(name) {
@@ -22,12 +24,13 @@ function getStep(name) {
   return workflow.slice(start, next === -1 ? workflow.length : next);
 }
 
-test('production workflow deploys from main push and optional manual dispatch', () => {
+test('production workflow is callable by main deployment and manually dispatchable', () => {
   const triggerBlock = workflow.slice(workflow.indexOf('\non:\n'), workflow.indexOf('\npermissions:\n'));
 
-  assert.match(triggerBlock, /\n  push:\n/);
-  assert.match(triggerBlock, /branches:\s*\[main\]/);
+  assert.match(triggerBlock, /\n  workflow_call:\n/);
   assert.match(triggerBlock, /\n  workflow_dispatch:\n/);
+  assert.match(deployWorkflow, /\n  push:\n[\s\S]*branches:\s*\[main\]/);
+  assert.match(deployWorkflow, /uses:\s+\.\/\.github\/workflows\/android-play-production\.yml/);
   assert.doesNotMatch(triggerBlock, /\n  (?:pull_request|schedule):/);
   assert.match(workflow, /environment: play-store-production/);
   assert.doesNotMatch(workflow, /--latest(?:\s|$)/);
