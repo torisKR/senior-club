@@ -135,8 +135,7 @@ GitHub의 Firebase client secret은 runner 임시 파일로만 복원되고 작�
 - 개인정보 처리방침: `https://senior.toris.kr/privacy`
 - 계정 삭제 요청: `https://senior.toris.kr/account-deletion`
 
-위 주소는 현재 연결된 Vercel 프로젝트의 임시 호스트입니다. custom production domain을 확정하면 앱의
-링크와 Play Console 값을 함께 교체합니다. 현재 페이지의 문의 이메일도 수신 가능한 운영 주소로
+위 주소는 ChatGPT Sites에 연결된 custom production domain입니다. 앱과 Play Console은 동일한 운영 origin을 사용합니다. 현재 페이지의 문의 이메일도 수신 가능한 운영 주소로
 교체하고 실제 요청 처리 절차를 점검하기 전에는 Play 심사를 제출하지 않습니다.
 
 한국어 Play 등록 문구와 512px 아이콘 안내는 [`store-listing`](./store-listing)에 있습니다. 자세한 출시 절차는 [`../../docs/PLAY_STORE.md`](../../docs/PLAY_STORE.md), 현재 차단 조건은 [`../../docs/RELEASE_READINESS.md`](../../docs/RELEASE_READINESS.md), 성능 측정은 [`../../docs/PERFORMANCE.md`](../../docs/PERFORMANCE.md), Data Safety 초안은 [`../../docs/DATA_SAFETY.md`](../../docs/DATA_SAFETY.md)를 확인하세요.
