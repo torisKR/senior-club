@@ -22,7 +22,6 @@ export function createPrivateNoStoreHeaders(initialHeaders?: HeadersInit) {
   const headers = new Headers(initialHeaders);
   headers.set("Cache-Control", PRIVATE_NO_STORE_CACHE_CONTROL);
   headers.set("CDN-Cache-Control", "no-store");
-  headers.set("Vercel-CDN-Cache-Control", "no-store");
   headers.set("Surrogate-Control", "no-store");
   headers.set("Pragma", "no-cache");
   headers.set("Expires", "0");

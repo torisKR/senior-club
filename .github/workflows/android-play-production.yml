@@ -107,6 +107,7 @@ jobs:
           EXPECTED_EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
           EXPECTED_EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
         run: |
+          # shellcheck disable=SC2016
           set -euo pipefail
           umask 077
           rm -f -- "$EAS_PRODUCTION_ENV_FILE"
@@ -119,6 +120,7 @@ jobs:
             --non-interactive \
             --path "$EAS_PRODUCTION_ENV_FILE" \
             >/dev/null
+          # shellcheck disable=SC2016
           node -e '
             const fs = require("node:fs");
             const source = fs.readFileSync(process.env.EAS_PRODUCTION_ENV_FILE, "utf8");

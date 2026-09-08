@@ -41,7 +41,7 @@
 - foreground/background/cold-start 알림 탭의 내부 경로 allowlist와 중복 응답 차단
 - 인앱 `POST /v1/me/deletion-request`, 확인 문구·선택 사유·최근 인증 오류 UX, 성공 후 credential 제거
 - PostgreSQL schema, baseline migration SQL, outbox, health/readiness, non-root API Docker image
-- Vercel Web + Railway API/PostgreSQL 기준 CI·환경변수·배포 런북
+- ChatGPT Sites Web + ECS API/PostgreSQL 기준 CI·환경변수·배포 런북
 
 ## 검증 게이트
 

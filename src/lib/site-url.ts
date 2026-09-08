@@ -33,11 +33,7 @@ function normalizeSiteOrigin(configured: string): string {
 }
 
 export function getSiteUrl() {
-  const configured = [
-    process.env.NEXT_PUBLIC_APP_URL,
-    process.env.VERCEL_PROJECT_PRODUCTION_URL,
-    process.env.VERCEL_URL,
-  ].find((value): value is string => Boolean(value?.trim()));
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
 
   if (!configured) return "http://localhost:3000";
   return normalizeSiteOrigin(configured);

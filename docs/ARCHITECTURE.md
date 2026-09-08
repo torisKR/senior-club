@@ -21,7 +21,7 @@ Expo Android App                       Next.js Web / BFF
                                       └─ Firebase FCM
 ```
 
-웹은 Vercel, API·Socket.IO·worker는 Railway/ECS 같은 상시 실행 환경, DB는 관리형 PostgreSQL에
+웹은 ChatGPT Sites, API·Socket.IO·worker는 AWS ECS 같은 상시 실행 환경, DB는 관리형 PostgreSQL에
 배포하는 구성을 사용한다. 현재 코드는 준비됐지만 production 인프라와 자격 증명은 아직 연결·검증되지
 않았다.
 
@@ -210,7 +210,7 @@ post/comment, review, event draft, report와 chat activity index를 추가한다
 | Android | EAS Build → Google Play | production API/web URL, Firebase client file, signing |
 
 Redis와 S3는 현재 단일 API·텍스트 UGC 출시에 필수가 아니다. 다중 socket 인스턴스 또는 미디어 업로드를
-도입할 때 추가한다. migration은 Vercel build에서 실행하지 않고 승인된 release 단계에서 한 번 적용한다.
+도입할 때 추가한다. migration은 웹 build에서 실행하지 않고 승인된 release 단계에서 한 번 적용한다.
 
 ## 11. 검증과 남은 위험
 

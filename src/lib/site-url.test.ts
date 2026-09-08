@@ -11,23 +11,12 @@ afterEach(() => {
 describe("getSiteUrl", () => {
   it("uses the explicit public URL first", () => {
     process.env.NEXT_PUBLIC_APP_URL = "https://club.example";
-    process.env.VERCEL_URL = "preview.vercel.app";
     expect(getSiteUrl()).toBe("https://club.example");
   });
 
-  it("normalizes a Vercel hostname", () => {
+  it("uses the local development origin when production URL is not configured", () => {
     delete process.env.NEXT_PUBLIC_APP_URL;
-    delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
-    process.env.VERCEL_URL = "club-senior-preview.vercel.app";
-    expect(getSiteUrl()).toBe("https://club-senior-preview.vercel.app");
-  });
-
-  it("uses the stable Vercel production origin before a preview origin", () => {
-    delete process.env.NEXT_PUBLIC_APP_URL;
-    process.env.VERCEL_PROJECT_PRODUCTION_URL = "senior-club.vercel.app";
-    process.env.VERCEL_URL = "senior-club-feature-123.vercel.app";
-
-    expect(getSiteUrl()).toBe("https://senior-club.vercel.app");
+    expect(getSiteUrl()).toBe("http://localhost:3000");
   });
 
   it("removes trailing slashes before composing metadata URLs", () => {

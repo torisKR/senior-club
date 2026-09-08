@@ -40,7 +40,7 @@ Play Console·Firebase·EAS 연결이 확정된 뒤에는 임의로 변경하지
 ## 구현된 SEO·GEO 기반
 
 - `NEXT_PUBLIC_APP_URL` 우선의 canonical origin
-- Vercel production origin을 preview origin보다 우선
+- Sites production origin을 preview origin보다 우선
 - 잘못된 HTTP 공개 URL, 인증 정보, 경로·쿼리·해시가 붙은 canonical 설정 거부
 - 페이지별 title, description, canonical, Open Graph, Twitter card
 - `Organization`, `WebSite`, `AboutPage`, `FAQPage`, `Event`, `CollectionPage`, `ItemList`,

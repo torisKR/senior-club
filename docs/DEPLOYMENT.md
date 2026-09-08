@@ -5,7 +5,7 @@ MVP의 기준 구성은 비용과 운영 복잡도를 낮춘 서울 리전의 �
 ```text
 Android 앱 ─┐
             ├─ HTTPS ─ ECS API 1개 ─ Railway PostgreSQL
-Vercel 웹 ──┘                │
+ChatGPT Sites 웹 ──┘                │
                             ├─ Resend 이메일
                              ├─ Twilio SMS
                              └─ Firebase Cloud Messaging
@@ -18,7 +18,7 @@ Redis는 첫 단일 API 인스턴스에서는 사용하지 않는다. Socket.IO�
 ## 1. 출시 전 필수 준비
 
 - GitHub 저장소, 보호된 `main` 브랜치, GitHub Actions 실행 권한
-- Vercel 프로젝트와 고정 production HTTPS 도메인
+- ChatGPT Sites 프로젝트와 고정 production HTTPS 도메인
 - Railway 프로젝트, API 서비스, PostgreSQL 서비스와 백업 정책
 - 검증된 발신 도메인이 있는 Resend 계정
 - Twilio Messaging Service 또는 검증된 Twilio 발신번호
@@ -31,7 +31,7 @@ PostgreSQL 전체 적용, 대표 seed 데이터, 직전 schema에서의 업그�
 검증하기 전에는 production DB에 적용하지 않는다. production에서 `prisma db push`를 사용하지 않는다.
 
 실제 값은 저장소 파일에 기록하지 않는다. 로컬 키 이름은 [`.env.example`](../.env.example)을
-기준으로 하되 Vercel, Railway, GitHub Environment, EAS의 encrypted environment에 각각 저장한다.
+기준으로 하되 ChatGPT Sites, ECS, GitHub Environment, EAS의 encrypted environment에 각각 저장한다.
 
 ## 2. 환경변수 배치
 
@@ -178,17 +178,17 @@ migration을 애플리케이션 시작 명령에 넣지 않는다. 실패하면 
 production migration을 수정하거나 삭제하지 말고 후속 migration으로 고친다. 첫 배포 전에 Railway
 PostgreSQL backup에서 별도 인스턴스로 복구하는 연습을 완료한다.
 
-## 6. Vercel Web 배포
+## 6. ChatGPT Sites Web 배포
 
-1. 저장소 루트를 Vercel 프로젝트에 연결한다.
-2. [vercel.json](../vercel.json)의 filtered frozen install과 `pnpm build`를 사용한다.
+1. `pnpm build:sites`로 OpenNext Worker를 빌드한다.
+2. 공식 Sites 패키징 helper로 아카이브를 만들고 저장·배포한다.
 3. `NEXT_PUBLIC_APP_URL`을 canonical production HTTPS origin으로 지정한다.
 4. `SENIOR_CLUB_API_BASE_URL`을 ECS API의 HTTPS origin으로 지정한다.
 5. preview에는 production DB나 production 인증 secret을 연결하지 않는다.
 6. 배포 후 `/api/healthz`, canonical/robots/sitemap, 정책 페이지, 로그인 복귀와 API CORS를 확인한다.
 
 `NEXT_PUBLIC_API_URL`은 현재 웹 계약이 아니다. API origin은 server-only 변수로 유지한다. Prisma
-migration은 Vercel build에서 실행하지 않는다.
+migration은 웹 build에서 실행하지 않는다.
 
 ## 7. Android / EAS와 FCM
 
@@ -199,7 +199,7 @@ file secret을 등록한다.
 ```dotenv
 EXPO_PUBLIC_APP_ENV=production
 EXPO_PUBLIC_API_URL=https://실제-Railway-API-도메인
-EXPO_PUBLIC_WEB_URL=https://실제-Vercel-웹-도메인
+EXPO_PUBLIC_WEB_URL=https://senior.toris.kr
 GOOGLE_SERVICES_JSON=<EAS file secret: Android client google-services.json>
 ```
 
@@ -243,7 +243,7 @@ GitHub의 `GOOGLE_SERVICES_JSON_BASE64`는 preflight용 Android client file을 `
    부여·회수와 이메일·FCM outbox 확인
 7. 관리자 smoke: 신고 조회·상태 변경, 처리 메모와 감사 이력 확인
 8. Resend 실제 수신과 FCM 실제 기기 수신 확인
-9. Vercel Web 배포와 SEO/GEO·정책·로그인/온보딩 복귀 흐름 확인
+9. ChatGPT Sites Web 배포와 SEO/GEO·정책·로그인/온보딩 복귀 흐름 확인
 10. 내부 테스트 AAB에서 production API smoke test
 11. 오류율, p95, DB connection, outbox 지연을 관찰한 뒤 Play 단계적 출시
 
@@ -251,7 +251,7 @@ GitHub의 `GOOGLE_SERVICES_JSON_BASE64`는 preflight용 Android client file을 `
 
 - API: 직전 Railway revision으로 rollback한다. schema 변경은 expand → data migration → contract 순으로
   나눠 이전 revision도 새 schema를 읽을 수 있게 한다.
-- Web: 직전 Vercel production deployment를 promote한다.
+- Web: 직전 ChatGPT Sites production version으로 rollback한다.
 - Android: 이미 배포된 `versionCode`는 되돌릴 수 없으므로 수정한 더 높은 versionCode를 내부 트랙부터
   다시 배포한다.
 - 발송 장애: outbox worker를 중지하되 행은 보존하고 원인 수정 후 같은 idempotency key로 재시도한다.
@@ -263,7 +263,7 @@ GitHub의 `GOOGLE_SERVICES_JSON_BASE64`는 preflight용 Android client file을 `
 ## 10. 현재 외부/출시 blocker
 
 - GitHub 저장소/remote와 `play-internal` Environment가 없으면 CI·수동 Android workflow와
-  Vercel/Railway Git 연동을 시작할 수 없음
+  ChatGPT Sites/ECS Git 연동을 시작할 수 없음
 - production domain, Railway/PostgreSQL, Resend 발신 도메인, Firebase/EAS 자격 증명이 필요함
 - Prisma schema와 단위·계약 테스트는 통과했지만 이번 최종 실행에서는 PostgreSQL 테스트 환경이 없어
   DB 동시성 e2e가 건너뛰어짐. 빈 DB·업그레이드 migration, 백업 복구 rehearsal과 Railway 적용 승인이

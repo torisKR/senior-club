@@ -11,13 +11,11 @@ describe("private response cache policy", () => {
     const headers = createPrivateNoStoreHeaders({
       "Cache-Control": "public, s-maxage=86400",
       "CDN-Cache-Control": "public",
-      "Vercel-CDN-Cache-Control": "public",
       "X-Request-Id": "req-1",
     });
 
     expect(headers.get("cache-control")).toBe(PRIVATE_NO_STORE_CACHE_CONTROL);
     expect(headers.get("cdn-cache-control")).toBe("no-store");
-    expect(headers.get("vercel-cdn-cache-control")).toBe("no-store");
     expect(headers.get("surrogate-control")).toBe("no-store");
     expect(headers.get("pragma")).toBe("no-cache");
     expect(headers.get("expires")).toBe("0");

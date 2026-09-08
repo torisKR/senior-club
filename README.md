@@ -33,7 +33,7 @@
 - 콘텐츠·사용자 신고, 사용자 차단/해제와 관리자 신고 처리·감사 이력
 - 시니어 사용자를 고려한 큰 글자, 분명한 상태, 키보드 포커스
 - `/api/healthz`, upstream API/DB를 확인하는 `/api/readyz`
-- Prisma baseline migration, Railway Docker 배포, Vercel/Railway CI 설정
+- Prisma baseline migration, ECS Docker 배포, main CI/CD 설정
 
 ## 빠른 시작
 
@@ -206,32 +206,26 @@ Google Play 내부 트랙 AAB는 `play-internal` GitHub Environment를 사용하
 [`android-play-production.yml`](./.github/workflows/android-play-production.yml)으로 production 트랙 `draft`에 제출합니다.
 EAS CLI `21.3.0`과 정확한 검증 build ID를 사용하며, 선택 제출도 내부 트랙 `draft`까지만 허용합니다.
 
-## Vercel + Railway 배포
+## ChatGPT Sites + ECS 배포
 
-저장소 루트의 [`vercel.json`](./vercel.json)이 pnpm 고정 설치와 Next.js build를 설정합니다.
+ChatGPT Sites에는 OpenNext Worker를 배포하고, API는 AWS ECS에서 실행합니다.
 
-1. Vercel에서 저장소를 가져옵니다.
-2. Framework Preset이 `Next.js`인지 확인합니다.
-3. Sites 런타임 환경변수에 `NEXT_PUBLIC_APP_URL=https://senior.toris.kr`, `SENIOR_CLUB_API_BASE_URL`을 설정합니다.
-4. Railway는 [`railway.json`](./railway.json)과 `apps/api/Dockerfile`을 사용하고 production API secret을
-   encrypted variables로 주입합니다.
+1. `pnpm build:sites`로 OpenNext Worker를 만들고 Sites에 저장·배포합니다.
+2. Sites 런타임 환경변수에 `NEXT_PUBLIC_APP_URL=https://senior.toris.kr`, `SENIOR_CLUB_API_BASE_URL`을 설정합니다.
+3. API 이미지는 `apps/api/Dockerfile`로 빌드해 ECS 서비스에 배포하고 production secret은 AWS Secrets Manager에서 주입합니다.
 5. 배포 전 `pnpm lint && pnpm typecheck && pnpm test && pnpm build`를 통과시킵니다.
 6. 배포 후 `/api/healthz`, `/api/readyz`, SMS OTP·신청·삭제와 실제 SMS/푸시를 확인합니다.
 
-CLI를 이미 사용하고 있다면 다음으로 preview를 만들 수 있습니다.
-
-```bash
-pnpm dlx vercel
-```
+Sites 배포 전에는 `pnpm build:sites`와 공식 Sites 패키징 helper를 사용합니다.
 
 ### 프로덕션 원칙
 
-- Next.js Web만 Vercel에 둡니다.
+- Next.js Web은 ChatGPT Sites에 두고, NestJS API·Socket.IO·worker는 AWS ECS에 둡니다.
 - NestJS API, Socket.IO, worker는 Railway 또는 AWS ECS 같은 상시 실행 환경에 배포합니다.
-- PostgreSQL과 인증·Twilio·Firebase secret을 Railway에 설정합니다. Redis는 API 다중 인스턴스가
+- PostgreSQL과 인증·Twilio·Firebase secret을 AWS Secrets Manager/ECS에 설정합니다. Redis는 API 다중 인스턴스가
   필요할 때 검토합니다. 현재 텍스트 전용 MVP에는 S3가 필요하지 않습니다.
-- Prisma migration을 Vercel build 명령에 넣지 않습니다. 승인된 릴리스 단계에서 한 번 적용한 뒤 앱을 배포합니다.
-- `/api/readyz`는 Railway API의 PostgreSQL `SELECT 1` readiness까지 확인합니다.
+- Prisma migration을 웹 빌드 명령에 넣지 않습니다. 승인된 릴리스 단계에서 한 번 적용한 뒤 앱을 배포합니다.
+- `/api/readyz`는 ECS API의 PostgreSQL `SELECT 1` readiness까지 확인합니다.
 
 ## 로컬 캐시 초기화
 
@@ -262,7 +256,7 @@ pnpm dlx vercel
 - [이미지 자산: 생성 목적, 최종 프롬프트, 배포 경로](./docs/ASSETS.md)
 - [Google Play 출시: API 36, AAB, 테스트 트랙, 제출 체크리스트](./docs/PLAY_STORE.md)
 - [Android 출시 준비 상태와 차단 조건](./docs/RELEASE_READINESS.md)
-- [Vercel·Railway·EAS 프로덕션 배포 런북](./docs/DEPLOYMENT.md)
+- [ChatGPT Sites·ECS·EAS 프로덕션 배포 런북](./docs/DEPLOYMENT.md)
 - [성능·API 비용 기준과 측정 방법](./docs/PERFORMANCE.md)
 - [Google Play Data Safety 작성 초안](./docs/DATA_SAFETY.md)
 - [모바일 앱 실행·EAS 빌드 안내](./apps/mobile/README.md)
