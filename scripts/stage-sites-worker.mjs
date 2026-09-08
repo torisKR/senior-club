@@ -17,12 +17,11 @@ await cp(resolve(ogWasm, "yoga.wasm"), resolve(dist, "server/wasm/yoga.wasm"));
 await cp(resolve(ogWasm, "resvg.wasm"), resolve(dist, "server/wasm/resvg.wasm"));
 const middleware = resolve(dist, "server/middleware/handler.mjs");
 let middlewareSource = await (await import("node:fs/promises")).readFile(middleware, "utf8");
-const absoluteWasmPrefix = resolve(ogWasm) + "/";
+const yogaBase64 = (await (await import("node:fs/promises")).readFile(resolve(ogWasm, "yoga.wasm")).then((value) => value.toString("base64")));
+const resvgBase64 = (await (await import("node:fs/promises")).readFile(resolve(ogWasm, "resvg.wasm")).then((value) => value.toString("base64")));
 middlewareSource = middlewareSource
-  .replaceAll(absoluteWasmPrefix + "yoga.wasm?module", "../wasm/yoga.wasm?module")
-  .replaceAll(absoluteWasmPrefix + "resvg.wasm?module", "../wasm/resvg.wasm?module")
-  .replace(/\/[^"\n]+\/next\/dist\/compiled\/@vercel\/og\/yoga\.wasm\?module/g, "../wasm/yoga.wasm?module")
-  .replace(/\/[^"\n]+\/next\/dist\/compiled\/@vercel\/og\/resvg\.wasm\?module/g, "../wasm/resvg.wasm?module");
+  .replace(/import yoga_wasm from "[^"]+";/, `const yoga_wasm = Promise.resolve(Uint8Array.from(atob("${yogaBase64}"), (character) => character.charCodeAt(0)));`)
+  .replace(/import resvg_wasm from "[^"]+";/, `const resvg_wasm = Promise.resolve(Uint8Array.from(atob("${resvgBase64}"), (character) => character.charCodeAt(0)));`);
 await (await import("node:fs/promises")).writeFile(middleware, middlewareSource);
 
 console.log(`Staged Sites Worker output at ${dirname(resolve(dist, "server/index.js"))}`);
