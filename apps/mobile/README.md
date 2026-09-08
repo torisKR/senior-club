@@ -131,9 +131,9 @@ GitHub의 Firebase client secret은 runner 임시 파일로만 복원되고 작�
 
 ## 정책 URL
 
-- 서비스 이용약관: `https://clubsenior.vercel.app/terms`
-- 개인정보 처리방침: `https://clubsenior.vercel.app/privacy`
-- 계정 삭제 요청: `https://clubsenior.vercel.app/account-deletion`
+- 서비스 이용약관: `https://senior.toris.kr/terms`
+- 개인정보 처리방침: `https://senior.toris.kr/privacy`
+- 계정 삭제 요청: `https://senior.toris.kr/account-deletion`
 
 위 주소는 현재 연결된 Vercel 프로젝트의 임시 호스트입니다. custom production domain을 확정하면 앱의
 링크와 Play Console 값을 함께 교체합니다. 현재 페이지의 문의 이메일도 수신 가능한 운영 주소로

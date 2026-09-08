@@ -169,8 +169,8 @@ production 적용 전에는 빈 DB/업그레이드 migration과 실제 DB e2e를
 
 | 변수 | 위치 | 용도 |
 | --- | --- | --- |
-| `NEXT_PUBLIC_APP_URL` | Vercel | canonical 공개 웹 origin |
-| `SENIOR_CLUB_API_BASE_URL` | Vercel server-only | Railway API HTTPS origin |
+| `NEXT_PUBLIC_APP_URL` | ChatGPT Sites + Cloudflare | canonical 공개 웹 origin |
+| `SENIOR_CLUB_API_BASE_URL` | ChatGPT Sites server-only | ECS API HTTPS origin |
 | `EXPO_PUBLIC_APP_ENV`, `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_WEB_URL` | EAS | 앱에 노출 가능한 환경/API·정책 웹 origin |
 | `DATABASE_URL`, pool/readiness 변수 | Railway | PostgreSQL/Prisma |
 | `AUTH_ACCESS_TOKEN_SECRET`, `AUTH_OTP_PEPPER` | Railway secret | token/OTP 서명·검증 |
@@ -212,7 +212,7 @@ EAS CLI `21.3.0`과 정확한 검증 build ID를 사용하며, 선택 제출도 
 
 1. Vercel에서 저장소를 가져옵니다.
 2. Framework Preset이 `Next.js`인지 확인합니다.
-3. Vercel에 `NEXT_PUBLIC_APP_URL`, `SENIOR_CLUB_API_BASE_URL`을 설정합니다.
+3. Sites 런타임 환경변수에 `NEXT_PUBLIC_APP_URL=https://senior.toris.kr`, `SENIOR_CLUB_API_BASE_URL`을 설정합니다.
 4. Railway는 [`railway.json`](./railway.json)과 `apps/api/Dockerfile`을 사용하고 production API secret을
    encrypted variables로 주입합니다.
 5. 배포 전 `pnpm lint && pnpm typecheck && pnpm test && pnpm build`를 통과시킵니다.

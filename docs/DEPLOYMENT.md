@@ -4,7 +4,7 @@ MVP의 기준 구성은 비용과 운영 복잡도를 낮춘 서울 리전의 �
 
 ```text
 Android 앱 ─┐
-            ├─ HTTPS ─ Railway API 1개 ─ Railway PostgreSQL
+            ├─ HTTPS ─ ECS API 1개 ─ Railway PostgreSQL
 Vercel 웹 ──┘                │
                             ├─ Resend 이메일
                              ├─ Twilio SMS
@@ -37,14 +37,14 @@ PostgreSQL 전체 적용, 대표 seed 데이터, 직전 schema에서의 업그�
 
 | 위치 | 필요한 값 | 주의 사항 |
 | --- | --- | --- |
-| Vercel Web | `NEXT_PUBLIC_APP_URL`, `SENIOR_CLUB_API_BASE_URL` | API URL은 서버 전용이다. DB·FCM·인증 secret을 `NEXT_PUBLIC_*`로 만들지 않는다. |
-| Railway API | 아래 API production 변수 전체 | Railway가 주입하는 `PORT`를 사용하며 실제 secret을 이미지에 bake하지 않는다. |
+| ChatGPT Sites Web | `NEXT_PUBLIC_APP_URL`, `SENIOR_CLUB_API_BASE_URL` | API URL은 서버 전용이다. DB·FCM·인증 secret을 `NEXT_PUBLIC_*`로 만들지 않는다. |
+| ECS API | 아래 API production 변수 전체 | Railway가 주입하는 `PORT`를 사용하며 실제 secret을 이미지에 bake하지 않는다. |
 | EAS Build | `EXPO_PUBLIC_APP_ENV=production`, `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_WEB_URL` | 세 값은 앱 번들에 노출된다. 서버 secret과 서비스 계정 JSON을 넣지 않는다. |
 | GitHub CI | workflow의 테스트 전용 placeholder | production secret을 repository variable이나 로그에 노출하지 않는다. |
 | GitHub `play-internal` Environment | secret `EXPO_TOKEN`, secret `GOOGLE_SERVICES_JSON_BASE64`, variables `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_WEB_URL` | required reviewer를 권장한다. Firebase client JSON은 runner 임시 파일에만 복원한다. |
 | GitHub `play-store-production` Environment | 위와 동일한 secret/variable | `main` push production draft 제출용. required reviewer를 권장한다. |
 
-Railway API에는 다음 값을 등록한다.
+ECS API에는 다음 값을 등록한다.
 
 ```dotenv
 NODE_ENV=production
@@ -142,7 +142,7 @@ AAB를 기다려 JSON 결과를 받는다. 단일 `FINISHED` Android UUID만 허
 수동 실행으로 production AAB를 만들고, 성공 시 Play production 트랙 `draft`에 제출한다.
 GitHub Environment는 `play-store-production`이다.
 
-## 4. Railway API 최초 구성
+## 4. ECS API 최초 구성
 
 1. Railway에서 프로젝트와 PostgreSQL 서비스를 만든다.
 2. API 서비스를 같은 GitHub 저장소에 연결한다.
@@ -183,7 +183,7 @@ PostgreSQL backup에서 별도 인스턴스로 복구하는 연습을 완료한�
 1. 저장소 루트를 Vercel 프로젝트에 연결한다.
 2. [vercel.json](../vercel.json)의 filtered frozen install과 `pnpm build`를 사용한다.
 3. `NEXT_PUBLIC_APP_URL`을 canonical production HTTPS origin으로 지정한다.
-4. `SENIOR_CLUB_API_BASE_URL`을 Railway API의 HTTPS origin으로 지정한다.
+4. `SENIOR_CLUB_API_BASE_URL`을 ECS API의 HTTPS origin으로 지정한다.
 5. preview에는 production DB나 production 인증 secret을 연결하지 않는다.
 6. 배포 후 `/api/healthz`, canonical/robots/sitemap, 정책 페이지, 로그인 복귀와 API CORS를 확인한다.
 
@@ -236,7 +236,7 @@ GitHub의 `GOOGLE_SERVICES_JSON_BASE64`는 preflight용 Android client file을 `
 1. CI 전체 통과
 2. DB backup/snapshot 확인
 3. 승인된 migration 적용
-4. Railway API 배포 후 `/healthz` 200, `/readyz` 200 확인
+4. ECS API 배포 후 `/healthz` 200, `/readyz` 200 확인
 5. 회원 smoke: OTP 요청/검증, refresh rotation, 관심사·프로필, 공개 클럽·모임, 신청/취소,
    게시글·댓글, 후기, 채팅·읽음, 인앱 알림, 신고·차단, 기기 등록과 계정 삭제 확인
 6. 리더 smoke: 담당 클럽 조회, 모임 생성/수정/공개/취소, 신청 승인·거절, 출석, 채팅 권한

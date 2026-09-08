@@ -69,14 +69,14 @@
 
 ### 앱 콘텐츠
 
-1. **개인정보처리방침** — `https://clubsenior.vercel.app/privacy` (페이지 실제 로드 및 내용 확정 필요)
+1. **개인정보처리방침** — `https://senior.toris.kr/privacy` (페이지 실제 로드 및 내용 확정 필요)
 2. **앱 액세스 권한** — 휴대폰 SMS OTP 로그인이 필요하므로 심사용 테스트 번호와 SMS 수신 절차를 제공
 3. **광고** — 광고 없음
 4. **콘텐츠 등급** — 설문 작성 (UGC 있음: 게시글·댓글·후기·채팅)
 5. **타겟층** — 성인 대상, 아동 대상 아님
 6. **데이터 보안** — `DATA_SAFETY.md` 기준으로 작성
 7. **정부 앱 / 금융 기능 / 건강** — 모두 해당 없음
-8. **계정 삭제 URL** — `https://clubsenior.vercel.app/account-deletion`
+8. **계정 삭제 URL** — `https://senior.toris.kr/account-deletion`
 
 ### 출시
 

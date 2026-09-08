@@ -204,7 +204,7 @@ post/comment, review, event draft, report와 chat activity index를 추가한다
 
 | 대상 | 배포 | 필수 값 |
 | --- | --- | --- |
-| Web | Vercel | `NEXT_PUBLIC_APP_URL`, server-only API origin |
+| Web | ChatGPT Sites + Cloudflare | `NEXT_PUBLIC_APP_URL`, server-only API origin |
 | API/Socket/Worker | Railway 또는 ECS | DB, auth, email, FCM, CORS secret |
 | DB | 관리형 PostgreSQL | TLS, backup, migration 승인 |
 | Android | EAS Build → Google Play | production API/web URL, Firebase client file, signing |

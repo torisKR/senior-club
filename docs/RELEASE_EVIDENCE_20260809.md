@@ -27,7 +27,7 @@
 - Play Console 프로덕션 초안에 v11 App Bundle 업로드·최적화·검증 완료, 출시명/ko-KR 출시 노트 저장 완료
 - Play 공개 전환은 아직 실행하지 않음 (스토어 콘텐츠·운영 자격증명·정책 게이트와 최종 검토 필요)
 - Android export: `/private/tmp/senior-club-export`, 10,652KB
-- Vercel production: `clubsenior.vercel.app`, deployment `dpl_2DEiQV8Kx15XrppS9gS7teKkUDpi`, `READY` (2026-08-09 재확인 HTTP 200)
+- legacy Vercel production: `clubsenior.vercel.app`, deployment `dpl_2DEiQV8Kx15XrppS9gS7teKkUDpi`, `READY` (2026-08-09 재확인 HTTP 200)
 - Live ECS health/readiness: `/healthz` 200, `/readyz` 200 (2026-08-09 재확인)
 - 휴대폰 인증 운영 smoke: `POST /v1/auth/phone/request` 빈 body는 `400 INVALID_REQUEST`, 형식이 맞는 테스트 번호는 `201`과 `challengeId`를 반환; Vercel BFF `POST /api/auth/phone/request`도 `201` 확인
 - ECS 수정 배포: 서비스 `senior-club-api`, task definition `senior-club-api:4`, 실행 이미지 `senior-club-api:0.1.2`; 기존 task definition `:3`에서 롤링 교체 완료
