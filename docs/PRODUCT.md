@@ -41,6 +41,8 @@
 | 알림 | 인앱 목록/읽음, 수신 설정, Android FCM token | Firebase client/Admin 자격 증명과 실기기 수신 |
 | 안전 | 콘텐츠·사용자 신고, 사용자 차단/해제, 관리자 신고 처리 | 운영 담당자·SLA·제재 절차 확정 |
 | 계정 삭제 | 앱·웹 요청, 7일 유예, 즉시 session·push 해제 | production DB·백업 삭제 E2E |
+| 광고 | Android 홈·모임 목록 배너, 플러스 구매 시 숨김 | 전면 광고 없음 |
+| 앱 내 결제 | 광고 제거 일회 구매 `seniorclub.remove_ads` | 모임 참가비 Play 수납, 웹 결제 |
 
 공개 화면은 API를 사용할 수 없을 때 fixture 일정이나 회원 상태를 대신 표시하지 않는다. 기기·브라우저
 저장 값은 session 복원과 표시 속도를 위한 cache일 뿐이며 권한·정원·신청·출석의 원본은 API와
@@ -50,7 +52,7 @@ PostgreSQL이다.
 
 - 카카오·네이버·Google OAuth와 계정 연결
 - 사용자 사진·파일 업로드, S3, 카메라·미디어 권한
-- 앱 내 결제·구독·환불
+- 앱 내 구독(월 자동 결제)과 모임 참가비의 Play Billing 수납
 - 친구 관계와 친구 활동 추천
 - 지도 기반 거리 계산
 - 관리자 회원 정지·권한 변경, 직접 콘텐츠 숨김, 통계 dashboard
@@ -177,7 +179,7 @@ PENDING ──승인──> APPROVED ──출석──> ATTENDED | NO_SHOW
 - Android refresh token은 SecureStore, access token은 메모리에 둔다.
 - 모든 변경 요청은 인증·권한·strict 입력 검증을 적용한다.
 - OTP, JWT, DB URL, Twilio/Resend/Firebase secret을 저장소·URL·로그에 남기지 않는다.
-- 정밀 위치, 연락처, 통화·문자, 건강·음성, 결제, 사용자 사진·파일을 현재 수집하지 않는다.
+- 정밀 위치, 연락처, 통화·문자, 건강·음성, 신용카드 번호, 사용자 사진·파일을 현재 수집하지 않는다.
 
 ## 10. 측정 지표
 

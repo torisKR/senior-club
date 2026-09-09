@@ -3,6 +3,7 @@ import { type Href, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, Switch, View, useWindowDimensions } from 'react-native';
 
+import { HomeBannerAd } from '@/ads/HomeBannerAd';
 import { notificationsApi } from '@/api/notifications-api';
 import {
   AppText,
@@ -288,6 +289,7 @@ export function HomeScreen() {
             </View>
           </Card>
         )}
+        <HomeBannerAd />
       </View>
 
       <View style={{ minWidth: 0, gap: Spacing.lg }}>

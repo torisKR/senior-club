@@ -211,7 +211,7 @@ RFC1918/loopback/link-local/ULA 주소, `.invalid`·`.example`·`example.com` �
 
 앱은 Android notification channel을 만든 뒤 권한을 요청하고 `getDevicePushTokenAsync()`로 native FCM
 token을 받아 `/v1/devices`에 등록한다. 이는 Expo Go가 아니라 Firebase가 포함된 development/production
-build와 Play Services가 있는 실제 기기에서 검증한다. `app.config.js`는 EAS file secret 경로만
+build와 Play Services가 있는 실제 기기에서 검증한다. `app.config.ts`는 EAS file secret 경로만
 `android.googleServicesFile`로 주입한다. `eas-build-post-install` manifest gate는 production에서 파일이
 없거나 `com.toris.seniorclub` Android client가 아닌 경우 빌드를 중단한다. Firebase Admin 서비스 계정은
 이 client 파일과 별개이며 API에만 둔다.

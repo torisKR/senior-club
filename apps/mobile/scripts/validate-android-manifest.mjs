@@ -12,6 +12,7 @@ const expectedPackage = 'com.toris.seniorclub';
 const expectedActivePermissions = new Set([
   'android.permission.INTERNET',
   'android.permission.VIBRATE',
+  'com.android.vending.BILLING',
 ]);
 const expectedExportedComponents = new Set([
   'activity:.MainActivity',

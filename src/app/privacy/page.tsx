@@ -23,7 +23,7 @@ const collectedData = [
   {
     title: "기기와 서비스 이용",
     detail:
-      "알림을 켠 경우 푸시 토큰을 처리할 수 있습니다. 서비스 안정화를 위해 오류·접속 기록을 최소 범위에서 처리할 수 있습니다.",
+      "알림을 켠 경우 푸시 토큰을 처리할 수 있습니다. Android 앱은 배너 광고를 위해 Google 광고 ID와 광고 성과 정보를 처리할 수 있습니다. 서비스 안정화를 위해 오류·접속 기록을 최소 범위에서 처리할 수 있습니다.",
   },
 ] as const;
 
@@ -53,7 +53,7 @@ export default function PrivacyPage() {
             <span className="tag">
               <Clock3 aria-hidden="true" className="size-4" /> 시행 예정일 2026년 7월 30일
             </span>
-            <span className="tag">최종 수정 2026년 7월 30일</span>
+            <span className="tag">최종 수정 2026년 9월 9일</span>
           </div>
         </header>
 
@@ -83,9 +83,11 @@ export default function PrivacyPage() {
           </div>
           <p className="mt-4 text-[17px] leading-7 text-[var(--muted)] sm:text-[18px]">
             현재 MVP는 정밀 위치, 연락처, 통화·문자 기록, 건강 정보, 음성 녹음,
-            결제 정보, 사용자 사진·파일을 수집하지 않습니다. 성별, 프로필 사진,
-            소셜 로그인도 현재 출시 범위에 없습니다. 기능이나 외부 SDK가 추가되면
-            수집 항목과 이 방침도 함께 바뀝니다.
+            신용카드 번호, 사용자 사진·파일을 수집하지 않습니다. 성별, 프로필 사진,
+            소셜 로그인도 현재 출시 범위에 없습니다. Android 앱의 배너 광고는
+            Google AdMob이 처리하며, 시니어클럽 플러스 결제는 Google Play가
+            결제 정보를 처리합니다. 기능이나 외부 SDK가 추가되면 수집 항목과 이
+            방침도 함께 바뀝니다.
           </p>
         </section>
 
@@ -122,8 +124,9 @@ export default function PrivacyPage() {
             </p>
             <p className="mt-4 text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
               실제 수탁자, 처리 국가, 항목과 기간은 공급자 계약을 확정한 뒤 이
-              페이지에 공개합니다. 개인정보를 광고 사업자에게 판매하는 기능은
-              현재 MVP 범위에 없습니다.
+              페이지에 공개합니다. Android 앱의 배너 광고는 Google AdMob이 광고
+              게재와 측정에 필요한 기기 식별자를 처리할 수 있습니다. 개인정보를
+              광고 사업자에게 판매하지 않습니다.
             </p>
           </div>
         </section>
