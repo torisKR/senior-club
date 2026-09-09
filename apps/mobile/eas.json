@@ -84,6 +84,13 @@
     }
   },
   "submit": {
+    "productionUpdate": {
+      "android": {
+        "track": "production",
+        "releaseStatus": "completed",
+        "serviceAccountKeyPath": "/tmp/senior-club-play-service-account.json"
+      }
+    },
     "playInternal": {
       "android": {
         "track": "internal",

@@ -3,6 +3,11 @@ name: Android Play production release
 on:
   workflow_call:
     inputs:
+      binary_update:
+        description: Update the published app binary without modifying existing store listing assets
+        required: false
+        default: false
+        type: boolean
       submit_to_play:
         description: Submit the validated AAB to the Google Play production draft track
         required: false
@@ -31,6 +36,7 @@ jobs:
     environment: play-store-production
     env:
       CI: "true"
+      KAKAO_NATIVE_APP_KEY: ${{ secrets.KAKAO_NATIVE_APP_KEY }}
       FINAL_SCREENSHOT_MANIFEST: store-listing/screenshots/final/ko-KR/manifest.json
       SUBMIT_TO_PLAY: ${{ github.event_name == 'push' || inputs.submit_to_play }}
 
@@ -48,11 +54,16 @@ jobs:
         env:
           REQUIRED_EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           REQUIRED_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          REQUIRED_KAKAO_NATIVE_APP_KEY: ${{ secrets.KAKAO_NATIVE_APP_KEY }}
           REQUIRED_EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
           REQUIRED_EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
         run: |
           set -euo pipefail
           missing=0
+          if [[ -z "$REQUIRED_KAKAO_NATIVE_APP_KEY" ]]; then
+            echo "::error::play-store-production environment secret KAKAO_NATIVE_APP_KEY is required."
+            missing=1
+          fi
           if [[ -z "$REQUIRED_EXPO_TOKEN" ]]; then
             echo "::error::play-store-production environment secret EXPO_TOKEN is required."
             missing=1
@@ -147,6 +158,7 @@ jobs:
           '
 
       - name: Bind final screenshot evidence to checked-out commit
+        if: ${{ !inputs.binary_update }}
         working-directory: apps/mobile
         run: |
           set -euo pipefail
@@ -188,6 +200,7 @@ jobs:
           printf 'path=%s\n' "$google_services_path" >> "$GITHUB_OUTPUT"
 
       - name: Run production release preflight with final screenshot evidence
+        if: ${{ !inputs.binary_update }}
         working-directory: apps/mobile
         env:
           EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
@@ -201,6 +214,32 @@ jobs:
             2>&1 | tee "$EVIDENCE_DIR/preflight.log"
           cp "$FINAL_SCREENSHOT_MANIFEST" "$EVIDENCE_DIR/final-screenshot-manifest.json"
           sha256sum "$FINAL_SCREENSHOT_MANIFEST" > "$EVIDENCE_DIR/final-screenshot-manifest.sha256"
+          printf '%s\n' "$GITHUB_SHA" > "$EVIDENCE_DIR/source-commit.txt"
+
+      - name: Validate published app update and Play credentials
+        if: ${{ inputs.binary_update }}
+        working-directory: apps/mobile
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          EXPO_PUBLIC_APP_ENV: production
+          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+          EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
+          GOOGLE_SERVICES_JSON: ${{ steps.google_services.outputs.path }}
+        run: |
+          set -euo pipefail
+          umask 077
+          node -e '
+            const fs = require("node:fs");
+            const key = JSON.parse(process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON || "null");
+            if (key?.type !== "service_account" || key.client_email !== "senior-club-play-uploader@clubsenior-app.iam.gserviceaccount.com" || !key.private_key) {
+              throw new Error("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON must contain the app-scoped Play service account.");
+            }
+            fs.writeFileSync("/tmp/senior-club-play-service-account.json", JSON.stringify(key), {mode: 0o600});
+          '
+          mkdir -p "$EVIDENCE_DIR"
+          pnpm validate:play
+          pnpm validate:manifest
+          node scripts/validate-release-endpoints.mjs
           printf '%s\n' "$GITHUB_SHA" > "$EVIDENCE_DIR/source-commit.txt"
 
       - name: Build Play production AAB with EAS CLI 21.3.0
@@ -233,7 +272,7 @@ jobs:
           printf 'build_id=%s\n' "$build_id" >> "$GITHUB_OUTPUT"
 
       - name: Submit the exact build to Play production draft
-        if: ${{ success() && env.SUBMIT_TO_PLAY == 'true' }}
+        if: ${{ success() && env.SUBMIT_TO_PLAY == 'true' && !inputs.binary_update }}
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
@@ -243,6 +282,21 @@ jobs:
           npx --yes eas-cli@21.3.0 submit \
             --platform android \
             --profile production \
+            --id "$EAS_BUILD_ID" \
+            --non-interactive \
+            --wait
+
+      - name: Submit the exact published app update
+        if: ${{ success() && env.SUBMIT_TO_PLAY == 'true' && inputs.binary_update }}
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_BUILD_ID: ${{ steps.build_id.outputs.build_id }}
+        run: |
+          set -euo pipefail
+          npx --yes eas-cli@21.3.0 submit \
+            --platform android \
+            --profile productionUpdate \
             --id "$EAS_BUILD_ID" \
             --non-interactive \
             --wait
@@ -263,3 +317,4 @@ jobs:
           google_services_path="$RUNNER_TEMP/senior-club-google-services-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
           rm -f -- "$google_services_path"
           rm -f -- "$EAS_PRODUCTION_ENV_FILE"
+          rm -f -- /tmp/senior-club-play-service-account.json

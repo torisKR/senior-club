@@ -148,13 +148,33 @@ test('final screenshot manifest is bound to the full exact GITHUB_SHA before pre
 
 test('main push always submits the validated exact build ID to production draft', () => {
   assert.match(workflow, /SUBMIT_TO_PLAY: \$\{\{ github\.event_name == 'push' \|\| inputs\.submit_to_play \}\}/);
-  assert.match(workflow, /if: \$\{\{ success\(\) && env\.SUBMIT_TO_PLAY == 'true' \}\}/);
+  assert.match(getStep('Submit the exact build to Play production draft'), /if: \$\{\{ success\(\) && env\.SUBMIT_TO_PLAY == 'true' && !inputs\.binary_update \}\}/);
   assert.match(
     workflow,
     /EAS_BUILD_ID: \$\{\{ steps\.build_id\.outputs\.build_id \}\}/,
   );
   assert.match(workflow, /--profile production[\s\S]*--id "\$EAS_BUILD_ID"/);
   assert.match(workflow, /extract-eas-build-id\.mjs/);
+});
+
+test('published binary updates retain quality gates and use explicit production credentials', () => {
+  assert.match(deployWorkflow, /needs: quality/);
+  assert.match(deployWorkflow, /uses: \.\/\.github\/workflows\/ci\.yml/);
+  assert.match(deployWorkflow, /binary_update: true/);
+  assert.match(getStep('Bind final screenshot evidence to checked-out commit'), /if: \$\{\{ !inputs\.binary_update \}\}/);
+  const update = getStep('Validate published app update and Play credentials');
+  assert.match(update, /secrets\.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON/);
+  assert.match(update, /pnpm validate:manifest/);
+  assert.match(update, /validate-release-endpoints\.mjs/);
+  assert.ok(workflow.indexOf(update) < workflow.indexOf('      - name: Build Play production AAB'));
+  const submit = getStep('Submit the exact published app update');
+  assert.match(submit, /success\(\).*inputs\.binary_update/);
+  assert.match(submit, /--id "\$EAS_BUILD_ID"/);
+  assert.match(submit, /--profile productionUpdate/);
+  assert.equal(easConfig.submit.productionUpdate.android.releaseStatus, 'completed');
+  assert.equal(easConfig.submit.productionUpdate.android.track, 'production');
+  assert.equal(easConfig.submit.productionUpdate.android.serviceAccountKeyPath, '/tmp/senior-club-play-service-account.json');
+  assert.match(getStep('Remove temporary release configuration'), /rm -f -- \/tmp\/senior-club-play-service-account\.json/);
 });
 
 test('raw build JSON and validated evidence are retained as a workflow artifact', () => {
