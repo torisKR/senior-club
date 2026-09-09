@@ -231,7 +231,7 @@ jobs:
           node -e '
             const fs = require("node:fs");
             const key = JSON.parse(process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON || "null");
-            if (key?.type !== "service_account" || key.client_email !== "senior-club-play-uploader@clubsenior-app.iam.gserviceaccount.com" || !key.private_key) {
+            if (key?.type !== "service_account" || key.client_email !== "toris-play-uploader@toris-play-uploader.iam.gserviceaccount.com" || !key.private_key) {
               throw new Error("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON must contain the app-scoped Play service account.");
             }
             fs.writeFileSync("/tmp/senior-club-play-service-account.json", JSON.stringify(key), {mode: 0o600});
