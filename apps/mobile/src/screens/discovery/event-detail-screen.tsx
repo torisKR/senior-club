@@ -428,6 +428,7 @@ export function EventDetailScreen({ eventId, intent }: EventDetailScreenProps) {
         {justCancelled && !participationStatus ? (
           <View
             accessibilityRole="summary"
+            accessibilityLiveRegion="polite"
             style={{
               padding: Spacing.xl,
               gap: Spacing.sm,

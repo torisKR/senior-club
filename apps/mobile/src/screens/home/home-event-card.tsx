@@ -7,24 +7,17 @@ import { getEventImageSource } from '@/data/image-assets';
 import { useTheme } from '@/hooks/use-theme';
 import type { Event, ParticipationStatus } from '@/types';
 
+import {
+  buildHomeEventAccessibilityLabel,
+  formatHomeEventDate,
+} from './home-event-card-accessibility';
+
 const participationLabels: Record<ParticipationStatus, string> = {
   pending: '승인 대기',
   approved: '참여 확정',
   attended: '참여 완료',
   reviewed: '후기 작성 완료',
 };
-
-const eventDateFormatter = new Intl.DateTimeFormat('ko-KR', {
-  month: 'long',
-  day: 'numeric',
-  weekday: 'short',
-  hour: 'numeric',
-  minute: '2-digit',
-});
-
-function formatEventDate(value: string) {
-  return eventDateFormatter.format(new Date(value));
-}
 
 export interface HomeEventCardProps {
   event: Event;
@@ -40,7 +33,13 @@ export function HomeEventCard({ event, participationStatus, onPress }: HomeEvent
     <Card
       padded={false}
       onPress={onPress}
-      accessibilityLabel={`${event.title}, ${formatEventDate(event.startsAt)}, ${event.location}, 남은 자리 ${remainingSeats}명`}
+      accessibilityLabel={buildHomeEventAccessibilityLabel({
+        title: event.title,
+        startsAt: event.startsAt,
+        location: event.location,
+        remainingSeats,
+        participationStatus,
+      })}
       accessibilityHint="눌러 모임 상세 정보와 신청 방법을 확인합니다.">
       <Image
         source={getEventImageSource(event)}
@@ -87,7 +86,7 @@ export function HomeEventCard({ event, participationStatus, onPress }: HomeEvent
         </View>
 
         <View style={{ minWidth: 0, gap: Spacing.xs }}>
-          <AppText variant="bodyStrong">일시 · {formatEventDate(event.startsAt)}</AppText>
+          <AppText variant="bodyStrong">일시 · {formatHomeEventDate(event.startsAt)}</AppText>
           <AppText variant="body" color="textSecondary">
             장소 · {event.location}
           </AppText>
