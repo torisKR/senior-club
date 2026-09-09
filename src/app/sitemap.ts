@@ -12,6 +12,9 @@ const STATIC_PUBLIC_ROUTES = [
   { path: "/clubs", changeFrequency: "daily", priority: 0.9 },
   { path: "/events", changeFrequency: "daily", priority: 0.9 },
   { path: "/about", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/privacy", changeFrequency: "yearly", priority: 0.4 },
+  { path: "/terms", changeFrequency: "yearly", priority: 0.4 },
+  { path: "/account-deletion", changeFrequency: "yearly", priority: 0.4 },
 ] as const;
 
 export function createPublicSitemap(

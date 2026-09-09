@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { AlertTriangle, Handshake, ShieldCheck, Users } from "lucide-react";
+import { Handshake, ShieldCheck, Users } from "lucide-react";
 
-import { createDraftPolicyPageMetadata } from "@/lib/seo";
+import { createPublicPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = createDraftPolicyPageMetadata({
+export const metadata: Metadata = createPublicPageMetadata({
   title: "서비스 이용약관",
-  description: "시니어클럽(Senior Club) 서비스 이용약관 초안입니다.",
+  description: "시니어클럽(Senior Club) 서비스 이용 시 회원과 운영자가 지키는 기본 원칙입니다.",
   path: "/terms",
 });
 
@@ -33,16 +33,6 @@ export default function TermsPage() {
             운영자가 지켜야 할 기본 원칙을 설명합니다.
           </p>
         </header>
-
-        <div className="mt-6 rounded-2xl border border-[var(--accent)]/35 bg-[var(--accent-soft)] p-5 text-[17px] leading-7 sm:p-6 sm:text-[18px]">
-          <div className="flex items-start gap-3">
-            <AlertTriangle aria-hidden="true" className="mt-0.5 size-6 shrink-0 text-[var(--accent)]" />
-            <p>
-              <strong className="font-black">MVP 운영 초안입니다.</strong> 정식 출시 전
-              운영 주체, 유료 서비스, 분쟁 처리와 관할 기준을 법률 검토 후 확정해야 합니다.
-            </p>
-          </div>
-        </div>
 
         <section className="mt-10" aria-labelledby="terms-service">
           <h2 id="terms-service" className="section-title">1. 서비스와 계정</h2>
@@ -120,7 +110,7 @@ export default function TermsPage() {
         </section>
 
         <p className="mt-10 text-[16px] leading-7 text-[var(--muted)] sm:text-[17px]">
-          시행 예정일 및 최종 수정일: 2026년 9월 9일 · 임시 문의처:
+          시행일 및 최종 수정일: 2026년 9월 9일 · 문의:
           {" "}<a className="font-bold text-[var(--primary)] underline" href="mailto:privacy@clubsenior.kr">privacy@clubsenior.kr</a>
         </p>
       </article>

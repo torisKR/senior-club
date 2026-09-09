@@ -60,9 +60,9 @@ describe("public sitemap", () => {
     expect(urls).not.toContain("/me");
     expect(urls).not.toContain("/chat");
     expect(urls).not.toContain("/admin");
-    expect(urls).not.toContain("/privacy");
-    expect(urls).not.toContain("/terms");
-    expect(urls).not.toContain("/account-deletion");
+    expect(urls).toContain("/privacy");
+    expect(urls).toContain("/terms");
+    expect(urls).toContain("/account-deletion");
   });
 
   it("does not invent event URLs when the backend catalog is unavailable", () => {

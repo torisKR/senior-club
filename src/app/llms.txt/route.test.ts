@@ -11,10 +11,10 @@ describe("llms.txt", () => {
     expect(text).toContain("https://senior-club.example/about");
     expect(text).toContain("https://senior-club.example/clubs");
     expect(text).toContain("https://senior-club.example/sitemap.xml");
-    expect(text).toContain("출시 전 운영 초안");
-    expect(text).not.toContain("https://senior-club.example/privacy");
-    expect(text).not.toContain("https://senior-club.example/terms");
-    expect(text).not.toContain("https://senior-club.example/account-deletion");
+    expect(text).toContain("https://senior-club.example/privacy");
+    expect(text).toContain("https://senior-club.example/terms");
+    expect(text).toContain("https://senior-club.example/account-deletion");
+    expect(text).not.toContain("출시 전 운영 초안");
     expect(text).not.toContain("[커뮤니티](https://senior-club.example/clubs)");
     expect(text).toContain("게시판과 댓글은 공개 서비스 API의 실제 데이터를 사용");
     expect(text).toContain("예시 게시글로 대체하지 않습니다");

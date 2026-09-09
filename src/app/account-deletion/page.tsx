@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, Clock3, Mail, ShieldCheck, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock3, Mail, ShieldCheck, Trash2 } from "lucide-react";
 
-import { createDraftPolicyPageMetadata } from "@/lib/seo";
+import { createPublicPageMetadata } from "@/lib/seo";
 import { AccountDeletionRequest } from "@/components/account-deletion-request";
 
-export const metadata: Metadata = createDraftPolicyPageMetadata({
+export const metadata: Metadata = createPublicPageMetadata({
   title: "계정 삭제 요청",
   description: "시니어클럽(Senior Club) 계정과 연결된 개인정보 삭제 요청 방법입니다.",
   path: "/account-deletion",
@@ -46,22 +46,6 @@ export default function AccountDeletionPage() {
           </p>
         </header>
 
-        <div className="mt-6 rounded-2xl border border-[var(--accent)]/35 bg-[var(--accent-soft)] p-5 text-[17px] leading-7 sm:p-6 sm:text-[18px]">
-          <div className="flex items-start gap-3">
-            <AlertTriangle
-              aria-hidden="true"
-              className="mt-0.5 size-6 shrink-0 text-[var(--accent)]"
-            />
-            <div>
-              <strong className="font-black">출시 전 확인 안내</strong>
-              <p className="mt-2">
-                현재 문의 이메일은 MVP 운영 초안입니다. 정식 출시 전 실제 수신
-                주소와 법정 보존·백업 처리 기준을 확정해야 합니다.
-              </p>
-            </div>
-          </div>
-        </div>
-
         <section aria-labelledby="deletion-request" className="mt-10">
           <h2 id="deletion-request" className="section-title">
             삭제 요청 방법
@@ -100,8 +84,7 @@ export default function AccountDeletionPage() {
               계정 접근 지원 이메일 작성
             </a>
             <p className="mt-4 text-[16px] leading-7 text-white/80 sm:text-[17px]">
-              임시 문의처: privacy@clubsenior.kr — 출시 전에 실제 수신 가능한 운영
-              주소로 교체해야 합니다.
+              문의 이메일: privacy@clubsenior.kr
             </p>
           </div>
         </section>
@@ -149,8 +132,7 @@ export default function AccountDeletionPage() {
                   삭제 요청 직후 현재 로그인 세션과 등록된 푸시 토큰을 해제합니다.
                   7일 동안 다시 로그인해 요청을 취소할 수 있으며, 취소하지 않으면
                   계정 삭제 작업을 진행합니다. 법령 준수, 보안, 사기 방지 또는 분쟁
-                  대응에 필요한 최소 기록과 백업 처리 기준은 출시 전 운영 정책에서
-                  기간과 접근 범위를 확정해 별도로 안내합니다.
+                  대응에 필요한 최소 기록은 해당 목적과 보관 기간이 끝나면 삭제합니다.
                 </p>
               </div>
             </div>

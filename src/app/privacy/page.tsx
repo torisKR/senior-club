@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Clock3, Database, LockKeyhole, Mail, ShieldCheck, Trash2 } from "lucide-react";
 
-import { createDraftPolicyPageMetadata } from "@/lib/seo";
+import { createPublicPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = createDraftPolicyPageMetadata({
+export const metadata: Metadata = createPublicPageMetadata({
   title: "개인정보 처리방침",
   description: "시니어클럽(Senior Club)의 개인정보 수집, 이용, 보유 및 삭제 기준입니다.",
   path: "/privacy",
@@ -51,20 +51,11 @@ export default function PrivacyPage() {
           </p>
           <div className="mt-6 flex flex-wrap gap-3 text-[16px] font-bold text-[var(--muted)] sm:text-[17px]">
             <span className="tag">
-              <Clock3 aria-hidden="true" className="size-4" /> 시행 예정일 2026년 7월 30일
+              <Clock3 aria-hidden="true" className="size-4" /> 시행일 2026년 7월 30일
             </span>
             <span className="tag">최종 수정 2026년 9월 9일</span>
           </div>
         </header>
-
-        <div className="mt-6 rounded-2xl border border-[var(--accent)]/35 bg-[var(--accent-soft)] p-5 text-[17px] leading-7 text-[var(--ink)] sm:p-6 sm:text-[18px]">
-          <strong className="font-black">출시 전 확인 안내</strong>
-          <p className="mt-2">
-            이 문서는 MVP 운영 기준 초안이며 법률 자문이 아닙니다. 정식 출시 전
-            운영 주체, 실제 문의처, 위탁 업체, 보유 기간과 구현 내용을 확정해
-            갱신해야 합니다.
-          </p>
-        </div>
 
         <section aria-labelledby="privacy-collection" className="mt-10">
           <h2 id="privacy-collection" className="section-title">
@@ -143,8 +134,8 @@ export default function PrivacyPage() {
                 <p className="mt-2 text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
                   삭제 요청 직후 로그인 세션과 등록된 푸시 토큰을 해제합니다. 요청
                   후 7일 동안 다시 로그인해 삭제를 취소할 수 있으며, 취소하지 않으면
-                  계정 삭제 작업을 진행합니다. 법정 보존 항목과 순환 백업의 처리
-                  기간은 출시 전 실제 운영·백업 구조에 맞게 확정해 공개합니다.
+                  계정 삭제 작업을 진행합니다. 법정 보존 항목과 순환 백업은 해당
+                  목적과 보관 기간이 끝나면 삭제합니다.
                 </p>
               </div>
             </div>
@@ -225,8 +216,7 @@ export default function PrivacyPage() {
               privacy@clubsenior.kr
             </a>
             <p className="mt-4 text-[16px] leading-7 text-white/85 sm:text-[17px]">
-              임시 문의처입니다. 정식 출시 전에 실제 수신 가능한 운영 이메일과
-              운영 주체의 명칭·주소·연락처로 교체해야 합니다.
+              개인정보 관련 문의는 이 이메일로 받습니다.
             </p>
           </div>
         </section>
