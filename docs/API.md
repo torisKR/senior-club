@@ -191,7 +191,7 @@ cookie를 제거한다. 보호 응답은 `private, no-store`와 `Vary: Cookie`�
 
 - 카카오·네이버·Google OAuth
 - 사용자 사진·파일 업로드와 S3 presigned URL
-- 앱 내 결제·구독
+- 앱 내 구독과 모임 참가비 Play 수납
 - 관리자 회원 검색·통계 dashboard·뉴스레터 작성 UI
 - Redis Socket.io adapter 또는 broker 기반 다중 인스턴스 fan-out
 - Swagger/OpenAPI 자동 문서 endpoint

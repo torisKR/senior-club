@@ -215,6 +215,19 @@ export function ProfilePanel({ initialUser }: { initialUser: BackendUser }) {
         </section>
 
         <section className="rounded-[2rem] border border-[var(--line)] bg-[var(--surface)] p-6 sm:p-8">
+          <p className="text-[18px] font-extrabold text-[var(--primary-strong)]">결제와 광고</p>
+          <h2 className="mt-1 text-2xl font-black tracking-[-0.03em]">시니어클럽 플러스</h2>
+          <p className="mt-4 text-[17px] leading-7 text-[var(--muted)]">
+            Android 앱에서 배너 광고를 끄는 일회 구매입니다. 모임 찾기·신청·채팅은
+            그대로 무료입니다. 웹에서는 Google Play 결제를 할 수 없으니, 광고 없이
+            쓰려면 앱의 내 정보 화면에서 구매하거나 복원하세요.
+          </p>
+          <p className="mt-3 text-[17px] leading-7 text-[var(--muted)]">
+            모임 참가비는 현장에서 리더 안내에 따라 냅니다. 앱 안 결제와 섞이지 않습니다.
+          </p>
+        </section>
+
+        <section className="rounded-[2rem] border border-[var(--line)] bg-[var(--surface)] p-6 sm:p-8">
           <div className="flex items-start gap-3">
             <BellRing aria-hidden="true" className="mt-1 h-6 w-6 shrink-0 text-[var(--primary-strong)]" />
             <div>

@@ -537,6 +537,11 @@ export function EventDetailScreen({ eventId, intent }: EventDetailScreenProps) {
             <Card style={{ gap: Spacing.xl }}>
               <AppText variant="sectionTitle">신청 정보</AppText>
               <DetailRow emoji="💳" label="참가비" value={formatPrice(event.price)} emphasis />
+              <AppText variant="caption" color="textSecondary">
+                {event.price === 0
+                  ? '참가비가 없는 모임입니다. Google Play 결제가 필요하지 않아요.'
+                  : '참가비는 현장에서 리더 안내에 따라 냅니다. 앱 안 Google Play 결제가 아닙니다.'}
+              </AppText>
               <View style={{ height: 1, backgroundColor: theme.divider }} />
               <DetailRow
                 emoji="👥"

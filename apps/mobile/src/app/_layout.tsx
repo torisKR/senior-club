@@ -6,6 +6,8 @@ import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { AdsProvider } from '@/ads/AdsProvider';
+import { AppBillingProvider } from '@/billing/AppBillingProvider';
 import { AppStateProvider } from '@/context/app-state';
 import { BrandColors, Colors, FontWeights } from '@/constants/theme';
 import { PendingAuthIntentCoordinator } from '@/auth/pending-auth-intent-coordinator';
@@ -64,32 +66,36 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AppStateProvider>
-        <PendingAuthIntentCoordinator />
-        <PushNotificationCoordinator />
-        <ThemeProvider value={colorScheme === 'dark' ? darkNavigationTheme : lightNavigationTheme}>
-          <Stack
-            screenOptions={{
-              headerBackButtonDisplayMode: 'minimal',
-              headerShadowVisible: false,
-              headerStyle: { backgroundColor: palette.surface },
-              headerTintColor: palette.primary,
-              headerTitleStyle: {
-                color: palette.text,
-                fontSize: 20,
-                fontFamily: FontWeights.strong,
-              },
-              contentStyle: { backgroundColor: palette.background },
-            }}>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="event/[id]" options={{ title: '모임 자세히' }} />
-            <Stack.Screen name="club/[slug]" options={{ headerShown: false }} />
-            <Stack.Screen name="reviews/new" options={{ title: '후기 쓰기', presentation: 'modal' }} />
-            <Stack.Screen name="notifications" options={{ title: '알림' }} />
-          </Stack>
-          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-        </ThemeProvider>
+        <AppBillingProvider>
+          <AdsProvider>
+            <PendingAuthIntentCoordinator />
+            <PushNotificationCoordinator />
+            <ThemeProvider value={colorScheme === 'dark' ? darkNavigationTheme : lightNavigationTheme}>
+              <Stack
+                screenOptions={{
+                  headerBackButtonDisplayMode: 'minimal',
+                  headerShadowVisible: false,
+                  headerStyle: { backgroundColor: palette.surface },
+                  headerTintColor: palette.primary,
+                  headerTitleStyle: {
+                    color: palette.text,
+                    fontSize: 20,
+                    fontFamily: FontWeights.strong,
+                  },
+                  contentStyle: { backgroundColor: palette.background },
+                }}>
+                <Stack.Screen name="index" options={{ headerShown: false }} />
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="event/[id]" options={{ title: '모임 자세히' }} />
+                <Stack.Screen name="club/[slug]" options={{ headerShown: false }} />
+                <Stack.Screen name="reviews/new" options={{ title: '후기 쓰기', presentation: 'modal' }} />
+                <Stack.Screen name="notifications" options={{ title: '알림' }} />
+              </Stack>
+              <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+            </ThemeProvider>
+          </AdsProvider>
+        </AppBillingProvider>
       </AppStateProvider>
     </GestureHandlerRootView>
   );

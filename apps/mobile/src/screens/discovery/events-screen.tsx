@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
+import { HomeBannerAd } from '@/ads/HomeBannerAd';
 import { mergeEventPages } from '@/api/events-api';
 import { AppText, EmptyState, EventCard, SeniorButton } from '@/components/ui';
 import { Layout, Radius, Spacing, TouchTarget } from '@/constants/theme';
@@ -264,6 +265,7 @@ export function EventsScreen() {
                 </AppText>
               ) : null}
             </View>
+            <HomeBannerAd />
           </View>
         }
         renderItem={({ item }) => {

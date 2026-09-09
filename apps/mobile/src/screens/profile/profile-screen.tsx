@@ -5,6 +5,7 @@ import { Alert, Linking, Pressable, Switch, TextInput, View } from 'react-native
 import { ApiError } from '@/api/api-error';
 import { apiErrorMessage } from '@/api/error-message';
 import { BlockedUsersSection } from '@/components/safety';
+import { PlusCard } from '@/screens/profile/plus-card';
 import { AppText, Card, InterestChip, Screen, SectionHeader, SeniorButton } from '@/components/ui';
 import { Radius, Spacing, TouchTarget, FontWeights } from '@/constants/theme';
 import { getPublicWebPageUrl } from '@/config/public-web-links';
@@ -168,6 +169,14 @@ export function ProfileScreen() {
           </View>
         </View>
       </Card>
+
+      <View style={{ gap: Spacing.md }}>
+        <SectionHeader
+          title="결제와 광고"
+          description="모임 참가비는 현장에서 내고, 앱 결제는 광고 없는 플러스만 해당합니다."
+        />
+        <PlusCard />
+      </View>
 
       <View style={{ gap: Spacing.md }}>
         <SectionHeader

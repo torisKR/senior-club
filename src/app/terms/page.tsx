@@ -106,8 +106,21 @@ export default function TermsPage() {
           </div>
         </section>
 
+        <section className="mt-10" aria-labelledby="terms-payments">
+          <h2 id="terms-payments" className="section-title">5. 참가비와 앱 내 결제</h2>
+          <div className="panel mt-5 p-5 sm:p-7">
+            <p className="text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
+              모임 참가비는 현장 활동비이며, 신청 화면에 표시된 금액을 리더 안내에
+              따라 현장에서 냅니다. Google Play 인앱 결제로 참가비를 받지 않습니다.
+              Android 앱의 시니어클럽 플러스는 배너 광고를 끄는 일회성 구매이며,
+              결제·영수증·환불은 Google Play 정책을 따릅니다. 웹에서는 플러스를
+              구매할 수 없습니다.
+            </p>
+          </div>
+        </section>
+
         <p className="mt-10 text-[16px] leading-7 text-[var(--muted)] sm:text-[17px]">
-          시행 예정일 및 최종 수정일: 2026년 7월 18일 · 임시 문의처:
+          시행 예정일 및 최종 수정일: 2026년 9월 9일 · 임시 문의처:
           {" "}<a className="font-bold text-[var(--primary)] underline" href="mailto:privacy@clubsenior.kr">privacy@clubsenior.kr</a>
         </p>
       </article>

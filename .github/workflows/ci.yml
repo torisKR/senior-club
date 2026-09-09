@@ -77,6 +77,7 @@ jobs:
         run: |
           pnpm --filter mobile lint
           pnpm --filter mobile typecheck
+          pnpm --filter mobile test
           pnpm --filter mobile test:release-validators
           pnpm --filter mobile validate:play-internal-workflow
           pnpm --filter mobile validate:play-production-workflow
