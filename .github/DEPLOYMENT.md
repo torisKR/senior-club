@@ -6,7 +6,7 @@ Both direct pushes and merged PRs create a `push` event on `main`.
 - `Deploy main` runs the reusable CI checks before updating ECS. OIDC trusts only this repository's `main`; permissions target the existing API ECR repository, ECS service and execution role.
 - After API deployment and Sites packaging succeed, the Android workflow builds an auto-incremented production AAB and submits its exact validated EAS build ID. It does not submit `--latest`.
 - Play account: `dbwnghks5366@gmail.com`, developer ID `8464946209749234716`, package `com.toris.seniorclub`.
-- The dedicated Play service account is `senior-club-play-uploader@clubsenior-app.iam.gserviceaccount.com`. It must have app-level release permissions only.
+- The dedicated Play service account is `toris-play-uploader@toris-play-uploader.iam.gserviceaccount.com`. It must have app-level release permissions only.
 
 ## Configuration
 

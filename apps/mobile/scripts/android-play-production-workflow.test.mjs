@@ -164,6 +164,8 @@ test('published binary updates retain quality gates and use explicit production 
   assert.match(getStep('Bind final screenshot evidence to checked-out commit'), /if: \$\{\{ !inputs\.binary_update \}\}/);
   const update = getStep('Validate published app update and Play credentials');
   assert.match(update, /secrets\.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON/);
+  assert.match(update, /toris-play-uploader@toris-play-uploader\.iam\.gserviceaccount\.com/);
+  assert.doesNotMatch(update, /senior-club-play-uploader@clubsenior-app\.iam\.gserviceaccount\.com/);
   assert.match(update, /pnpm validate:manifest/);
   assert.match(update, /validate-release-endpoints\.mjs/);
   assert.ok(workflow.indexOf(update) < workflow.indexOf('      - name: Build Play production AAB'));
