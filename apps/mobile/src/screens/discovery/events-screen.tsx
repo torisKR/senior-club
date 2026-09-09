@@ -257,6 +257,7 @@ export function EventsScreen() {
 
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: Spacing.sm }}>
               <AppText variant="sectionTitle">모임 {visibleEvents.length}개</AppText>
+              <AppText variant="caption" color="textSecondary">카드를 눌러 자세한 일정과 신청 방법을 확인하세요.</AppText>
               {query.trim() ? (
                 <AppText variant="caption" color="textSecondary">
                   ‘{query.trim()}’ 검색 결과

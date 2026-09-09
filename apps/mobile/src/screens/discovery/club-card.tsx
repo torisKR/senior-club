@@ -74,7 +74,7 @@ export function ClubCard({ club, recommended, onPress }: ClubCardProps) {
             활성 회원 {club.memberCount.toLocaleString('ko-KR')}명
           </AppText>
           <AppText variant="body" color="textSecondary">
-            📍 {region} · 리더 {club.leaderName}
+            지역 · {region} · 리더 {club.leaderName}
           </AppText>
           <AppText variant="caption" color="textSecondary">
             예정 모임 {club.upcomingEventCount.toLocaleString('ko-KR')}개 · 지난 모임{' '}

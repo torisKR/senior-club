@@ -64,7 +64,8 @@ export function EventCard({ event, participationStatus, onPress, compact = false
     <Card
       padded={false}
       onPress={onPress ? () => onPress(event) : undefined}
-      accessibilityLabel={accessibilityLabel}>
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint="눌러 모임 상세 정보와 신청 방법을 확인합니다.">
       {!compact ? (
         <Image
           source={getEventImageSource(event)}
@@ -112,9 +113,9 @@ export function EventCard({ event, participationStatus, onPress, compact = false
         </View>
 
         <View style={{ gap: Spacing.sm }}>
-          <AppText variant="bodyStrong">📅 {formatDate(event.startsAt)}</AppText>
+          <AppText variant="bodyStrong">일시 · {formatDate(event.startsAt)}</AppText>
           <AppText variant="body" color="textSecondary">
-            📍 {event.location}
+            장소 · {event.location}
           </AppText>
           <View style={{ gap: Spacing.sm }}>
             <SeatMeter

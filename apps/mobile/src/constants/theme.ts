@@ -33,7 +33,7 @@ export const Colors = {
     primaryPressed: BrandColors.forestPressed,
     accent: BrandColors.ember,
     accentPressed: BrandColors.emberPressed,
-    info: '#237CA4',
+    info: '#1E6F94',
     infoSurface: BrandColors.skySoft,
     border: '#A6B8B2',
     divider: '#CBD7D3',

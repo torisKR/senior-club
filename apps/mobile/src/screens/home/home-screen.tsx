@@ -131,7 +131,7 @@ export function HomeScreen() {
       <Card padded={false} style={{ backgroundColor: theme.surface }}>
         <Image
           source={require('@/assets/images/senior-club-hero-v2.jpg')}
-          accessibilityLabel="산책길에서 다음 활동을 함께 계획하는 시니어 모임"
+          accessibilityLabel="산책길에서 다음 활동을 함께 계획하는 중년 모임"
           cachePolicy="memory-disk"
           contentFit="cover"
           style={{ width: '100%', aspectRatio: width < 420 ? 4 / 3 : 16 / 9, backgroundColor: theme.backgroundElement }}
@@ -140,7 +140,7 @@ export function HomeScreen() {
           <View style={{ minWidth: 0, flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md }}>
             <View style={{ minWidth: 0, flex: 1, gap: Spacing.xs }}>
               <AppText variant="caption" color="primary">
-                목적 중심 시니어 커뮤니티
+                중년을 위한 목적 중심 커뮤니티
               </AppText>
               <AppText variant="title">{user.name} 님, 오늘도 반가워요.</AppText>
             </View>
@@ -239,45 +239,6 @@ export function HomeScreen() {
 
       <View style={{ minWidth: 0, gap: Spacing.lg }}>
         <SectionHeader
-          title="목적에서 관계까지"
-          description="시니어클럽은 한 번의 만남이 오래 이어지도록 돕습니다."
-        />
-        <View style={{ minWidth: 0, flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md }}>
-          {purposeJourney.map((step) => (
-            <Card key={step.title} style={{ width: cardColumnWidth, minWidth: 0 }}>
-              <View style={{ minWidth: 0, flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md }}>
-                <View
-                  accessibilityElementsHidden
-                  style={{
-                    width: 52,
-                    height: 52,
-                    flexShrink: 0,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: Radius.pill,
-                    backgroundColor: theme.backgroundSelected,
-                  }}>
-                  <AppText variant="key" accessibilityLabel="" selectable={false}>
-                    {step.emoji}
-                  </AppText>
-                </View>
-                <View style={{ minWidth: 0, flex: 1, gap: Spacing.xs }}>
-                  <AppText variant="caption" color="primary">
-                    {step.number}단계
-                  </AppText>
-                  <AppText variant="sectionTitle">{step.title}</AppText>
-                  <AppText variant="body" color="textSecondary">
-                    {step.description}
-                  </AppText>
-                </View>
-              </View>
-            </Card>
-          ))}
-        </View>
-      </View>
-
-      <View style={{ minWidth: 0, gap: Spacing.lg }}>
-        <SectionHeader
           title="오늘 일정"
           description={formatToday(today)}
           actionLabel="전체 일정"
@@ -356,6 +317,45 @@ export function HomeScreen() {
               </View>
             </Card>
           ) : null}
+        </View>
+      </View>
+
+      <View style={{ minWidth: 0, gap: Spacing.lg }}>
+        <SectionHeader
+          title="목적에서 관계까지"
+          description="시니어클럽은 한 번의 만남이 오래 이어지도록 돕습니다."
+        />
+        <View style={{ minWidth: 0, flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md }}>
+          {purposeJourney.map((step) => (
+            <Card key={step.title} style={{ width: cardColumnWidth, minWidth: 0 }}>
+              <View style={{ minWidth: 0, flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md }}>
+                <View
+                  accessibilityElementsHidden
+                  style={{
+                    width: 52,
+                    height: 52,
+                    flexShrink: 0,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: Radius.pill,
+                    backgroundColor: theme.backgroundSelected,
+                  }}>
+                  <AppText variant="key" accessibilityLabel="" selectable={false}>
+                    {step.emoji}
+                  </AppText>
+                </View>
+                <View style={{ minWidth: 0, flex: 1, gap: Spacing.xs }}>
+                  <AppText variant="caption" color="primary">
+                    {step.number}단계
+                  </AppText>
+                  <AppText variant="sectionTitle">{step.title}</AppText>
+                  <AppText variant="body" color="textSecondary">
+                    {step.description}
+                  </AppText>
+                </View>
+              </View>
+            </Card>
+          ))}
         </View>
       </View>
 

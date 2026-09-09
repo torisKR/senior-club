@@ -40,7 +40,8 @@ export function HomeEventCard({ event, participationStatus, onPress }: HomeEvent
     <Card
       padded={false}
       onPress={onPress}
-      accessibilityLabel={`${event.title}, ${formatEventDate(event.startsAt)}, ${event.location}, 남은 자리 ${remainingSeats}명`}>
+      accessibilityLabel={`${event.title}, ${formatEventDate(event.startsAt)}, ${event.location}, 남은 자리 ${remainingSeats}명`}
+      accessibilityHint="눌러 모임 상세 정보와 신청 방법을 확인합니다.">
       <Image
         source={getEventImageSource(event)}
         accessibilityLabel={`${event.title} 모임 모습`}
@@ -86,9 +87,9 @@ export function HomeEventCard({ event, participationStatus, onPress }: HomeEvent
         </View>
 
         <View style={{ minWidth: 0, gap: Spacing.xs }}>
-          <AppText variant="bodyStrong">📅 {formatEventDate(event.startsAt)}</AppText>
+          <AppText variant="bodyStrong">일시 · {formatEventDate(event.startsAt)}</AppText>
           <AppText variant="body" color="textSecondary">
-            📍 {event.location}
+            장소 · {event.location}
           </AppText>
           <AppText variant="bodyStrong" color={remainingSeats <= 3 ? 'accent' : 'primary'}>
             남은 자리 {remainingSeats}명 · {event.price === 0 ? '무료' : `${event.price.toLocaleString('ko-KR')}원`}

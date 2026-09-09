@@ -3,7 +3,7 @@ import { Image, type ColorValue } from 'react-native';
 
 import { RequireAuth } from '@/components/auth/require-auth';
 import { useTheme } from '@/hooks/use-theme';
-import { FontWeights } from '@/constants/theme';
+import { BottomTabInset, FontWeights } from '@/constants/theme';
 
 const tabIcons = {
   home: require('@/assets/images/tab-icons-v2/home.png'),
@@ -40,10 +40,11 @@ export default function TabsLayout() {
           tabBarActiveTintColor: theme.primary,
           tabBarInactiveTintColor: theme.textSecondary,
           tabBarHideOnKeyboard: true,
-          tabBarLabelStyle: { fontSize: 15, fontFamily: FontWeights.strong },
+          tabBarLabelStyle: { fontSize: 16, fontFamily: FontWeights.strong },
           tabBarStyle: {
-            minHeight: 68,
+            minHeight: 68 + BottomTabInset,
             paddingTop: 6,
+            paddingBottom: BottomTabInset,
             borderTopColor: theme.divider,
             backgroundColor: theme.surface,
           },
@@ -79,8 +80,8 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="chat"
           options={{
-            title: '대화',
-            tabBarAccessibilityLabel: '대화 탭',
+            title: '채팅',
+            tabBarAccessibilityLabel: '채팅 탭',
             tabBarButtonTestID: 'tab-chat',
             tabBarIcon: tabIcon(tabIcons.chat),
           }}

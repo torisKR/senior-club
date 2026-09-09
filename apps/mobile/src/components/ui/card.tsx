@@ -8,6 +8,7 @@ import { useTheme } from '@/hooks/use-theme';
 export interface CardProps extends PropsWithChildren {
   onPress?: PressableProps['onPress'];
   accessibilityLabel?: string;
+  accessibilityHint?: string;
   style?: StyleProp<ViewStyle>;
   padded?: boolean;
   testID?: string;
@@ -17,6 +18,7 @@ export function Card({
   children,
   onPress,
   accessibilityLabel,
+  accessibilityHint,
   style,
   padded = true,
   testID,
@@ -49,6 +51,7 @@ export function Card({
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
       onPress={onPress}
       style={({ pressed }) => [sharedStyle, { opacity: pressed ? 0.86 : 1, transform: [{ scale: pressed ? 0.995 : 1 }] }]}>
       {children}
