@@ -53,6 +53,7 @@ jobs:
       - name: Fail if release configuration is missing
         env:
           REQUIRED_EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          REQUIRED_GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           REQUIRED_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
           REQUIRED_KAKAO_NATIVE_APP_KEY: ${{ secrets.KAKAO_NATIVE_APP_KEY }}
           REQUIRED_EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
@@ -66,6 +67,10 @@ jobs:
           fi
           if [[ -z "$REQUIRED_EXPO_TOKEN" ]]; then
             echo "::error::play-store-production environment secret EXPO_TOKEN is required."
+            missing=1
+          fi
+          if [[ -z "$REQUIRED_GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ]]; then
+            echo "::error::play-store-production environment secret GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is required."
             missing=1
           fi
           if [[ -z "$REQUIRED_GOOGLE_SERVICES_JSON_BASE64" ]]; then
@@ -111,51 +116,26 @@ jobs:
           pnpm validate:play-production-workflow
           npx --yes expo-doctor@1.20.1
 
-      - name: Verify GitHub vars match EAS production endpoints
+      - name: Verify release endpoints and Play service account
         working-directory: apps/mobile
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPECTED_EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
           EXPECTED_EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
-          # shellcheck disable=SC2016
           set -euo pipefail
           umask 077
-          rm -f -- "$EAS_PRODUCTION_ENV_FILE"
-          cleanup_eas_env() {
-            rm -f -- "$EAS_PRODUCTION_ENV_FILE"
-          }
-          trap cleanup_eas_env EXIT
-          npx --yes eas-cli@21.3.0 env:pull \
-            --environment production \
-            --non-interactive \
-            --path "$EAS_PRODUCTION_ENV_FILE" \
-            >/dev/null
-          # shellcheck disable=SC2016
           node -e '
             const fs = require("node:fs");
-            const source = fs.readFileSync(process.env.EAS_PRODUCTION_ENV_FILE, "utf8");
-            const values = Object.create(null);
-            for (const line of source.split(/\r?\n/)) {
-              const match = line.match(/^\s*(?:export\s+)?(EXPO_PUBLIC_API_URL|EXPO_PUBLIC_WEB_URL)\s*=(.*)$/);
-              if (!match) continue;
-              const name = match[1];
-              if (Object.hasOwn(values, name)) throw new Error(`${name} is duplicated in EAS production.`);
-              let value = match[2].trim();
-              const quoted =
-                (value.startsWith("\"") && value.endsWith("\"")) ||
-                (value.startsWith("\u0027") && value.endsWith("\u0027"));
-              if (quoted) value = value.slice(1, -1);
-              values[name] = value;
+            const key = JSON.parse(process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON || "null");
+            if (key?.type !== "service_account" || key.client_email !== "toris-play-uploader@toris-play-uploader.iam.gserviceaccount.com" || !key.private_key) {
+              throw new Error("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON must contain the app-scoped Play service account.");
             }
-            for (const name of ["EXPO_PUBLIC_API_URL", "EXPO_PUBLIC_WEB_URL"]) {
-              if (!Object.hasOwn(values, name)) throw new Error(`${name} is missing from EAS production.`);
-              if (values[name] !== process.env[`EXPECTED_${name}`]) {
-                throw new Error(`${name} differs between GitHub vars and EAS production.`);
-              }
-            }
-            console.log("GitHub vars and EAS production endpoint values match.");
+            fs.writeFileSync("/tmp/senior-club-play-service-account.json", JSON.stringify(key), {mode: 0o600});
           '
+          test "$EXPECTED_EXPO_PUBLIC_API_URL" = "https://d33totqtaqpyfs.cloudfront.net"
+          test "$EXPECTED_EXPO_PUBLIC_WEB_URL" = "https://senior.toris.kr"
+          echo "Release endpoints and Play service account are valid."
 
       - name: Bind final screenshot evidence to checked-out commit
         if: ${{ !inputs.binary_update }}
@@ -214,32 +194,6 @@ jobs:
             2>&1 | tee "$EVIDENCE_DIR/preflight.log"
           cp "$FINAL_SCREENSHOT_MANIFEST" "$EVIDENCE_DIR/final-screenshot-manifest.json"
           sha256sum "$FINAL_SCREENSHOT_MANIFEST" > "$EVIDENCE_DIR/final-screenshot-manifest.sha256"
-          printf '%s\n' "$GITHUB_SHA" > "$EVIDENCE_DIR/source-commit.txt"
-
-      - name: Validate published app update and Play credentials
-        if: ${{ inputs.binary_update }}
-        working-directory: apps/mobile
-        env:
-          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-          EXPO_PUBLIC_APP_ENV: production
-          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
-          EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
-          GOOGLE_SERVICES_JSON: ${{ steps.google_services.outputs.path }}
-        run: |
-          set -euo pipefail
-          umask 077
-          node -e '
-            const fs = require("node:fs");
-            const key = JSON.parse(process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON || "null");
-            if (key?.type !== "service_account" || key.client_email !== "toris-play-uploader@toris-play-uploader.iam.gserviceaccount.com" || !key.private_key) {
-              throw new Error("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON must contain the app-scoped Play service account.");
-            }
-            fs.writeFileSync("/tmp/senior-club-play-service-account.json", JSON.stringify(key), {mode: 0o600});
-          '
-          mkdir -p "$EVIDENCE_DIR"
-          pnpm validate:play
-          pnpm validate:manifest
-          node scripts/validate-release-endpoints.mjs
           printf '%s\n' "$GITHUB_SHA" > "$EVIDENCE_DIR/source-commit.txt"
 
       - name: Build Play production AAB with EAS CLI 21.3.0

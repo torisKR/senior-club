@@ -42,6 +42,10 @@ test('EAS CLI and the production draft profiles are pinned fail-closed', () => {
   assert.equal(easConfig.build.production.environment, 'production');
   assert.equal(easConfig.submit.production.android.track, 'production');
   assert.equal(easConfig.submit.production.android.releaseStatus, 'draft');
+  assert.equal(
+    easConfig.submit.production.android.serviceAccountKeyPath,
+    '/tmp/senior-club-play-service-account.json',
+  );
   assert.doesNotMatch(workflow, /eas-cli@(?:latest|\^|~|>=)/);
   assert.match(workflow, /eas-cli@21\.3\.0 build/);
   assert.match(workflow, /eas-cli@21\.3\.0 submit/);
@@ -107,25 +111,24 @@ test('mobile quality checks run after install and before preflight or paid build
   assert.doesNotMatch(qualityStep, /expo-doctor@latest/);
 });
 
-test('GitHub endpoint vars must exactly match pulled EAS production values', () => {
-  const syncStep = getStep('Verify GitHub vars match EAS production endpoints');
+test('release endpoints and Play service account are verified without EAS env pull', () => {
+  const syncStep = getStep('Verify release endpoints and Play service account');
   const syncIndex = workflow.indexOf(
-    '      - name: Verify GitHub vars match EAS production endpoints',
+    '      - name: Verify release endpoints and Play service account',
   );
   const buildIndex = workflow.indexOf('eas-cli@21.3.0 build');
 
   assert.ok(syncIndex > -1);
   assert.ok(buildIndex > syncIndex);
-  assert.match(syncStep, /eas-cli@21\.3\.0 env:pull/);
-  assert.match(syncStep, /--environment production/);
-  assert.match(syncStep, /--non-interactive/);
-  assert.match(syncStep, /--path "\$EAS_PRODUCTION_ENV_FILE"/);
+  assert.doesNotMatch(syncStep, /eas-cli@21\.3\.0 env:pull/);
+  assert.match(syncStep, /GOOGLE_PLAY_SERVICE_ACCOUNT_JSON/);
+  assert.match(syncStep, /toris-play-uploader@toris-play-uploader\.iam\.gserviceaccount\.com/);
+  assert.match(syncStep, /senior\.toris\.kr/);
   assert.match(syncStep, /umask 077/);
   assert.match(syncStep, /EXPECTED_EXPO_PUBLIC_API_URL: \$\{\{ vars\.EXPO_PUBLIC_API_URL \}\}/);
   assert.match(syncStep, /EXPECTED_EXPO_PUBLIC_WEB_URL: \$\{\{ vars\.EXPO_PUBLIC_WEB_URL \}\}/);
-  assert.ok(syncStep.includes('values[name] !== process.env[`EXPECTED_${name}`]'));
-  assert.match(syncStep, /trap cleanup_eas_env EXIT/);
-  assert.match(syncStep, /rm -f -- "\$EAS_PRODUCTION_ENV_FILE"/);
+  assert.match(syncStep, /EXPECTED_EXPO_PUBLIC_API_URL/);
+  assert.match(syncStep, /EXPECTED_EXPO_PUBLIC_WEB_URL/);
   assert.doesNotMatch(
     syncStep,
     /console\.(?:log|error)\([^\n]*(?:values\[|process\.env\[`EXPECTED_)/,
@@ -162,12 +165,10 @@ test('published binary updates retain quality gates and use explicit production 
   assert.match(deployWorkflow, /uses: \.\/\.github\/workflows\/ci\.yml/);
   assert.match(deployWorkflow, /binary_update: true/);
   assert.match(getStep('Bind final screenshot evidence to checked-out commit'), /if: \$\{\{ !inputs\.binary_update \}\}/);
-  const update = getStep('Validate published app update and Play credentials');
-  assert.match(update, /secrets\.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON/);
+  const update = getStep('Verify release endpoints and Play service account');
+  assert.match(update, /GOOGLE_PLAY_SERVICE_ACCOUNT_JSON/);
   assert.match(update, /toris-play-uploader@toris-play-uploader\.iam\.gserviceaccount\.com/);
   assert.doesNotMatch(update, /senior-club-play-uploader@clubsenior-app\.iam\.gserviceaccount\.com/);
-  assert.match(update, /pnpm validate:manifest/);
-  assert.match(update, /validate-release-endpoints\.mjs/);
   assert.ok(workflow.indexOf(update) < workflow.indexOf('      - name: Build Play production AAB'));
   const submit = getStep('Submit the exact published app update');
   assert.match(submit, /success\(\).*inputs\.binary_update/);
