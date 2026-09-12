@@ -79,6 +79,8 @@
       }
     },
     "production": {
+      "node": "24.16.0",
+      "pnpm": "9.14.2",
       "autoIncrement": true,
       "environment": "production",
       "env": {
