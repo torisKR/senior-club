@@ -196,6 +196,22 @@ jobs:
           sha256sum "$FINAL_SCREENSHOT_MANIFEST" > "$EVIDENCE_DIR/final-screenshot-manifest.sha256"
           printf '%s\n' "$GITHUB_SHA" > "$EVIDENCE_DIR/source-commit.txt"
 
+      - name: Validate published app update
+        if: ${{ inputs.binary_update }}
+        working-directory: apps/mobile
+        env:
+          EXPO_PUBLIC_APP_ENV: production
+          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+          EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
+          GOOGLE_SERVICES_JSON: ${{ steps.google_services.outputs.path }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          pnpm validate:play
+          pnpm validate:manifest
+          node scripts/validate-release-endpoints.mjs
+          printf '%s\n' "$GITHUB_SHA" > "$EVIDENCE_DIR/source-commit.txt"
+
       - name: Build Play production AAB with EAS CLI 21.3.0
         id: eas_build
         working-directory: apps/mobile

@@ -187,3 +187,14 @@ test('raw build JSON and validated evidence are retained as a workflow artifact'
   assert.match(workflow, /retention-days: 30/);
   assert.equal(workflow.includes('\t'), false);
 });
+
+test('binary updates validate live endpoints and create evidence before building', () => {
+  const validation = getStep('Validate published app update');
+  assert.match(validation, /if: \$\{\{ inputs\.binary_update \}\}/);
+  assert.match(validation, /mkdir -p "\$EVIDENCE_DIR"/);
+  assert.match(validation, /pnpm validate:play/);
+  assert.match(validation, /pnpm validate:manifest/);
+  assert.match(validation, /node scripts\/validate-release-endpoints\.mjs/);
+  assert.match(validation, /source-commit\.txt/);
+  assert.ok(workflow.indexOf(validation) < workflow.indexOf('      - name: Build Play production AAB'));
+});
