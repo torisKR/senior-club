@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { Brand } from "@/components/brand";
 import { sanitizeReturnTo } from "@/lib/auth/return-to";
 import { postLoginRoute } from "@/lib/auth/post-login-route";
 import {
@@ -90,6 +91,37 @@ async function syncProfileFromSession(signal?: AbortSignal) {
   return session.authenticated === true ? session : null;
 }
 
+function KakaoIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M12 3C6.477 3 2 6.477 2 10.767c0 2.766 1.874 5.188 4.707 6.556l-1.196 4.394a.5.5 0 0 0 .74.56l5.244-3.48c.168.01.336.02.505.02 5.523 0 10-3.477 10-7.767C22 6.477 17.523 3 12 3z" />
+    </svg>
+  );
+}
+
+function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path
+        fill="#4285F4"
+        d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+      />
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [step, setStep] = useState<LoginStep>("phone");
@@ -102,7 +134,17 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  const allAccepted = termsAccepted && privacyAccepted;
+
+  function toggleAllAccepted(checked: boolean) {
+    setTermsAccepted(checked);
+    setPrivacyAccepted(checked);
+    setError("");
+  }
+
   useEffect(() => {
+    const urlError = new URLSearchParams(window.location.search).get("error");
+    if (urlError) setError(urlError);
     const controller = new AbortController();
     void syncProfileFromSession(controller.signal).then((session) => {
       if (!controller.signal.aborted && session) {
@@ -117,8 +159,38 @@ export default function LoginPage() {
     return () => controller.abort();
   }, [router]);
 
+  function startKakaoLogin() {
+    if (!termsAccepted || !privacyAccepted) {
+      setError("이용약관과 개인정보 처리방침에 동의해 주세요.");
+      return;
+    }
+    const params = new URLSearchParams({
+      returnTo: returnDestination(),
+      termsAccepted: "1",
+      privacyAccepted: "1",
+    });
+    window.location.assign(`/api/auth/kakao/authorize?${params.toString()}`);
+  }
+
+  function startGoogleLogin() {
+    if (!termsAccepted || !privacyAccepted) {
+      setError("이용약관과 개인정보 처리방침에 동의해 주세요.");
+      return;
+    }
+    const params = new URLSearchParams({
+      returnTo: returnDestination(),
+      termsAccepted: "1",
+      privacyAccepted: "1",
+    });
+    window.location.assign(`/api/auth/google/authorize?${params.toString()}`);
+  }
+
   async function requestCode(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!termsAccepted || !privacyAccepted) {
+      setError("이용약관과 개인정보 처리방침에 동의해 주세요.");
+      return;
+    }
     setIsSubmitting(true);
     setError("");
 
@@ -212,22 +284,9 @@ export default function LoginPage() {
     >
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-7xl flex-col">
         <header className="flex items-center justify-between gap-4 py-2">
-          <a
-            href="#login-card"
-            className="inline-flex min-h-13 items-center gap-3 rounded-2xl px-2 text-xl font-extrabold tracking-[-0.02em] outline-none focus-visible:ring-4 focus-visible:ring-[var(--primary)]/30"
-          >
-            <Image
-              src="/images/senior-club-mark-v3.png"
-              alt=""
-              width={44}
-              height={44}
-              className="h-11 w-11 rounded-xl object-cover"
-              priority
-            />
-            시니어클럽
-          </a>
-          <span className="rounded-full border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-[18px] font-bold text-[var(--muted)]">
-            안전한 휴대폰 로그인
+          <Brand priority />
+          <span className="hidden rounded-full border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-[16px] font-bold text-[var(--muted)] sm:inline-flex">
+            간편하고 안전한 로그인
           </span>
         </header>
 
@@ -250,17 +309,17 @@ export default function LoginPage() {
               시니어 커뮤니티입니다.
             </p>
 
-            <ol className="mt-9 grid gap-3 sm:grid-cols-3" aria-label="시니어클럽 활동 과정">
+            <ol className="mt-8 grid gap-2.5 sm:grid-cols-3" aria-label="시니어클럽 활동 과정">
               {JOURNEY.map(({ label, icon: Icon }, index) => (
                 <li
                   key={label}
-                  className="flex min-h-20 items-center gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-[18px] font-bold"
+                  className="flex min-h-16 items-center gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-[17px] font-bold"
                 >
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary-strong)]">
-                    <Icon aria-hidden="true" className="h-6 w-6" />
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary-strong)]">
+                    <Icon aria-hidden="true" className="h-5 w-5" />
                   </span>
                   <span>
-                    <span className="block text-[18px] font-extrabold text-[var(--primary-strong)]">
+                    <span className="block text-[15px] font-extrabold text-[var(--primary-strong)]">
                       0{index + 1}
                     </span>
                     {label}
@@ -287,17 +346,119 @@ export default function LoginPage() {
               id="phone-login-title"
               className="mt-6 text-3xl font-black tracking-[-0.035em]"
             >
-              {step === "phone" ? "휴대폰으로 로그인" : "인증번호 확인"}
+              {step === "phone" ? "시작하기" : "인증번호 확인"}
             </h2>
             <p className="mt-3 text-[18px] leading-8 text-[var(--muted)]">
               {step === "phone"
-                ? "비밀번호 대신 휴대폰으로 6자리 인증번호를 보내드립니다."
+                ? "카카오, Google 또는 휴대폰 번호로 안전하게 로그인하세요."
                 : `${challenge?.phoneNumber ?? phoneNumber}로 보낸 6자리 번호를 입력해 주세요.`}
             </p>
 
             <div className="mt-7 grid gap-5">
+              <fieldset className="grid gap-2.5 rounded-2xl border border-[var(--line)] bg-[var(--canvas)] p-4">
+                <legend className="sr-only">필수 약관 동의</legend>
+                <label className="flex min-h-12 cursor-pointer items-center gap-3 border-b border-[var(--line)] pb-3 text-[18px] font-extrabold text-[var(--ink)]">
+                  <input
+                    checked={allAccepted}
+                    className="h-6 w-6 shrink-0 rounded accent-[var(--primary)] cursor-pointer"
+                    onChange={(inputEvent) =>
+                      toggleAllAccepted(inputEvent.target.checked)
+                    }
+                    type="checkbox"
+                  />
+                  <span>모두 동의하고 시작하기</span>
+                </label>
+                <div className="grid gap-2 pt-1 text-[16px] text-[var(--muted)]">
+                  <label className="flex min-h-10 cursor-pointer items-center justify-between gap-3 font-semibold">
+                    <span className="flex items-center gap-2.5">
+                      <input
+                        checked={termsAccepted}
+                        className="h-5 w-5 shrink-0 rounded accent-[var(--primary)] cursor-pointer"
+                        onChange={(inputEvent) => {
+                          setTermsAccepted(inputEvent.target.checked);
+                          setError("");
+                        }}
+                        required={step === "code"}
+                        type="checkbox"
+                      />
+                      <span className="text-[var(--ink)]">
+                        [필수] 서비스 이용약관 동의
+                      </span>
+                    </span>
+                    <Link
+                      className="shrink-0 text-sm font-bold text-[var(--primary-strong)] underline underline-offset-4 hover:opacity-80"
+                      href="/terms"
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      내용보기
+                    </Link>
+                  </label>
+                  <label className="flex min-h-10 cursor-pointer items-center justify-between gap-3 font-semibold">
+                    <span className="flex items-center gap-2.5">
+                      <input
+                        checked={privacyAccepted}
+                        className="h-5 w-5 shrink-0 rounded accent-[var(--primary)] cursor-pointer"
+                        onChange={(inputEvent) => {
+                          setPrivacyAccepted(inputEvent.target.checked);
+                          setError("");
+                        }}
+                        required={step === "code"}
+                        type="checkbox"
+                      />
+                      <span className="text-[var(--ink)]">
+                        [필수] 개인정보 처리방침 동의
+                      </span>
+                    </span>
+                    <Link
+                      className="shrink-0 text-sm font-bold text-[var(--primary-strong)] underline underline-offset-4 hover:opacity-80"
+                      href="/privacy"
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      내용보기
+                    </Link>
+                  </label>
+                </div>
+              </fieldset>
+
+              {error ? (
+                <p
+                  className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[17px] font-bold text-red-700"
+                  role="alert"
+                >
+                  {error}
+                </p>
+              ) : null}
+
               {step === "phone" ? (
                 <>
+                  <div className="grid gap-3">
+                    <button
+                      type="button"
+                      onClick={startKakaoLogin}
+                      className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-[#FEE500] px-6 py-3 text-[19px] font-extrabold text-[#191919] shadow-sm outline-none transition hover:bg-[#FDD800] focus-visible:ring-4 focus-visible:ring-yellow-500/30 active:scale-[0.99]"
+                    >
+                      <KakaoIcon className="h-6 w-6 shrink-0 text-[#191919]" />
+                      카카오로 시작하기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={startGoogleLogin}
+                      className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border-2 border-[var(--line)] bg-[var(--surface)] px-6 py-3 text-[19px] font-extrabold text-[var(--ink)] shadow-sm outline-none transition hover:bg-[var(--canvas)] focus-visible:ring-4 focus-visible:ring-[var(--primary)]/30 active:scale-[0.99]"
+                    >
+                      <GoogleIcon className="h-6 w-6 shrink-0" />
+                      Google로 시작하기
+                    </button>
+                  </div>
+
+                  <div className="relative my-2 flex items-center justify-center">
+                    <div className="w-full border-t border-[var(--line)]" />
+                    <span className="absolute bg-[var(--surface)] px-4 text-[16px] font-bold text-[var(--muted)]">
+                      또는 휴대폰 번호로 로그인
+                    </span>
+                  </div>
+
                   <div>
                     <label className="block text-[18px] font-extrabold" htmlFor="login-phone">
                       휴대폰 번호 <span aria-hidden="true" className="text-[var(--primary-strong)]">*</span>
@@ -370,46 +531,13 @@ export default function LoginPage() {
                     />
                   </div>
                   {challenge?.devCode ? (
-                    <p className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-[17px] font-bold text-amber-900">
+                    <p className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-left text-[17px] font-bold text-amber-900">
                       개발 환경 인증번호: <strong className="text-xl tracking-widest">{challenge.devCode}</strong>
                     </p>
                   ) : null}
-                  <fieldset className="grid gap-3 rounded-2xl bg-[var(--canvas)] p-4">
-                    <legend className="sr-only">필수 약관 동의</legend>
-                    <label className="flex min-h-11 cursor-pointer items-start gap-3 text-[17px] font-bold">
-                      <input
-                        checked={termsAccepted}
-                        className="mt-1 h-5 w-5 accent-[var(--primary)]"
-                        onChange={(inputEvent) => setTermsAccepted(inputEvent.target.checked)}
-                        required
-                        type="checkbox"
-                      />
-                      <span>
-                        <Link className="underline underline-offset-4" href="/terms" target="_blank">서비스 이용약관</Link>에 동의합니다. (필수)
-                      </span>
-                    </label>
-                    <label className="flex min-h-11 cursor-pointer items-start gap-3 text-[17px] font-bold">
-                      <input
-                        checked={privacyAccepted}
-                        className="mt-1 h-5 w-5 accent-[var(--primary)]"
-                        onChange={(inputEvent) => setPrivacyAccepted(inputEvent.target.checked)}
-                        required
-                        type="checkbox"
-                      />
-                      <span>
-                        <Link className="underline underline-offset-4" href="/privacy" target="_blank">개인정보 처리방침</Link>에 동의합니다. (필수)
-                      </span>
-                    </label>
-                  </fieldset>
                 </>
               )}
             </div>
-
-            {error ? (
-              <p className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[18px] font-bold text-red-700" role="alert">
-                {error}
-              </p>
-            ) : null}
 
             <button
               type="submit"

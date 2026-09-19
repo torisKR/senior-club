@@ -11,7 +11,8 @@ import {
   getEffectiveEventStatus,
   isEventRegistrationOpen,
 } from "@/lib/event-status";
-import type { Event } from "@/lib/types";
+import { resolveCoverImage } from "@/lib/cover-image";
+import type { Event, InterestId } from "@/lib/types";
 
 type EventCardProps = {
   event: Event;
@@ -55,7 +56,7 @@ export function EventCard({ event, priority = false }: EventCardProps) {
           fill
           priority={priority}
           sizes="(max-width: 720px) 100vw, (max-width: 1100px) 50vw, 380px"
-          src={event.image || "/images/club-senior-hero.jpg"}
+          src={resolveCoverImage(event.image, event.category)}
           unoptimized={Boolean(event.image?.startsWith("https://"))}
         />
         <span className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1 text-sm font-black text-[var(--primary-strong)] shadow-sm">

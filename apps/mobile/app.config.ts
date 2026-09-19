@@ -44,6 +44,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   return {
     ...config,
+    extra: {
+      ...config.extra,
+      kakaoNativeAppKey: nativeAppKey,
+    },
     android: {
       ...config.android,
       ...(servicesFile ? { googleServicesFile: servicesFile } : {}),

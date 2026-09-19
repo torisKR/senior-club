@@ -47,6 +47,7 @@ const rawApiEnvSchema = z.object({
   AUTH_OTP_TTL_SECONDS: z.coerce.number().int().min(180).max(1_800).default(600),
   AUTH_DEV_OTP_EXPOSE: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
   KAKAO_APP_ID: z.coerce.number().int().positive().optional(),
+  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
   CONSENT_DOCUMENT_VERSION: z.string().min(1).max(40).default("2026-07-01"),
   EMAIL_PROVIDER: z.enum(["console", "resend"]).default("console"),
   EMAIL_FROM: z.string().min(3).max(320).default("시니어클럽 <no-reply@localhost>"),
@@ -82,6 +83,7 @@ export interface ApiEnv {
   readonly AUTH_OTP_TTL_SECONDS: number;
   readonly AUTH_DEV_OTP_EXPOSE: boolean;
   readonly KAKAO_APP_ID: number | undefined;
+  readonly GOOGLE_CLIENT_ID: string | undefined;
   readonly CONSENT_DOCUMENT_VERSION: string;
   readonly EMAIL_PROVIDER: "console" | "resend";
   readonly EMAIL_FROM: string;
@@ -286,6 +288,7 @@ export function parseApiEnv(input: NodeJS.ProcessEnv = process.env): ApiEnv {
   return Object.freeze({
     ...parsed.data,
     KAKAO_APP_ID: parsed.data.KAKAO_APP_ID,
+    GOOGLE_CLIENT_ID: parsed.data.GOOGLE_CLIENT_ID,
     RESEND_API_KEY: parsed.data.RESEND_API_KEY,
     SMS_PROVIDER: parsed.data.SMS_PROVIDER,
     TWILIO_ACCOUNT_SID: parsed.data.TWILIO_ACCOUNT_SID,

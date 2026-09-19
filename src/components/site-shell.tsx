@@ -10,6 +10,7 @@ import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 
 import { Brand } from "@/components/brand";
+import { AuthNav } from "@/components/auth-nav";
 import { FontSizeControl } from "@/components/font-size-control";
 import { ProfileSessionSync } from "@/components/profile-session-sync";
 
@@ -163,6 +164,7 @@ export function SiteShell({ children }: Readonly<{ children: ReactNode }>) {
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <FontSizeControl />
             <NotificationLink pathname={pathname} />
+            <AuthNav pathname={pathname} />
           </div>
         </div>
 
@@ -170,6 +172,7 @@ export function SiteShell({ children }: Readonly<{ children: ReactNode }>) {
           <Brand className="mr-auto" compact priority />
           <FontSizeControl compact />
           <NotificationLink compact pathname={pathname} />
+          <AuthNav compact pathname={pathname} />
         </div>
       </header>
 

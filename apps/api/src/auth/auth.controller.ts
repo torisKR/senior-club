@@ -13,10 +13,12 @@ import type { Request } from "express";
 import { ZodValidationPipe } from "../common/validation/zod-validation.pipe";
 import { AccessTokenGuard } from "./access-token.guard";
 import {
+  googleLoginSchema,
   kakaoLoginSchema,
   refreshSessionSchema,
   requestEmailCodeSchema,
   requestPhoneCodeSchema,
+  type GoogleLoginInput,
   type KakaoLoginInput,
   type RefreshSessionInput,
   type RequestEmailCodeInput,
@@ -88,6 +90,19 @@ export class AuthController {
     @Headers("user-agent") userAgent?: string,
   ) {
     return this.auth.loginWithKakao(input, {
+      ...(userAgent ? { userAgent } : {}),
+      ...(request.ip ? { ipAddress: request.ip } : {}),
+    });
+  }
+
+  @Post("google")
+  @Header("Cache-Control", "private, no-store")
+  googleLogin(
+    @Body(new ZodValidationPipe(googleLoginSchema)) input: GoogleLoginInput,
+    @Req() request: Request,
+    @Headers("user-agent") userAgent?: string,
+  ) {
+    return this.auth.loginWithGoogle(input, {
       ...(userAgent ? { userAgent } : {}),
       ...(request.ip ? { ipAddress: request.ip } : {}),
     });

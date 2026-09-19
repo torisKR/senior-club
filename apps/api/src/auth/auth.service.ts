@@ -14,6 +14,7 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import type {
   AuthenticatedPrincipal,
+  GoogleLoginInput,
   IssuedSession,
   KakaoLoginInput,
   RequestEmailCodeInput,
@@ -21,6 +22,7 @@ import type {
   VerifyEmailCodeInput,
   VerifyPhoneCodeInput,
 } from "./auth.contracts";
+import { GoogleTokenVerifier } from "./google-token-verifier";
 import { KakaoTokenVerifier } from "./kakao-token-verifier";
 import { TokenService } from "./token.service";
 
@@ -51,6 +53,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly tokens: TokenService,
     private readonly kakaoTokens: KakaoTokenVerifier,
+    private readonly googleTokens: GoogleTokenVerifier,
     @Inject(API_ENV) private readonly env: ApiEnv,
   ) {}
 
@@ -607,6 +610,214 @@ export class AuthService {
           update: {},
           create: { userId: user.id },
         });
+        const session = await transaction.authSession.create({
+          data: {
+            userId: user.id,
+            refreshTokenHash: refresh.hash,
+            clientType: input.clientType,
+            expiresAt: refreshTokenExpiresAt,
+            ...(device.userAgent ? { userAgent: device.userAgent.slice(0, 500) } : {}),
+            ...(device.ipAddress
+              ? { ipHash: this.tokens.hashIpAddress(device.ipAddress) }
+              : {}),
+          },
+          select: { id: true },
+        });
+
+        return {
+          status: "verified",
+          refreshToken: refresh.token,
+          refreshTokenExpiresAt,
+          sessionId: session.id,
+          user,
+        };
+      },
+    );
+
+    if (result.status !== "verified") {
+      throw new ApiException(
+        HttpStatus.FORBIDDEN,
+        "ACCOUNT_UNAVAILABLE",
+        "이 계정으로 로그인할 수 없습니다. 고객센터에 문의해 주세요.",
+      );
+    }
+
+    return this.formatIssuedSession(result);
+  }
+
+  async loginWithGoogle(
+    input: GoogleLoginInput,
+    device: { userAgent?: string; ipAddress?: string },
+  ): Promise<IssuedSession> {
+    const identity = await this.googleTokens.verify({
+      idToken: input.idToken,
+      accessToken: input.accessToken,
+    });
+    const now = new Date();
+    const refresh = this.tokens.createRefreshToken();
+    const refreshTokenExpiresAt = new Date(
+      now.getTime() + this.env.AUTH_REFRESH_TOKEN_TTL_DAYS * 86_400_000,
+    );
+
+    const result = await this.prisma.$transaction<VerificationResult>(
+      async (transaction) => {
+        const lockKey = `google:${identity.providerAccountId}`;
+        await transaction.$queryRaw`
+          SELECT pg_advisory_xact_lock(hashtext(${lockKey}))
+        `;
+
+        const existingIdentity = await transaction.authIdentity.findUnique({
+          where: {
+            provider_providerAccountId: {
+              provider: AuthProvider.GOOGLE,
+              providerAccountId: identity.providerAccountId,
+            },
+          },
+          select: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                phoneNumber: true,
+                name: true,
+                role: true,
+                status: true,
+                onboardingCompletedAt: true,
+              },
+            },
+          },
+        });
+
+        if (
+          existingIdentity &&
+          existingIdentity.user.status !== UserStatus.ACTIVE
+        ) {
+          return { status: "unavailable" };
+        }
+
+        let user;
+        if (existingIdentity) {
+          user = await transaction.user.update({
+            where: { id: existingIdentity.user.id },
+            data: {
+              lastLoginAt: now,
+              ...(identity.email && !existingIdentity.user.email
+                ? { email: identity.email, emailVerifiedAt: now }
+                : {}),
+            },
+            select: {
+              id: true,
+              email: true,
+              phoneNumber: true,
+              name: true,
+              role: true,
+              onboardingCompletedAt: true,
+            },
+          });
+        } else {
+          const existingUserByEmail = identity.email
+            ? await transaction.user.findUnique({
+                where: { email: identity.email },
+                select: {
+                  id: true,
+                  email: true,
+                  phoneNumber: true,
+                  name: true,
+                  role: true,
+                  status: true,
+                  onboardingCompletedAt: true,
+                },
+              })
+            : null;
+
+          if (existingUserByEmail) {
+            if (existingUserByEmail.status !== UserStatus.ACTIVE) {
+              return { status: "unavailable" };
+            }
+
+            await transaction.authIdentity.upsert({
+              where: {
+                userId_provider: {
+                  userId: existingUserByEmail.id,
+                  provider: AuthProvider.GOOGLE,
+                },
+              },
+              update: { providerAccountId: identity.providerAccountId },
+              create: {
+                userId: existingUserByEmail.id,
+                provider: AuthProvider.GOOGLE,
+                providerAccountId: identity.providerAccountId,
+              },
+            });
+
+            user = await transaction.user.update({
+              where: { id: existingUserByEmail.id },
+              data: { lastLoginAt: now, emailVerifiedAt: now },
+              select: {
+                id: true,
+                email: true,
+                phoneNumber: true,
+                name: true,
+                role: true,
+                onboardingCompletedAt: true,
+              },
+            });
+          } else {
+            user = await transaction.user.create({
+              data: {
+                name: identity.name,
+                email: identity.email ?? null,
+                emailVerifiedAt: identity.email ? now : null,
+                lastLoginAt: now,
+                termsAgreedAt: now,
+                authIdentities: {
+                  create: {
+                    provider: AuthProvider.GOOGLE,
+                    providerAccountId: identity.providerAccountId,
+                  },
+                },
+              },
+              select: {
+                id: true,
+                email: true,
+                phoneNumber: true,
+                name: true,
+                role: true,
+                onboardingCompletedAt: true,
+              },
+            });
+          }
+        }
+
+        for (const documentType of [
+          ConsentDocumentType.TERMS,
+          ConsentDocumentType.PRIVACY,
+        ]) {
+          await transaction.consentRecord.upsert({
+            where: {
+              userId_documentType_version: {
+                userId: user.id,
+                documentType,
+                version: this.env.CONSENT_DOCUMENT_VERSION,
+              },
+            },
+            update: { granted: true, withdrawnAt: null, recordedAt: now },
+            create: {
+              userId: user.id,
+              documentType,
+              version: this.env.CONSENT_DOCUMENT_VERSION,
+              granted: true,
+              source: input.clientType.toLocaleLowerCase("en-US"),
+            },
+          });
+        }
+
+        await transaction.notificationPreference.upsert({
+          where: { userId: user.id },
+          update: {},
+          create: { userId: user.id },
+        });
+
         const session = await transaction.authSession.create({
           data: {
             userId: user.id,

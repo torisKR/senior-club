@@ -68,6 +68,23 @@ export const kakaoLoginSchema = z
   })
   .strict();
 
+export const googleLoginSchema = z
+  .object({
+    idToken: z.string().trim().min(1).max(8_192).optional(),
+    accessToken: z.string().trim().min(1).max(4_096).optional(),
+    clientType: z.enum(SessionClientType).default(SessionClientType.WEB),
+    termsAccepted: z.literal(true, {
+      error: "서비스 이용약관 동의가 필요합니다.",
+    }),
+    privacyAccepted: z.literal(true, {
+      error: "개인정보 처리방침 동의가 필요합니다.",
+    }),
+  })
+  .strict()
+  .refine((data) => Boolean(data.idToken || data.accessToken), {
+    message: "idToken 또는 accessToken이 필요합니다.",
+  });
+
 export const refreshSessionSchema = z
   .object({ refreshToken: z.string().min(32).max(512) })
   .strict();
@@ -77,6 +94,7 @@ export type VerifyEmailCodeInput = z.infer<typeof verifyEmailCodeSchema>;
 export type RequestPhoneCodeInput = z.infer<typeof requestPhoneCodeSchema>;
 export type VerifyPhoneCodeInput = z.infer<typeof verifyPhoneCodeSchema>;
 export type KakaoLoginInput = z.infer<typeof kakaoLoginSchema>;
+export type GoogleLoginInput = z.infer<typeof googleLoginSchema>;
 export type RefreshSessionInput = z.infer<typeof refreshSessionSchema>;
 
 export interface AuthenticatedPrincipal {

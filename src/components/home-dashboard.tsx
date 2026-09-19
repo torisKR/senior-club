@@ -275,7 +275,7 @@ export function HomeDashboard({
   return (
     <>
       <section className="page-container grid gap-5 pb-10 pt-5 lg:grid-cols-[1.02fr_0.98fr] lg:items-stretch lg:pb-16 lg:pt-8">
-        <div className="relative z-10 flex min-h-[31rem] flex-col justify-center overflow-hidden rounded-[1.8rem] bg-[var(--ink)] px-6 py-9 text-white sm:px-10 lg:rounded-r-none lg:px-12">
+        <div className="relative z-10 flex min-h-[31rem] flex-col justify-center overflow-hidden rounded-[1.8rem] bg-[var(--ink)] px-6 py-9 text-white sm:px-10 lg:px-12">
           <div aria-hidden="true" className="absolute -right-20 -top-24 h-72 w-72 rounded-full border-[42px] border-[var(--sky)]/25" />
           <p className="eyebrow !text-[#a9dbea]" aria-live="polite">
             <Sparkles aria-hidden="true" size={19} /> {memberLabel} · 저장한 정보: {recommendationContext}
@@ -297,7 +297,7 @@ export function HomeDashboard({
           </p>
         </div>
 
-        <figure className="relative m-0 min-h-[26rem] overflow-hidden rounded-[1.8rem] bg-[var(--sky-soft)] lg:rounded-l-none">
+        <figure className="relative m-0 min-h-[16rem] overflow-hidden rounded-[1.8rem] bg-[var(--sky-soft)] sm:min-h-[20rem] lg:min-h-[26rem]">
           <Image
             src="/images/club-senior-hero.jpg"
             alt="서울 산책길에서 지도를 함께 보며 다음 활동을 계획하는 시니어 다섯 명"
@@ -306,7 +306,7 @@ export function HomeDashboard({
             sizes="(max-width: 1024px) 100vw, 50vw"
             className="object-cover"
           />
-          <figcaption className="absolute bottom-4 right-4 max-w-[17rem] rounded-2xl bg-white/95 px-4 py-3 text-[0.86rem] font-bold leading-relaxed text-[var(--ink)] shadow-lg backdrop-blur">
+          <figcaption className="absolute bottom-3 right-3 max-w-[calc(100%-1.5rem)] rounded-2xl bg-white/95 px-3.5 py-2.5 text-[0.82rem] font-bold leading-relaxed text-[var(--ink)] shadow-lg backdrop-blur sm:bottom-4 sm:right-4 sm:max-w-[17rem] sm:px-4 sm:py-3 sm:text-[0.86rem]">
             관심사와 지역에 맞는 공개 모임을 확인하고, 로그인 후 안전하게 신청할 수 있어요.
           </figcaption>
         </figure>

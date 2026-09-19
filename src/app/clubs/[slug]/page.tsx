@@ -15,6 +15,7 @@ import {
 
 import { PurposeJourney } from "@/components/purpose-journey";
 import { JsonLd } from "@/components/json-ld";
+import { resolveCoverImage } from "@/lib/cover-image";
 import {
   getPublicClub,
 } from "@/lib/clubs/server";
@@ -115,7 +116,7 @@ export default async function ClubDetailPage({ params }: ClubPageProps) {
               fill
               priority
               sizes="(max-width: 1024px) 100vw, 50vw"
-              src={club.image || "/images/club-senior-hero.jpg"}
+              src={resolveCoverImage(club.image, club.interest.slug)}
               unoptimized={Boolean(club.image?.startsWith("https://"))}
             />
             <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[var(--ink)]/30 to-transparent lg:bg-gradient-to-r" />

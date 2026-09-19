@@ -15,6 +15,7 @@ import {
 
 import { PurposeJourney } from "@/components/purpose-journey";
 import { JsonLd } from "@/components/json-ld";
+import { resolveCoverImage } from "@/lib/cover-image";
 import {
   getPublicClubCatalog,
   isSafePublicClubCursor,
@@ -216,7 +217,7 @@ export default async function ClubsPage({ searchParams }: ClubsPageProps) {
                       fill
                       priority={index === 0}
                       sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 380px"
-                      src={club.image || "/images/club-senior-hero.jpg"}
+                      src={resolveCoverImage(club.image, club.interest.slug)}
                       unoptimized={Boolean(club.image?.startsWith("https://"))}
                     />
                     <span className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1 text-sm font-black text-[var(--primary-strong)]">
