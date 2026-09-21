@@ -183,7 +183,9 @@ test('published binary updates retain quality gates and use explicit production 
 test('raw build JSON and validated evidence are retained as a workflow artifact', () => {
   assert.match(workflow, /eas-build-result\.json/);
   assert.match(workflow, /validated-build\.json/);
-  assert.match(workflow, /actions\/upload-artifact@v4/);
+  // The gate is that evidence is uploaded and retained, not which major of
+  // upload-artifact does it; pinning the major here only breaks action bumps.
+  assert.match(workflow, /actions\/upload-artifact@v\d+/);
   assert.match(workflow, /retention-days: 30/);
   assert.equal(workflow.includes('\t'), false);
 });
