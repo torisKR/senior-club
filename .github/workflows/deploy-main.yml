@@ -146,4 +146,6 @@ jobs:
     uses: ./.github/workflows/android-play-production.yml
     with:
       binary_update: true
+      # Build artifacts on merge; publishing to Play requires explicit consent.
+      submit_to_play: false
     secrets: inherit

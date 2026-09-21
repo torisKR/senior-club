@@ -17,7 +17,7 @@ vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: mocks.extra }
 describe('Kakao native login initialization', () => {
   beforeEach(() => {
     vi.resetModules();
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     mocks.extra.kakaoNativeAppKey = '0123456789abcdef0123456789abcdef';
     mocks.initializeKakaoSDK.mockResolvedValue(undefined);
     mocks.isKakaoTalkLoginAvailable.mockResolvedValue(false);
@@ -51,6 +51,23 @@ describe('Kakao native login initialization', () => {
     await expect(requestKakaoAccessToken()).rejects.toThrow('Kakao native app key is missing');
     expect(mocks.initializeKakaoSDK).not.toHaveBeenCalled();
     expect(mocks.isKakaoTalkLoginAvailable).not.toHaveBeenCalled();
+  });
+
+  it('falls back to account login when KakaoTalk cannot complete login', async () => {
+    mocks.isKakaoTalkLoginAvailable.mockResolvedValue(true);
+    mocks.login.mockRejectedValueOnce({ code: 'NotSupported' }).mockResolvedValueOnce({ accessToken: 'account-token' });
+    const { requestKakaoAccessToken } = await import('./kakao-login');
+    await expect(requestKakaoAccessToken()).resolves.toBe('account-token');
+    expect(mocks.login.mock.calls).toEqual([[{ useKakaoAccountLogin: false }], [{ useKakaoAccountLogin: true }]]);
+  });
+
+  it('does not open account login after the user cancels KakaoTalk', async () => {
+    mocks.isKakaoTalkLoginAvailable.mockResolvedValue(true);
+    const cancelled = { code: 'Cancelled' };
+    mocks.login.mockRejectedValueOnce(cancelled);
+    const { requestKakaoAccessToken } = await import('./kakao-login');
+    await expect(requestKakaoAccessToken()).rejects.toBe(cancelled);
+    expect(mocks.login).toHaveBeenCalledTimes(1);
   });
 
   it('allows a later login to retry after initialization fails', async () => {

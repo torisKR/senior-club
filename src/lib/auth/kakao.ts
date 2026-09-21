@@ -8,7 +8,7 @@ function credentials() {
 }
 
 export function kakaoRedirectUri(origin: string) {
-  return process.env.KAKAO_REDIRECT_URI ?? `${origin}/api/auth/kakao/callback`;
+  return process.env.KAKAO_REDIRECT_URI?.trim() || `${origin}/api/auth/kakao/callback`;
 }
 
 export function getKakaoAuthorizeUrl(redirectUri: string, state?: string): string {

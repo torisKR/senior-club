@@ -13,6 +13,12 @@ describe("Kakao OAuth helpers", () => {
     expect(url.searchParams.get("state")).toBe("a b");
   });
 
+  it("uses the callback URL when optional redirect configuration is blank", async () => {
+    vi.stubEnv("KAKAO_REDIRECT_URI", "  ");
+    const { kakaoRedirectUri } = await import("./kakao");
+    expect(kakaoRedirectUri("https://senior.toris.kr")).toBe("https://senior.toris.kr/api/auth/kakao/callback");
+  });
+
   it("exchanges a code with bounded fetch and returns access token", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ access_token: "token" }), { status: 200 })));
     const { exchangeKakaoCodeForToken } = await import("./kakao");

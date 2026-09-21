@@ -22,6 +22,15 @@ function initializeKakao() {
 export async function requestKakaoAccessToken() {
   await initializeKakao();
   const useKakaoAccountLogin = !(await isKakaoTalkLoginAvailable());
-  const token = await login({ useKakaoAccountLogin });
-  return token.accessToken;
+  try {
+    const token = await login({ useKakaoAccountLogin });
+    return token.accessToken;
+  } catch (error) {
+    // KakaoTalk can be installed but unable to authenticate. Do not retry a
+    // cancelled flow, or recursively retry an account-login failure.
+    const code = error && typeof error === 'object' && 'code' in error ? error.code : undefined;
+    if (useKakaoAccountLogin || code === 'Cancelled') throw error;
+    const token = await login({ useKakaoAccountLogin: true });
+    return token.accessToken;
+  }
 }
