@@ -41,6 +41,10 @@ function kakaoNativeAppKey(): string {
 export default ({ config }: ConfigContext): ExpoConfig => {
   const servicesFile = googleServicesFile();
   const nativeAppKey = kakaoNativeAppKey();
+  const versionCode = process.env.ANDROID_VERSION_CODE;
+  if (versionCode !== undefined && (!/^[1-9][0-9]*$/.test(versionCode) || Number(versionCode) > 2100000000)) {
+    throw new Error('ANDROID_VERSION_CODE must be a positive Android version code.');
+  }
 
   return {
     ...config,
@@ -50,6 +54,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       ...config.android,
+      ...(versionCode ? { versionCode: Number(versionCode) } : {}),
       ...(servicesFile ? { googleServicesFile: servicesFile } : {}),
     },
     plugins: [

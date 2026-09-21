@@ -3,6 +3,11 @@ name: Android Play production release
 on:
   workflow_call:
     inputs:
+      internal_release:
+        description: Internal draft only; cannot be combined with binary_update
+        required: false
+        default: false
+        type: boolean
       binary_update:
         description: Update the published app binary without modifying existing store listing assets
         required: false
@@ -25,7 +30,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: android-play-production-release
+  group: android-play-release
   cancel-in-progress: false
 
 jobs:
@@ -33,9 +38,11 @@ jobs:
     name: Build and submit production AAB
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    environment: play-store-production
+    environment: ${{ inputs.internal_release && 'play-internal' || 'play-store-production' }}
     env:
       CI: "true"
+      EXPO_NO_DOTENV: '1'
+      ANDROID_UPLOAD_CERT_SHA256: ${{ secrets.ANDROID_UPLOAD_CERT_SHA256 }}
       KAKAO_NATIVE_APP_KEY: ${{ secrets.KAKAO_NATIVE_APP_KEY }}
       FINAL_SCREENSHOT_MANIFEST: store-listing/screenshots/final/ko-KR/manifest.json
       SUBMIT_TO_PLAY: ${{ github.event_name == 'push' || inputs.submit_to_play }}
@@ -45,14 +52,29 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Prepare ephemeral release paths
+        env:
+          INTERNAL_RELEASE: ${{ inputs.internal_release }}
+          BINARY_UPDATE: ${{ inputs.binary_update }}
         run: |
           set -euo pipefail
           echo "EVIDENCE_DIR=$RUNNER_TEMP/android-play-production-evidence" >> "$GITHUB_ENV"
-          echo "EAS_PRODUCTION_ENV_FILE=$RUNNER_TEMP/senior-club-eas-production-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.env" >> "$GITHUB_ENV"
+          echo "BUNDLETOOL_JAR=$RUNNER_TEMP/bundletool.jar" >> "$GITHUB_ENV"
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          if [[ "$INTERNAL_RELEASE" == true && "$BINARY_UPDATE" == true ]]; then
+            echo '::error::Internal releases cannot bypass screenshot evidence.'
+            exit 1
+          fi
+          if [[ "$SUBMIT_TO_PLAY" == true && "$GITHUB_REF" != refs/heads/main ]]; then
+            echo '::error::Play uploads require reviewed main.'
+            exit 1
+          fi
 
       - name: Fail if release configuration is missing
         env:
-          REQUIRED_EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          ANDROID_UPLOAD_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           REQUIRED_GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           REQUIRED_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
           REQUIRED_KAKAO_NATIVE_APP_KEY: ${{ secrets.KAKAO_NATIVE_APP_KEY }}
@@ -65,10 +87,7 @@ jobs:
             echo "::error::play-store-production environment secret KAKAO_NATIVE_APP_KEY is required."
             missing=1
           fi
-          if [[ -z "$REQUIRED_EXPO_TOKEN" ]]; then
-            echo "::error::play-store-production environment secret EXPO_TOKEN is required."
-            missing=1
-          fi
+          python3 apps/mobile/scripts/direct-play-release.py check-signing || missing=1
           if [[ -z "$REQUIRED_GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ]]; then
             echo "::error::play-store-production environment secret GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is required."
             missing=1
@@ -212,64 +231,59 @@ jobs:
           node scripts/validate-release-endpoints.mjs
           printf '%s\n' "$GITHUB_SHA" > "$EVIDENCE_DIR/source-commit.txt"
 
-      - name: Build Play production AAB with EAS CLI 21.3.0
-        id: eas_build
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Allocate versionCode from Play history
+        working-directory: apps/mobile
+        run: python3 scripts/direct-play-release.py allocate
+
+      - name: Build Play production AAB directly
         working-directory: apps/mobile
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_APP_ENV: production
+          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+          EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
+          GOOGLE_SERVICES_JSON: ${{ steps.google_services.outputs.path }}
+          ANDROID_UPLOAD_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          export ANDROID_UPLOAD_KEYSTORE_PATH="$RUNNER_TEMP/upload.keystore"
+          printf '%s' "$ANDROID_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_UPLOAD_KEYSTORE_PATH"
+          pnpm exec expo prebuild --platform android --clean --no-install
+          printf '\napply from: "../../scripts/release-signing.gradle"\n' >> android/app/build.gradle
+          cd android
+          ./gradlew :app:bundleRelease --no-daemon
+          test -s app/build/outputs/bundle/release/app-release.aab
+          cp app/build/outputs/bundle/release/app-release.aab "$EVIDENCE_DIR/app-release.aab"
+
+      - name: Validate exact signed AAB
+        working-directory: apps/mobile
+        env:
           EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
           EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
         run: |
           set -euo pipefail
-          npx --yes eas-cli@21.3.0 build \
-            --platform android \
-            --profile production \
-            --non-interactive \
-            --wait \
-            --json > "$EVIDENCE_DIR/eas-build-result.json"
-          test -s "$EVIDENCE_DIR/eas-build-result.json"
+          curl --fail --location --silent --show-error https://github.com/google/bundletool/releases/download/1.18.2/bundletool-all-1.18.2.jar -o "$BUNDLETOOL_JAR"
+          printf '378b5434cd1378bef6b2bc527b8c7f0ff2584b273830335bce54d6d0813c8584  %s\n' "$BUNDLETOOL_JAR" | sha256sum --check
+          python3 scripts/direct-play-release.py validate
 
-      - name: Validate the exact EAS build ID
-        id: build_id
-        working-directory: apps/mobile
-        run: |
-          set -euo pipefail
-          build_id="$(
-            node scripts/extract-eas-build-id.mjs \
-              "$EVIDENCE_DIR/eas-build-result.json" \
-              --evidence "$EVIDENCE_DIR/validated-build.json"
-          )"
-          printf 'build_id=%s\n' "$build_id" >> "$GITHUB_OUTPUT"
-
-      - name: Submit the exact build to Play production draft
-        if: ${{ success() && env.SUBMIT_TO_PLAY == 'true' && !inputs.binary_update }}
+      - name: Submit exact validated artifact to Play
+        if: ${{ success() && env.SUBMIT_TO_PLAY == 'true' }}
         working-directory: apps/mobile
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EAS_BUILD_ID: ${{ steps.build_id.outputs.build_id }}
-        run: |
-          set -euo pipefail
-          npx --yes eas-cli@21.3.0 submit \
-            --platform android \
-            --profile production \
-            --id "$EAS_BUILD_ID" \
-            --non-interactive \
-            --wait
-
-      - name: Submit the exact published app update
-        if: ${{ success() && env.SUBMIT_TO_PLAY == 'true' && inputs.binary_update }}
-        working-directory: apps/mobile
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EAS_BUILD_ID: ${{ steps.build_id.outputs.build_id }}
-        run: |
-          set -euo pipefail
-          npx --yes eas-cli@21.3.0 submit \
-            --platform android \
-            --profile productionUpdate \
-            --id "$EAS_BUILD_ID" \
-            --non-interactive \
-            --wait
+          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+          EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
+          PLAY_TRACK: ${{ inputs.internal_release && 'internal' || 'production' }}
+          PLAY_STATUS: ${{ !inputs.internal_release && inputs.binary_update && 'completed' || 'draft' }}
+        run: python3 scripts/direct-play-release.py upload
 
       - name: Upload release evidence
         if: ${{ always() }}
@@ -286,5 +300,6 @@ jobs:
           set -euo pipefail
           google_services_path="$RUNNER_TEMP/senior-club-google-services-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
           rm -f -- "$google_services_path"
-          rm -f -- "$EAS_PRODUCTION_ENV_FILE"
+          rm -f -- "$RUNNER_TEMP/upload.keystore" "$RUNNER_TEMP/play-jwt.pem"
+          rm -f -- apps/mobile/android/app/google-services.json
           rm -f -- /tmp/senior-club-play-service-account.json

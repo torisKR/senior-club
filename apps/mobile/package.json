@@ -61,7 +61,7 @@
     "validate:screenshots": "node ./scripts/validate-store-screenshots.mjs",
     "validate:screenshots:release": "node ./scripts/validate-play-screenshots.mjs",
     "validate:store": "node ./scripts/validate-play-assets.mjs && node ./scripts/validate-android-manifest.mjs && node ./scripts/validate-store-screenshots.mjs",
-    "test:release-validators": "node --test ./scripts/release-api-url.test.mjs ./scripts/validate-release-endpoints.test.mjs ./scripts/release-android-preflight.test.mjs ./scripts/extract-eas-build-id.test.mjs",
+    "test:release-validators": "node --test ./scripts/release-api-url.test.mjs ./scripts/validate-release-endpoints.test.mjs ./scripts/release-android-preflight.test.mjs ./scripts/extract-eas-build-id.test.mjs ./scripts/direct-android-release.test.mjs && python3 scripts/direct_play_release_test.py",
     "validate:play-internal-workflow": "node --test ./scripts/android-play-internal-workflow.test.mjs",
     "validate:play-production-workflow": "node --test ./scripts/android-play-production-workflow.test.mjs",
     "release:android:preflight": "node ./scripts/release-android-preflight.mjs"

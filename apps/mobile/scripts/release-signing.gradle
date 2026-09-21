@@ -1,0 +1,12 @@
+// Applied at the end of the ephemeral app build.gradle, before AGP finalization.
+// No credentials are interpolated into source or Gradle properties.
+['ANDROID_UPLOAD_KEYSTORE_PATH', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_ALIAS', 'ANDROID_KEY_PASSWORD'].each {
+    if (!System.getenv(it)) throw new GradleException("Missing release signing environment: " + it)
+}
+def releaseKey = android.signingConfigs.create('playUpload')
+releaseKey.storeFile = new File(System.getenv('ANDROID_UPLOAD_KEYSTORE_PATH'))
+releaseKey.storePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD')
+releaseKey.keyAlias = System.getenv('ANDROID_KEY_ALIAS')
+releaseKey.keyPassword = System.getenv('ANDROID_KEY_PASSWORD')
+android.buildTypes.release.signingConfig = releaseKey
+android.buildTypes.release.debuggable = false
