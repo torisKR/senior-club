@@ -1,8 +1,16 @@
 version: 2
 
 updates:
+  # One pnpm workspace: the root pnpm-lock.yaml governs `.`, apps/api and
+  # apps/mobile. Dependabot must run from the workspace root and use
+  # `directories` so every manifest bump lands in that single lockfile.
+  # Per-directory npm entries cannot update the root lockfile and produce PRs
+  # that fail `pnpm install --frozen-lockfile`.
   - package-ecosystem: npm
-    directory: /
+    directories:
+      - /
+      - /apps/api
+      - /apps/mobile
     schedule:
       interval: weekly
       day: monday
@@ -13,59 +21,37 @@ updates:
     labels:
       - dependencies
     groups:
-      web-minor-and-patch:
+      # Batch low-risk upgrades so CI runs once per week instead of per package.
+      minor-and-patch:
         patterns:
           - "*"
         update-types:
           - minor
           - patch
-
-  - package-ecosystem: npm
-    directory: /apps/api
-    schedule:
-      interval: weekly
-      day: monday
-      time: "04:00"
-      timezone: Asia/Seoul
-    open-pull-requests-limit: 5
-    versioning-strategy: increase
-    labels:
-      - dependencies
-      - api
-    groups:
-      api-minor-and-patch:
-        patterns:
-          - "*"
-        update-types:
-          - minor
-          - patch
-
-  # The Expo app pins SDK-aligned versions. Majors are reviewed with the SDK
-  # upgrade, never taken automatically.
-  - package-ecosystem: npm
-    directory: /apps/mobile
-    schedule:
-      interval: weekly
-      day: monday
-      time: "04:00"
-      timezone: Asia/Seoul
-    open-pull-requests-limit: 3
-    versioning-strategy: increase
-    labels:
-      - dependencies
-      - mobile
     ignore:
+      # Expo and React Native versions are pinned to the installed SDK. Majors
+      # move only as part of a deliberate SDK upgrade.
       - dependency-name: "expo"
         update-types: ["version-update:semver-major"]
       - dependency-name: "expo-*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@expo/*"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-native"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-native-*"
         update-types: ["version-update:semver-major"]
+      # React majors are coupled across web and native; upgrade them together.
       - dependency-name: "react"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      # Next and Prisma majors carry migration steps.
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "prisma"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@prisma/*"
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
@@ -79,6 +65,10 @@ updates:
     labels:
       - dependencies
       - ci
+    groups:
+      actions:
+        patterns:
+          - "*"
 
   - package-ecosystem: docker
     directory: /apps/api
