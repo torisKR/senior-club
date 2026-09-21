@@ -20,6 +20,14 @@ test('reviewed main deployment retains upstream success and explicit binary upda
   assert.match(workflow, /inputs\.binary_update && 'completed' \|\| 'draft'/);
   assert.match(workflow, /env\.SUBMIT_TO_PLAY == 'true'/);
 });
+test('manual release defaults to build-only and explicitly opts into published binary validation', () => {
+  const dispatch = workflow.slice(workflow.indexOf('  workflow_dispatch:'), workflow.indexOf('\npermissions:'));
+  assert.match(dispatch, /binary_update:[\s\S]*?default: false/);
+  assert.match(dispatch, /submit_to_play:[\s\S]*?default: false/);
+  assert.match(deploy, /submit_to_play: false/);
+  assert.match(workflow, /SUBMIT_TO_PLAY: \$\{\{ inputs.submit_to_play \}\}/);
+});
+
 test('quality, live endpoints and strict screenshot provenance remain before native build', () => {
   const build = workflow.indexOf('pnpm exec expo prebuild');
   for (const gate of ['pnpm lint', 'pnpm typecheck', 'pnpm test', 'pnpm test:release-validators', 'expo-doctor@1.20.1', 'pnpm release:android:preflight', 'node scripts/validate-release-endpoints.mjs']) {

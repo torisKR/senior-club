@@ -20,10 +20,15 @@ on:
         type: boolean
   workflow_dispatch:
     inputs:
-      submit_to_play:
-        description: 검증된 AAB를 Google Play production 트랙 draft로 제출
+      binary_update:
+        description: Published app binary only; retain existing listing assets and use published-update validation
         required: true
-        default: true
+        default: false
+        type: boolean
+      submit_to_play:
+        description: Explicit Play upload (binary update completes production rollout; otherwise draft)
+        required: true
+        default: false
         type: boolean
 
 permissions:
@@ -45,7 +50,7 @@ jobs:
       ANDROID_UPLOAD_CERT_SHA256: ${{ secrets.ANDROID_UPLOAD_CERT_SHA256 }}
       KAKAO_NATIVE_APP_KEY: ${{ secrets.KAKAO_NATIVE_APP_KEY }}
       FINAL_SCREENSHOT_MANIFEST: store-listing/screenshots/final/ko-KR/manifest.json
-      SUBMIT_TO_PLAY: ${{ github.event_name == 'push' || inputs.submit_to_play }}
+      SUBMIT_TO_PLAY: ${{ inputs.submit_to_play }}
 
     steps:
       - name: Check out repository

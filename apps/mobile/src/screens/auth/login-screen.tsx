@@ -16,6 +16,7 @@ import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { apiErrorMessage } from '@/api/error-message';
+import { kakaoErrorMessage } from '@/auth/kakao-error-message';
 import { Layout, Radius, Spacing, TouchTarget, FontWeights } from '@/constants/theme';
 import { getPublicWebPageUrl } from '@/config/public-web-links';
 import { useAppState } from '@/hooks/use-app-state';
@@ -187,7 +188,7 @@ export function LoginScreen() {
       );
     } catch (error) {
       manualSignInOwnsNavigation.current = false;
-      setNotice(apiErrorMessage(error, '카카오로 로그인하지 못했습니다.'));
+      setNotice(kakaoErrorMessage(error));
     } finally {
       setIsSubmitting(false);
     }

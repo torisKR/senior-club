@@ -5,8 +5,8 @@ Android release builds and uploads no longer use EAS cloud, EAS local, EAS crede
 ## Authorization and prerequisites
 
 - Merge through the protected main PR/check/reviewer process. Do not bypass administrator enforcement or self-approve.
-- `deploy-main.yml` retains quality → backend/sites success → production binary update. Its existing policy is production/completed (not draft).
-- Manual production dispatch remains production/draft; manual internal dispatch remains optional internal/draft. Uploads require main. No listing assets are changed.
+- `deploy-main.yml` retains quality → backend/sites success → signed binary build, with `submit_to_play: false`. A merge does not authorize a Play rollout.
+- Manual production dispatch defaults to build-only. Set `binary_update=true` explicitly for an already-published binary with unchanged store assets. Combining it with `submit_to_play=true` completes a production rollout; otherwise an explicit upload is production/draft. Internal remains optional internal/draft. Uploads require main.
 - Screenshot provenance and strict preflight remain required except for the existing published-binary-update path. That path still validates assets, manifest, consent-related tests and live endpoints.
 - All Android release paths share one non-cancelling concurrency group. Workflow reruns fail closed. Reconcile an ambiguous upload in Play before a fresh dispatch; never blindly retry or promote another artifact.
 
@@ -44,13 +44,15 @@ After signing configuration and reviewer approval:
 ```sh
 # Build only; screenshot evidence must match the checked-out commit.
 gh workflow run android-play-production.yml --ref main -f submit_to_play=false
+# Published binary build only; existing listing assets stay unchanged.
+gh workflow run android-play-production.yml --ref main -f binary_update=true -f submit_to_play=false
 # Explicit production draft upload (not immediate public rollout).
 gh workflow run android-play-production.yml --ref main -f submit_to_play=true
 # Explicit internal draft upload.
 gh workflow run android-play-internal.yml --ref main -f submit_to_play=true
 ```
 
-Do not dispatch `deploy-main.yml` just to test Android: it deploys backend/sites and requests a completed production binary update.
+Do not dispatch `deploy-main.yml` just to test Android: it also deploys backend/sites. Use the explicit build-only Android dispatch above.
 
 ## Validation
 
