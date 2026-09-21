@@ -12,7 +12,7 @@ import {
   isEventRegistrationOpen,
 } from "@/lib/event-status";
 import { resolveCoverImage } from "@/lib/cover-image";
-import type { Event, InterestId } from "@/lib/types";
+import type { Event } from "@/lib/types";
 
 type EventCardProps = {
   event: Event;

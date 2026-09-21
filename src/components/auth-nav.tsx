@@ -9,7 +9,6 @@ import { clsx } from "clsx";
 
 import {
   PROFILE_CACHE_CHANGE_EVENT,
-  PROFILE_STORAGE_KEY,
   clearServerProfileCache,
   readCachedServerProfile,
   syncServerProfileCacheFromSession,

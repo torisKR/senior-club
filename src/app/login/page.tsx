@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -132,7 +131,12 @@ export default function LoginPage() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  // The OAuth callbacks redirect back with ?error=…; it is derivable from the
+  // URL at first render, so it must not be pushed through an effect.
+  const [error, setError] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("error") ?? "";
+  });
 
   const allAccepted = termsAccepted && privacyAccepted;
 
@@ -143,8 +147,6 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
-    const urlError = new URLSearchParams(window.location.search).get("error");
-    if (urlError) setError(urlError);
     const controller = new AbortController();
     void syncProfileFromSession(controller.signal).then((session) => {
       if (!controller.signal.aborted && session) {
