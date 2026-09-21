@@ -12,7 +12,7 @@ import {
   Smartphone,
   Users,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { Brand } from "@/components/brand";
 import { sanitizeReturnTo } from "@/lib/auth/return-to";
@@ -121,6 +121,19 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function subscribeToLoginUrl(onChange: () => void) {
+  window.addEventListener("popstate", onChange);
+  return () => window.removeEventListener("popstate", onChange);
+}
+
+function getLoginUrlError() {
+  return new URLSearchParams(window.location.search).get("error") ?? "";
+}
+
+function getServerLoginUrlError() {
+  return "";
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [step, setStep] = useState<LoginStep>("phone");
@@ -131,12 +144,14 @@ export default function LoginPage() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // The OAuth callbacks redirect back with ?error=…; it is derivable from the
-  // URL at first render, so it must not be pushed through an effect.
-  const [error, setError] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return new URLSearchParams(window.location.search).get("error") ?? "";
-  });
+  // Hydration starts with the same empty snapshot as SSR, then reads the URL.
+  const urlError = useSyncExternalStore(
+    subscribeToLoginUrl,
+    getLoginUrlError,
+    getServerLoginUrlError,
+  );
+  const [formError, setError] = useState<string | null>(null);
+  const error = formError ?? urlError;
 
   const allAccepted = termsAccepted && privacyAccepted;
 
