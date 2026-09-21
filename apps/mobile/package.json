@@ -44,7 +44,7 @@
     "eslint": "^9.39.1",
     "eslint-config-expo": "~57.0.2",
     "typescript": "~6.0.3",
-    "vitest": "4.1.10"
+    "vitest": "4.1.11"
   },
   "scripts": {
     "eas-build-post-install": "node ./scripts/validate-android-manifest.mjs",
