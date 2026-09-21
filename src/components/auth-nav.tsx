@@ -1,7 +1,7 @@
 "use client";
 
 import type { Route } from "next";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogIn, UserRound } from "lucide-react";
@@ -25,11 +25,13 @@ function subscribeToProfileCache(onStoreChange: () => void) {
   };
 }
 
-function getClientProfileSnapshot(): CachedServerProfile | null {
-  return readCachedServerProfile();
+// React compares snapshots with Object.is; parsed objects are never stable.
+function getClientProfileSnapshot(): string | null {
+  const profile = readCachedServerProfile();
+  return profile ? JSON.stringify(profile) : null;
 }
 
-function getServerProfileSnapshot(): CachedServerProfile | null {
+function getServerProfileSnapshot(): string | null {
   return null;
 }
 
@@ -41,10 +43,14 @@ export function AuthNav({
   pathname?: string;
 }) {
   const router = useRouter();
-  const cachedProfile = useSyncExternalStore(
+  const profileSnapshot = useSyncExternalStore(
     subscribeToProfileCache,
     getClientProfileSnapshot,
     getServerProfileSnapshot,
+  );
+  const cachedProfile = useMemo(
+    () => profileSnapshot ? JSON.parse(profileSnapshot) as CachedServerProfile : null,
+    [profileSnapshot],
   );
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
