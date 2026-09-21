@@ -34,7 +34,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Require AWS OIDC configuration
         run: |
@@ -45,7 +45,7 @@ jobs:
           fi
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
@@ -107,16 +107,16 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9.14.2
           run_install: false
 
       - name: Install Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -132,7 +132,7 @@ jobs:
           bash .github/scripts/package-site.sh . sites-worker.tar.gz
 
       - name: Upload Sites artifact for native Sites publish
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: senior-club-sites-${{ github.sha }}
           path: sites-worker.tar.gz
