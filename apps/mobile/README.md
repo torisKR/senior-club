@@ -52,7 +52,13 @@ pnpm release:android:preflight \
 preflight는 AAB 바이너리를 검사하지 않습니다. EAS build 뒤 Play App Bundle Explorer에서 package,
 versionCode, target API 36, signing, merged manifest를 확인하기 전에는 제출 준비 완료로 간주하지 않습니다.
 
-## EAS 초기 연결
+## Android release — current path
+
+Release builds now run Expo prebuild + signed Gradle AAB directly on GitHub Actions and upload the exact verified artifact through the Google Play API. No EAS cloud/local build or EAS Submit is used. Follow [ANDROID_DIRECT_RELEASE.md](../../docs/ANDROID_DIRECT_RELEASE.md) for required existing-signing secrets, version allocation, artifact gates and authorization. The automatic published-binary-update path retains production/completed; manual releases retain draft status.
+
+The EAS instructions below are **historical/development reference only**, not current release commands. Do not use them for release deployment.
+
+## EAS 초기 연결 (legacy)
 
 앱은 현재 문서에 적힌 EAS 프로젝트에 연결돼 있습니다. 소유 계정을 변경할 때만 다시 초기화하고,
 출시 작업에서는 [`eas.json`](./eas.json)에 고정한 EAS CLI `21.3.0`을 사용합니다.
