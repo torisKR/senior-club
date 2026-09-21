@@ -257,15 +257,19 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # Optional base64 DER public certificate exported from Play Console, never a private key.
+          PLAY_APP_SIGNING_CERTIFICATE_BASE64: ${{ vars.PLAY_APP_SIGNING_CERTIFICATE_BASE64 }}
         run: |
           set -euo pipefail
           umask 077
           export ANDROID_UPLOAD_KEYSTORE_PATH="$RUNNER_TEMP/upload.keystore"
           printf '%s' "$ANDROID_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_UPLOAD_KEYSTORE_PATH"
           pnpm exec expo prebuild --platform android --clean --no-install
+          python3 scripts/kakao-key-hashes.py
           printf '\napply from: "../../scripts/release-signing.gradle"\n' >> android/app/build.gradle
           cd android
-          ./gradlew :app:bundleRelease --no-daemon
+          # D8 mergeDexRelease exhausted the template heap; bound worker concurrency too.
+          ./gradlew :app:bundleRelease --no-daemon --max-workers=2 '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g'
           test -s app/build/outputs/bundle/release/app-release.aab
           cp app/build/outputs/bundle/release/app-release.aab "$EVIDENCE_DIR/app-release.aab"
 

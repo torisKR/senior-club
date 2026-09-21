@@ -38,6 +38,16 @@ test('quality, live endpoints and strict screenshot provenance remain before nat
   assert.match(step('Validate published app update'), /pnpm validate:manifest/);
   assert.match(step('Verify release endpoints and Play service account'), /toris-play-uploader@toris-play-uploader/);
 });
+test('certificate evidence uses actual prebuilt keystore before bounded native build', () => {
+  const build = step('Build Play production AAB directly');
+  assert.ok(build.indexOf('expo prebuild') < build.indexOf('python3 scripts/kakao-key-hashes.py'));
+  assert.ok(build.indexOf('python3 scripts/kakao-key-hashes.py') < build.indexOf('./gradlew'));
+  assert.match(build, /vars.PLAY_APP_SIGNING_CERTIFICATE_BASE64/);
+  assert.match(build, /--max-workers=2/);
+  assert.match(build, /-Xmx4g -XX:MaxMetaspaceSize=1g/);
+  assert.doesNotMatch(build, /reactNativeArchitectures|genkey/);
+});
+
 test('signing is fail closed, secrets cleaned and only exact AAB evidence retained', () => {
   assert.match(step('Fail if release configuration is missing'), /check-signing/);
   assert.doesNotMatch(workflow, /eas-cli|EXPO_TOKEN|--latest|set -x/);
