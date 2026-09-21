@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:24-bookworm-slim AS runtime-base
+FROM node:25-bookworm-slim AS runtime-base
 
 # Prisma detects the system TLS implementation through the OpenSSL binary.
 # Keep the same runtime library available in both build and production stages.
