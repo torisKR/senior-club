@@ -21,6 +21,9 @@ updates:
     labels:
       - dependencies
     groups:
+      nest-runtime:
+        patterns: ["@nestjs/*"]
+        update-types: ["minor", "patch"]
       # Batch low-risk upgrades so CI runs once per week instead of per package.
       minor-and-patch:
         patterns:
@@ -29,6 +32,12 @@ updates:
           - minor
           - patch
     ignore:
+      # Nest 12 requires a separately tested ESM/adapter migration. TS 7.0
+      # lacks the compiler API used by nest build; retain supported TS 6.
+      - dependency-name: "@nestjs/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        versions: [">=7.0.0 <7.1.0"]
       # Expo and React Native versions are pinned to the installed SDK. Majors
       # move only as part of a deliberate SDK upgrade.
       - dependency-name: "expo"
