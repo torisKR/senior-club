@@ -5,8 +5,8 @@ Both direct pushes and merged PRs create a `push` event on `main`.
 - Vercel project `club_senior` is connected to `torisKR/senior-club`, production branch `main`. Vercel owns web deployment and PR previews.
 - `Deploy main` runs the reusable CI checks before updating ECS. OIDC trusts only this repository's `main`; permissions target the existing API ECR repository, ECS service and execution role.
 - After API deployment and Sites packaging succeed, the Android workflow builds an auto-incremented production AAB and submits its exact validated EAS build ID. It does not submit `--latest`.
-- Play account: `dbwnghks5366@gmail.com`, developer ID `8464946209749234716`, package `com.toris.seniorclub`.
-- The dedicated Play service account is `toris-play-uploader@toris-play-uploader.iam.gserviceaccount.com`. It must have app-level release permissions only.
+- Play package `com.toris.seniorclub`. The owning Play developer account and its numeric developer ID are held privately by the release owner; they are not recorded in this repository.
+- A dedicated Play upload service account is used. The production workflow pins its expected `client_email` and rejects any other key supplied through the `play-store-production` environment secret `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`. The account must hold app-level release permissions only; the private key never leaves the ephemeral runner.
 
 ## Configuration
 
