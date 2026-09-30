@@ -166,17 +166,30 @@ binary 검사와 최종 Play 제출 승인은 이 screenshot 전달 검사와 �
 
 ## 현재 로컬 서명 AAB 후보
 
-2026-09-30에 mobile 제품 소스 `f513abe6569f479a5e014ede29f4135e4650353e`로 기존 upload
-keystore를 사용한 AAB를 생성했다. `0.1.1` / versionCode `212215980`, 4개 ABI, 93,678,049 bytes다.
-SHA-256은 `99f577e1e70c38806c86c1f4b1273891827243dc24937fc011ac0f937dd9598b`이며
-파일은 `apps/mobile/build-output/signed-candidate-f513abe6569f/app-release.aab`다.
+2026-09-30에 소스 `8f25f7dd366fe2e8a43f41b1060e6403e611cf4c`에서 기존 upload keystore로
+최신 Android 디자인을 포함한 AAB를 생성했다. `0.1.1` / versionCode `212215980`, 4개 ABI,
+93,679,754 bytes다. SHA-256은 `4a6bd77bd2a7aa6181036bdb6dbb1d7fdb36b35a2a33811c4f6e669b692d6355`이며
+파일은 `apps/mobile/build-output/signed-candidate-8f25f7dd366f/app-release.aab`다.
 
 공식 pinned bundletool, 모든 entry의 서명 및 upload certificate, 실제 compiled AAB manifest의
-권한 34개·exported component 10개, 공통 사진 7개의 byte 일치와 production endpoint 설정을
-확인했다. 기기의 기존 debug-signed QA APK와 데이터를 유지했다. 후보 AAB 설치·실제 provider
-로그인·최신 Play versionCode 대조·최종 screenshot 검토·Play 제출은 수행하지 않았다. 이후 웹
-소스 및 release workflow 변경이 있으므로 전체 저장소의 최종 출시 artifact로 취급하지 않는다.
-[후보 검증 증거](qa-evidence/20260930/android-signed-candidate.json).
+권한 34개·exported component 10개, 공통 사진 7개와 Material font의 byte 일치,
+production endpoint 및 설정된 banner를 확인했다. 기기의 기존 debug-signed QA APK와 데이터를
+유지했다. 후보 AAB 설치·실제 provider 로그인·최신 Play versionCode 대조·최종 screenshot 검토·
+Play 제출은 수행하지 않았다. 이후 release 검증기와 등록정보 변경은 이 후보의 전체 소스 SHA에
+포함되지 않는다. 최종 고정 소스의 capture/build 계약을 다시 충족해야 한다.
+[최신 후보 검증 증거](qa-evidence/20260930/android-latest-signed-candidate.json).
+
+앞선 `f513abe6569f479a5e014ede29f4135e4650353e` / AAB SHA-256
+`99f577e1e70c38806c86c1f4b1273891827243dc24937fc011ac0f937dd9598b`는 Android 디자인 수정 전
+historical 후보다. [당시 증거](qa-evidence/20260930/android-signed-candidate.json)를 보존하지만
+현재 제출 후보로 재사용하지 않는다.
+
+검증기/등록정보를 수정한 소스 `1babf95749bb7995cd06e41ad20c92a87cd25e2b`에서 전체 로컬
+preflight를 실행했다. Material font/자산·문구·production config·과거 PNG 규격은 통과했고,
+공개 개인정보 페이지의 공급자 처리정보 미확정과 최종 screenshot manifest 부재로 2/5 단계가
+실패했다. [실제 소스와 단계별 결과](qa-evidence/20260930/android-release-preflight.json).
+내부 wrapper도 필수 screenshot run ID와 `actions: read`를 전달한다. hosted run이나 사람의
+승인 증거를 새로 만들거나 기존 capture SHA를 바꾸지는 않았다.
 
 ---
 
@@ -305,7 +318,7 @@ DB 접속은 `sslmode=verify-full`이며 RDS 공개 CA 번들이 이미지 `/app
 
 ## 7. 주의: 폐기된 AAB
 
-**`v5`만 사용한다.** 이전 빌드는 모두 폐기한다.
+당시에는 `v5`만 사용하고 이전 빌드를 폐기했다. 아래 값은 과거 기록이며 현재 제출 후보는 아니다.
 
 | 빌드 | 폐기 사유 |
 | --- | --- |
@@ -327,4 +340,7 @@ find /tmp/aabcheck -iname "*Pretendard*"
 
 ## 2026-09-30 Android 디자인 재수정
 
-최종 native UI source `0d91c27…`는 글자·하단 탐색·사진 슬롯을 수정한다. 위 f513 서명 AAB 후보에는 이 변경이 없으므로 최신 제출 후보로 재사용하지 않는다. 최종 native source에서 재빌드하고 동일 source의 실제 screenshot provenance·Play versionCode·certificate 조건을 확인해야 한다.
+최신 native UI source `0d91c27…`는 글자·하단 탐색·사진 슬롯을 수정한다. 상단의 `8f25f7d…`
+서명 AAB 후보에는 이 디자인이 포함되며 실제 설치 QA APK는 `8d117e…`다. 디자인 실기기 결과는
+[QA 보고서](QA_PRODUCTION_20260930.md)를 따른다. 제출할 전체 소스 SHA를 고정하고 실제
+screenshot provenance·Play versionCode·certificate·provider 조건을 확인해야 한다.

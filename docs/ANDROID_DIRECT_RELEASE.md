@@ -1,14 +1,27 @@
 # Direct Android release (GitHub Actions)
 
+Updated: 2026-09-30. This is the current workflow contract; deployment and device acceptance are tracked in [release readiness](RELEASE_READINESS.md).
+
 Android release builds and uploads no longer use EAS cloud, EAS local, EAS credentials, or EAS Submit. The locked Expo CLI runs `expo prebuild --platform android --clean --no-install`, then Gradle `:app:bundleRelease` on the GitHub runner. Legacy `eas.json` is retained for historical/development compatibility, not used by the release workflows.
+
+A local upload-signed candidate was built from `8f25f7dd366fe2e8a43f41b1060e6403e611cf4c` and its four ABIs, target 36, merged manifest, signature, endpoints, configured ads and photo/font bytes were verified. AAB SHA-256 is `4a6bd77bd2a7aa6181036bdb6dbb1d7fdb36b35a2a33811c4f6e669b692d6355`; see [candidate evidence](qa-evidence/20260930/android-latest-signed-candidate.json). Latest native product source is `0d91c279bb8d14c210a9dbac89326da9234a8428`; installed QA APK SHA-256 is `8d117e63324d4de82c4550f2c2ced5e283a528704b07459bec80b7ae2014bad5`. That QA APK uses a debug certificate to preserve device data. Later release-validator/listing corrections are outside the candidate's full source SHA. Neither the local candidate nor the QA results establish final screenshot provenance, Play version reconciliation, provider/Play acceptance, or a hosted workflow run.
 
 ## Authorization and prerequisites
 
 - Merge through the protected main PR/check/reviewer process. Do not bypass administrator enforcement or self-approve.
-- `deploy-main.yml` retains quality → backend/sites success → signed binary build, with `submit_to_play: false`. A merge does not authorize a Play rollout.
+- Public Git publication/push remains blocked by the prior automatic approval review. The review rejected publishing source, assets and sanitized deployment/QA evidence to the public `torisKR/senior-club` repository without confirmed disclosure authorization; local validation or these documentation edits do not lift that block. Current hosted evidence issuance and release execution are not claimed complete.
+- `deploy-main.yml` calls Android only on `workflow_dispatch` with a nonempty `screenshot_evidence_run_id`, after backend and sites-package success, with `submit_to_play: false`. A push/merge alone does not run that Android job or authorize a Play rollout. A sites package is separate from the actual Vercel web deployment.
 - Manual production dispatch defaults to build-only. Set `binary_update=true` explicitly for an already-published binary with unchanged store assets. Combining it with `submit_to_play=true` completes a production rollout; otherwise an explicit upload is production/draft. Internal remains optional internal/draft. Uploads require main.
-- Screenshot provenance and strict preflight remain required except for the existing published-binary-update path. That path still validates assets, manifest, consent-related tests and live endpoints.
+- **Every mode requires exact reviewed screenshot evidence and the full strict production preflight**, including build-only, internal and `binary_update=true`. Published-update validation is an additional check, not a screenshot bypass. Both screenshot receipt and preflight steps in `android-play-production.yml` are unconditional.
 - All Android release paths share one non-cancelling concurrency group. Workflow reruns fail closed. Reconcile an ambiguous upload in Play before a fresh dispatch; never blindly retry or promote another artifact.
+
+## Screenshot evidence and human review
+
+`screenshot_evidence_run_id` must identify a successful first-attempt `main` run of [the trusted issuer](../.github/workflows/android-play-screenshot-evidence.yml) in this repository at the exact full lowercase release SHA. The receiver verifies run/repository/actor/artifact identity and digest; `capture.commit` must exactly equal the consumer's `GITHUB_SHA`. The artifact is `android-play-final-screenshots-<SHA>` and carries the original manifest and assets. Full input and delivery rules are in the current section of [PLAY_UPLOAD_HANDOFF.md](PLAY_UPLOAD_HANDOFF.md).
+
+The same human must actually review the exact screenshots and six original manifest attestations, upload the hash-pinned input ZIP, and directly dispatch the issuer with `manual_review=true` (default false). Preserve the original bytes and review receipt. Do not infer human approval from tests, generate true attestations, relabel a QA capture as a submitted build, or rewrite an old manifest's commit to a new SHA. Keep the manifest outside Git; freeze the release SHA before producing its evidence. Documentation-only commits still change this exact-SHA contract.
+
+The `android-play-internal.yml` wrapper requires and forwards `screenshot_evidence_run_id` and grants `actions: read`. It uses the same strict production receiver; internal mode has no exemption. Local workflow-contract tests and actionlint passed, while actual hosted execution remains unobserved.
 
 ## Environment configuration
 
@@ -27,6 +40,8 @@ Use `play-store-production` for production and `play-internal` for internal. Eac
 
 Variables: `EXPO_PUBLIC_API_URL=https://d33totqtaqpyfs.cloudfront.net` and `EXPO_PUBLIC_WEB_URL=https://senior.toris.kr`. `EXPO_TOKEN` is no longer consumed.
 
+These inputs are required by the current workflow even for build-only: version allocation queries Play through a temporary edit. Build-only means no binary upload or rollout, not an offline workflow. Node 24/pnpm 9.14.2 and JDK 17 are configured by the workflow. Optional `PLAY_APP_SIGNING_CERTIFICATE_BASE64` is a public DER certificate; final Kakao/Firebase provider validation still requires the actual Play signing identity.
+
 A maintainer must explicitly authorize provisioning signing secrets. Do not print key/password/credential contents, commit them, reset an upload key, or assume the ignored local credentials match Play. Compare the existing certificate with Play's **upload** certificate (not the app-signing certificate) first. Missing signing inputs stop before dependency installation or any Play request. No local credentials are read by CI.
 
 ## Version and artifact contract
@@ -39,20 +54,31 @@ Upload revalidates the same bytes, verifies Google's returned versionCode and SH
 
 ## Commands
 
-After signing configuration and reviewer approval:
+After publication authorization, protected-source review, signing configuration and exact human-reviewed evidence are ready, use the actual successful issuer run ID below. These are operator instructions, not evidence that a dispatch or upload occurred.
 
 ```sh
 # Build only; screenshot evidence must match the checked-out commit.
-gh workflow run android-play-production.yml --ref main -f submit_to_play=false
+gh workflow run android-play-production.yml --ref main \
+  -f screenshot_evidence_run_id="$reviewed_screenshot_run_id" -f submit_to_play=false
 # Published binary build only; existing listing assets stay unchanged.
-gh workflow run android-play-production.yml --ref main -f binary_update=true -f submit_to_play=false
+gh workflow run android-play-production.yml --ref main \
+  -f screenshot_evidence_run_id="$reviewed_screenshot_run_id" \
+  -f binary_update=true -f submit_to_play=false
 # Explicit production draft upload (not immediate public rollout).
-gh workflow run android-play-production.yml --ref main -f submit_to_play=true
-# Explicit internal draft upload.
-gh workflow run android-play-internal.yml --ref main -f submit_to_play=true
+gh workflow run android-play-production.yml --ref main \
+  -f screenshot_evidence_run_id="$reviewed_screenshot_run_id" -f submit_to_play=true
 ```
 
-Do not dispatch `deploy-main.yml` just to test Android: it also deploys backend/sites. Use the explicit build-only Android dispatch above.
+The internal wrapper can be dispatched with the same exact issuer ID when all prerequisites are met:
+
+```sh
+gh workflow run android-play-internal.yml --ref main \
+  -f screenshot_evidence_run_id="$reviewed_screenshot_run_id" -f submit_to_play=true
+```
+
+`binary_update=true` plus `submit_to_play=true` selects **production/completed**, not draft, and requires public rollout authorization and the same strict proof.
+
+Do not dispatch `deploy-main.yml` just to test Android: it also deploys the backend and packages the site. Use the explicit build-only Android dispatch above.
 
 ## Validation
 
@@ -68,4 +94,6 @@ pnpm --filter mobile test
 actionlint .github/workflows/android-play-production.yml .github/workflows/android-play-internal.yml
 ```
 
-Unit tests use fixtures and do not prove real signing or Play delivery. A release is successful only after a real signed build and confirmed Play read-back. First-release console declarations, device consent testing, and required review remain operator responsibilities.
+Already-passed broad suites need not be rerun solely for these documentation edits. The commands describe the checks required for relevant source changes and the workflow's actual release gate. Tests use fixtures; source/config/endpoint/screenshot checks do not prove runtime providers, production policy correctness, signing or Play delivery. A build-only result is a validated candidate. Upload success additionally requires exact artifact identity and confirmed Play track/status read-back; production acceptance remains separate.
+
+Before production acceptance, retain the outstanding [readiness requirements](RELEASE_READINESS.md): actual Kakao-only native/web provider and reviewer access; optional Firebase Phone billing/provider/region/Admin/signing setup and real linking; FCM delivery and token cleanup; AdMob consent and actual Play purchase/restore; role-specific UGC/report/block/moderation and deletion processing; current listing/Data Safety/operating privacy terms; CloudFront-to-ALB HTTPS (still pending); final AAB/Play signing, pre-launch and reviewed screenshot evidence. Static metadata and the latest QA APK do not close those requirements. Historical SMS/EAS handoff text must not be copied into current Console declarations.

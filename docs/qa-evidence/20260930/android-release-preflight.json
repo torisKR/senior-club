@@ -1,0 +1,64 @@
+{
+  "execution": "local",
+  "sourceCommit": "1babf95749bb7995cd06e41ad20c92a87cd25e2b",
+  "sourceFiles": {
+    "apps/mobile/scripts/release-android-preflight.mjs": "705e35c912ec68afd1f523e9cdf23e83fcf7285b1c148e49a2a532eca889fbfa",
+    "apps/mobile/scripts/validate-play-assets.mjs": "bfe08e703e239c24831742e7b97fa9d309f8a5c19390d430a7f29cc442d14708",
+    "apps/mobile/scripts/validate-navigation-icons.mjs": "75c24fe4d5f093e20ab881a02279a6618c6458cf394de08f653a176bfdf66714",
+    "apps/mobile/scripts/validate-android-manifest.mjs": "259c66542071c2a6f63e0647a6c719fadd04953fa61ac88f4829d552b5aba803",
+    "apps/mobile/scripts/validate-release-endpoints.mjs": "1f7b7d79122e484f58c395203ca915a6c829ca65fa397fa62bae91ce76a54d87",
+    "apps/mobile/scripts/validate-store-screenshots.mjs": "fdf1c157fd8a05a4023942081fbbbc495304632ed5029cc20bd9823512655626",
+    "apps/mobile/scripts/validate-play-screenshots.mjs": "a1eb200e7b5bc86c79782311607be885d56def9190fc75fcfa9b3bd4d72605a5",
+    "apps/mobile/store-listing/ko-KR/short-description.txt": "4544c7df4ad715fb2c8f834edd1943d4d992fad707a7bf3398f8d9d97482092f",
+    "apps/mobile/store-listing/ko-KR/full-description.txt": "911c9376dbbda00c30a4c6c6e5f76931beae572c99255df354ef5a85ac567b1f",
+    "apps/mobile/app.json": "c3c5a2672619fdc4c3652acd5cd8a87efaa56ce325e8e03a73d0321bf95d7181",
+    "apps/mobile/app.config.ts": "eef98d5457e5d3e72a92d267f4a9a6bb29adc0c679a5c75414342caa6bc23a68",
+    "apps/mobile/eas.json": "75895e935b7482ce4d48549335953af902898f3ba7cbba0a3c87577c6fe428e2",
+    "pnpm-lock.yaml": "8eca488adc8fe00312f5ed83fbba1fcf21df57c753fa45ea01c47d675356201f"
+  },
+  "sourceUnchanged": true,
+  "exitCode": 1,
+  "stages": [
+    {
+      "name": "play-assets-and-store-text",
+      "passed": true,
+      "limit": "Dimensions, text lengths and wired Material font glyphs; no final copy/visual approval"
+    },
+    {
+      "name": "production-config-and-source-manifest",
+      "passed": true,
+      "limit": "Expo/source manifest; exact compiled AAB checked separately"
+    },
+    {
+      "name": "production-api-and-public-policy",
+      "passed": false,
+      "passedEndpoints": [
+        "/readyz",
+        "/terms",
+        "/account-deletion"
+      ],
+      "failure": "Privacy policy defers provider-processing details until contracts are confirmed; HTTP 200 is insufficient"
+    },
+    {
+      "name": "candidate-screenshot-format",
+      "passed": true,
+      "imageCount": 14,
+      "limit": "Historical PNG format/size only; no current source provenance or manual approval"
+    },
+    {
+      "name": "strict-final-screenshot-provenance",
+      "passed": false,
+      "failure": "Final ko-KR manifest missing"
+    }
+  ],
+  "failedStageCount": 2,
+  "stageCount": 5,
+  "hostedRun": false,
+  "manualReviewCreated": false,
+  "providerActionsPerformed": false,
+  "signedCandidateSourceCommit": "8f25f7dd366fe2e8a43f41b1060e6403e611cf4c",
+  "signedCandidateSha256": "4a6bd77bd2a7aa6181036bdb6dbb1d7fdb36b35a2a33811c4f6e669b692d6355",
+  "signedCandidateLimit": "Candidate predates release-validator and listing corrections; no final exact-main-SHA acceptance",
+  "scope": "Current local production preflight only; two failed stages are not the full set of production acceptance conditions",
+  "privateLogsAndCapturesIncluded": false
+}

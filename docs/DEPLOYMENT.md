@@ -94,9 +94,24 @@ ADB 재검사 기기: Galaxy M33, Android 16. 실제 운영 API를 사용하는 
 
 최신 Android 디자인 소스 `0d91c27…`의 실제 설치 QA APK는 `8d117e63324d4de82c4550f2c2ced5e283a528704b07459bec80b7ae2014bad5`다. 기본 글자·하단 탐색·사진 slot과 6개 확대 조합을 실기기에서 검사했고 큰 글씨/시스템 설정을 복구했다. [최신 실기기 증거와 범위](QA_PRODUCTION_20260930.md).
 
+이 디자인을 포함한 소스 `8f25f7dd366fe2e8a43f41b1060e6403e611cf4c`에서 로컬 upload-signed AAB 후보를
+생성했다. `0.1.1` / `212215980`, 4 ABI, 93,679,754 bytes이며 SHA-256은
+`4a6bd77bd2a7aa6181036bdb6dbb1d7fdb36b35a2a33811c4f6e669b692d6355`다. pinned bundletool·전체 서명·
+compiled manifest·production 설정·동일 사진/Material font를 확인했다.
+[정확한 후보 증거](qa-evidence/20260930/android-latest-signed-candidate.json).
+이후 출시 검증기/등록정보 변경은 후보의 전체 SHA에 포함되지 않는다. 해당 AAB 설치·provider 로그인·
+Play version 대조·최종 screenshot 검토·hosted CI·Play 업로드는 아직 수행하지 않았다.
+
 릴리스는 `apps/mobile/scripts/release-android-preflight.mjs`와 최종 스크린샷 provenance gate를 통과한 후 Android App Bundle의 package/versionCode/target36, upload 및 Play signing, **병합 manifest**를 검사한다. Expo introspection은 SDK manifest merge 결과까지 검사하지 않는다. 미서명/QA APK를 스토어에 제출하지 않는다.
 
 현재 main 배포 workflow의 Android 호출은 `submit_to_play:false`다. binary 생성과 Play 공개는 별개다. Play 제출 전에 실제 최종 서명 AAB·Firebase certificate·정책/Data Safety·결제/푸시 검증·스크린샷을 마무리한다.
+
+현재 소스 `1babf95…`의 전체 로컬 preflight는 자산/Material navigation·production config·과거 후보 PNG
+규격을 통과했으나 `/privacy`의 공급자 처리정보 미확정 문구와 최종 screenshot manifest 부재로
+실패했다(2/5 단계). API readiness·약관·계정 삭제 endpoint는 통과했다.
+[현재 release preflight 증거](qa-evidence/20260930/android-release-preflight.json).
+내부 release wrapper에도 필수 screenshot run ID와 `actions: read`를 전달하도록 수정했다.
+이 검사 결과를 아래 운영 수용 조건 전체의 완료로 해석하지 않는다.
 
 ## Firebase Phone Auth의 남은 설정
 
@@ -112,7 +127,7 @@ ADB 재검사 기기: Galaxy M33, Android 16. 실제 운영 API를 사용하는 
 
 CloudFront가 생성한 secret origin header를 ALB forward 조건으로 검사하고 기본 응답은 403이다. ALB ingress는 CloudFront origin-facing managed prefix list만 허용한다. ECS ingress는 ALB SG, DB ingress는 기존 승인 SG/관리 IP로 제한되어 있다. direct ALB 요청 403, CloudFront readiness 200을 확인했다.
 
-CloudFront→ALB는 아직 HTTP다. 공개 NS 조회로 `toris.kr`의 DNS 관리 서비스가 Cloudflare임을 확인했다. origin 전용 DNS 레코드와 서울 리전 ACM certificate 요청은 준비했고 `PENDING_VALIDATION`이다. 현재 CLI 인증은 DNS API에서 403을 받으므로 Cloudflare 계정 로그인/권한이 필요하다. [DNS 레코드와 HTTPS 전환 순서](ORIGIN_TLS_HANDOFF.md)를 사용한다. TLS 완료로 보고하지 않는다.
+CloudFront→ALB는 아직 HTTP다. 공개 NS 조회로 `toris.kr`의 DNS 관리 서비스가 Cloudflare임을 확인했다. origin 전용 DNS 레코드와 서울 리전 ACM certificate 요청은 준비했고 `PENDING_VALIDATION`이다. CLI 인증은 DNS API에서 403을 받았고 브라우저도 현재 로그인 페이지여서 Cloudflare 계정 로그인/권한이 필요하다. [DNS 레코드와 HTTPS 전환 순서](ORIGIN_TLS_HANDOFF.md)를 사용한다. TLS 완료로 보고하지 않는다.
 
 RDS의 공개 접근을 해제했다. 기존 endpoint·보안그룹·서브넷과 암호화·7일 backup·deletion protection을 유지했고, 변경 중·후 readiness 12회 및 task 25의 새 private 연결에서 TLS 1.3·인증서 검증 authorized=true·잘못된 hostname/신뢰하지 않는 CA 거절을 확인했다. task 25는 sslmode=verify-full과 모호하지 않은 TLS URL을 시작 시 요구하며 검증을 전역 해제하는 설정도 거절한다. [공개 접근 해제 및 실제 연결 증거](qa-evidence/20260930/database-private-live.json)를 확인한다. 운영 read-only 검사에서 SQL migration 10개·테이블 35개 일치와 무효 제약조건/인덱스 0개도 확인했다. [스키마 메타데이터 증거](qa-evidence/20260930/database-schema-live.json). private subnet 이전이나 Multi-AZ 전환을 완료했다고 보고하지 않는다. PITR 복구 검증 범위와 단일 인스턴스 가용성 검토는 별도로 확인한다.
 

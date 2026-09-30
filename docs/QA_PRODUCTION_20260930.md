@@ -142,7 +142,36 @@ ADB 조작은 fresh UI hierarchy와 현재 foreground package를 확인했다. �
 
 manifest export 10개는 intent가 제한된 activity 4개와 권한으로 보호된 SDK component 6개다. Firebase reCAPTCHA/IDP callback을 임의 제거하지 않는다. camera/contacts/location/storage/SMS/audio 권한, unknown export, debug/backup/cleartext, 약화된 SDK protection을 거절하는 회귀가 포함된다. 이것은 최종 Play AAB 또는 모든 SDK 동작의 안전성을 포괄적으로 증명하지 않는다.
 
-이후 Android 디자인 수정 전의 historical 후보로서 mobile 제품 소스 `f513abe6569f479a5e014ede29f4135e4650353e`에서 기존 upload certificate로 서명한 로컬 AAB 후보를 생성했다. versionCode 212215980 / 0.1.1, 4개 ABI, SHA-256 `99f577e1e70c38806c86c1f4b1273891827243dc24937fc011ac0f937dd9598b`다. pinned bundletool·모든 entry 서명·certificate·실제 AAB manifest·공용 사진 7개 byte 일치·production endpoint/ad 설정을 확인했다. SDK의 test ID 상수는 bundle 안에 있으며 실제 광고 제공은 검사하지 않았다. 기존 QA APK와 기기 데이터를 보존했고, 후보의 기기 설치·provider 로그인·최신 Play versionCode 대조·최종 screenshot 검토·Play 업로드는 아직 없다. [로컬 서명 후보 증거](qa-evidence/20260930/android-signed-candidate.json), [출시 인수 문서](PLAY_UPLOAD_HANDOFF.md).
+Android 디자인 수정 전의 `f513abe…` / AAB SHA-256 `99f577e…`는 historical 후보로
+[당시 증거](qa-evidence/20260930/android-signed-candidate.json)를 보존한다. 최신 제품 후보로 재사용하지 않는다.
+
+## 최신 서명 AAB와 출시 사전 검사
+
+소스 `8f25f7dd366fe2e8a43f41b1060e6403e611cf4c`에서 기존 upload certificate로 서명한
+최신 Android 디자인 AAB 후보를 생성했다. `0.1.1` / versionCode `212215980`, 4 ABI,
+93,679,754 bytes이며 SHA-256은 `4a6bd77bd2a7aa6181036bdb6dbb1d7fdb36b35a2a33811c4f6e669b692d6355`다.
+pinned bundletool·모든 entry 서명·certificate·실제 AAB manifest 34 permissions/10 exports·
+공용 사진 7개/Material font byte 일치·production endpoint 및 banner 설정을 확인했다. Billing
+9.1.0 / Firebase Auth 24.2.0 / Google Ads 25.0.0 / UMP 4.0.0은 이 정확한 AAB의 property metadata다.
+SDK traffic·동의·광고 제공·전체 의존성 인벤토리를 검증한 결과는 아니다.
+[최신 후보 증거](qa-evidence/20260930/android-latest-signed-candidate.json).
+
+기존 QA APK와 기기 데이터를 보존했다. 이 후보의 기기 설치·provider 로그인·최신 Play versionCode
+대조·최종 screenshot 검토·hosted CI·Play 업로드는 수행하지 않았다. 이후 release 검증기/등록정보
+변경은 AAB의 전체 source SHA 밖에 있으며 제출 소스를 고정한 뒤 해당 exact-SHA 계약을 충족해야 한다.
+
+현재 Material 탐색 구현을 예전 PNG require 검사로 잘못 거절하던 release gate를 수정했다.
+TypeScript AST로 실제 layout→BottomNavigation→AppIcon 연결·다섯 destination·글리프·font loader를
+확인하고 설치된 실제 TTF cmap에 모든 glyph가 있는지 검사한다. 내부 release wrapper의 screenshot
+run ID/`actions: read` 누락도 수정했다. 검증기 회귀·workflow 계약 검사와 actionlint가 통과했다.
+
+등록정보는 카카오 전용 로그인·선택 프로필 연락처로 고쳤고 0.1.1 notes를 추가했다. Data Safety는
+실제 SDK/삭제 경로를 대조한 초안으로 갱신했으며 Console 확정 답변으로 취급하지 않는다.
+소스 `1babf95749bb7995cd06e41ad20c92a87cd25e2b`의 전체 로컬 preflight는 자산/문구/Material font·
+production config·과거 후보 PNG 규격을 통과했지만 `/privacy`의 공급자 처리정보 미확정과 최종
+screenshot manifest 부재로 실패했다(2/5 단계). API readiness·약관·계정 삭제 endpoint는 통과했다.
+두 실패 단계가 모든 production 수용 조건의 목록은 아니다.
+[정제된 preflight 증거](qa-evidence/20260930/android-release-preflight.json), [현재 출시 인수 문서](PLAY_UPLOAD_HANDOFF.md).
 
 ## 남은 운영 설정과 별도 출시 조건
 
