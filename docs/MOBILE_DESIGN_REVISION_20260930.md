@@ -92,7 +92,7 @@ Screen의 status-bar inset을 화면별 `paddingTop`으로 덮어쓰지 않는�
 
 ## 구현과 코드 검증
 
-위 Native 토큰, 확대 가능한 하단 탐색, 한 계열의 Material Symbols, 고정 이미지 슬롯과 화면 밀도를 구현했다. 기능 아이콘은 별도 장식 PNG/emoji 대신 설치된 Expo font를 사용한다. 앱의 인증·공유 foundation·서버 데이터·버전은 변경하지 않았다.
+위 Native 토큰, 확대 가능한 하단 탐색, 한 계열의 Material Symbols, 고정 이미지 슬롯과 화면 밀도를 구현했다. 하단 탐색과 홈 알림 아이콘은 설치된 Expo font를 사용한다. 관심사 category와 기존 상세 정보의 emoji 표시는 유지한다. 앱의 인증·공유 foundation·서버 데이터·버전은 변경하지 않았다.
 
 Mobile 348개 테스트 / 45개 파일, TypeScript와 ESLint가 통과했다. 신규 검사에는 360/393/430dp와 시스템 배율 1.0/1.3/2.0의 하단 탐색 계산, 탭 이벤트/keyboard hide, AppText 확대, 이미지 height 충돌·세로 원격 사진·fallback, Screen inset 소유권을 포함한다. 이 결과는 실제 기기 스크린샷이나 전체 수용 기준의 시각 검수 결과가 아니다. 최종 APK의 실기기 결과는 QA 보고서와 별도 증거에 기록한다.
 
@@ -102,4 +102,4 @@ Mobile 348개 테스트 / 45개 파일, TypeScript와 ESLint가 통과했다. �
 
 ## 최종 실기기 확인
 
-최종 source `7d435b497de5b7e4fd858245a4e3e16e6c6dad3f`에서 새 QA APK를 설치하고 8개 core 검사와 6개 기본/큰 글씨·시스템 배율 조합을 통과했다. 확대된 두 줄 탭에서도 icon의 Y가 모두 같았고 홈 사진 16:9가 유지됐다. 실제 정상/최대 확대 캡처를 직접 확인했으며 임시 설정은 원복했다. 앱은 기존 light 고정 설정을 유지하므로 시스템 night에서 layout 유지와 실제 앱 dark palette 검증을 구분한다. 모임 카드·상세의 실제 pixel 검수는 기기 foreground 변경 때문에 남아 있다. 전체 수용 기준 통과나 Play screenshot 승인을 주장하지 않는다. [실기기 보고서](QA_PRODUCTION_20260930.md), [정제 증거](qa-evidence/20260930/native-design-live.json).
+최종 source `0d91c279bb8d14c210a9dbac89326da9234a8428`에서 새 QA APK를 설치하고 8개 core 검사와 6개 기본/큰 글씨·시스템 배율 조합을 통과했다. 확대된 두 줄 탭에서도 icon의 Y가 모두 같았고 홈 사진 16:9가 유지됐다. 실제 정상/최대 확대 캡처를 직접 확인했으며 임시 설정은 원복했다. 앱은 기존 light 고정 설정을 유지하므로 시스템 night에서 layout 유지와 실제 앱 dark palette 검증을 구분한다. 실제 모임 목록 16:9·상세 3:2 사진을 측정하고 pixels를 직접 확인했다. 탭 변경 뒤 선택 배경이 사각형으로 보이던 문제도 고정 14dp radius와 native view 유지로 보완한 뒤 5개 선택 상태를 실제 캡처로 확인했다. 전체 수용 기준 통과나 Play screenshot 승인을 주장하지 않는다. [실기기 보고서](QA_PRODUCTION_20260930.md), [정제 증거](qa-evidence/20260930/native-design-live.json).

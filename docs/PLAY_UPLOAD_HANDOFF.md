@@ -327,4 +327,4 @@ find /tmp/aabcheck -iname "*Pretendard*"
 
 ## 2026-09-30 Android 디자인 재수정
 
-최종 native UI source `7d435b4…`는 글자·하단 탐색·사진 슬롯을 수정한다. 위 f513 서명 AAB 후보에는 이 변경이 없으므로 최신 제출 후보로 재사용하지 않는다. 최종 native source에서 재빌드하고 동일 source의 실제 screenshot provenance·Play versionCode·certificate 조건을 확인해야 한다.
+최종 native UI source `0d91c27…`는 글자·하단 탐색·사진 슬롯을 수정한다. 위 f513 서명 AAB 후보에는 이 변경이 없으므로 최신 제출 후보로 재사용하지 않는다. 최종 native source에서 재빌드하고 동일 source의 실제 screenshot provenance·Play versionCode·certificate 조건을 확인해야 한다.

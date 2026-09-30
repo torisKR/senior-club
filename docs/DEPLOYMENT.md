@@ -92,7 +92,7 @@ Vercel encrypted production environment를 유지한 채 프로젝트 루트에�
 
 ADB 재검사 기기: Galaxy M33, Android 16. 실제 운영 API를 사용하는 standalone release-mode QA APK를 설치했다. QA APK는 기존 기기의 데이터를 보존하기 위해 debug certificate로 서명했다. Play upload/signing artifact나 production AAB로 취급하지 않는다.
 
-최신 Android 디자인 소스 `7d435b4…`의 실제 설치 QA APK는 `ce40a404b23c7ac0851e17f48bbe1231fb0d8491db10b87738233e93a5f01f3f`다. 기본 글자·하단 탐색·사진 slot과 6개 확대 조합을 실기기에서 검사했고 큰 글씨/시스템 설정을 복구했다. [최신 실기기 증거와 범위](QA_PRODUCTION_20260930.md).
+최신 Android 디자인 소스 `0d91c27…`의 실제 설치 QA APK는 `8d117e63324d4de82c4550f2c2ced5e283a528704b07459bec80b7ae2014bad5`다. 기본 글자·하단 탐색·사진 slot과 6개 확대 조합을 실기기에서 검사했고 큰 글씨/시스템 설정을 복구했다. [최신 실기기 증거와 범위](QA_PRODUCTION_20260930.md).
 
 릴리스는 `apps/mobile/scripts/release-android-preflight.mjs`와 최종 스크린샷 provenance gate를 통과한 후 Android App Bundle의 package/versionCode/target36, upload 및 Play signing, **병합 manifest**를 검사한다. Expo introspection은 SDK manifest merge 결과까지 검사하지 않는다. 미서명/QA APK를 스토어에 제출하지 않는다.
 

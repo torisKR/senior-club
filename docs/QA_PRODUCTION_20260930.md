@@ -8,9 +8,9 @@ Galaxy M33 / Android 16에서 최신 Android 디자인 QA APK의 로그인 복�
 - Image: `sha256:a7c01a4561a39478742d0298ea8d2143c09cf2b579d0e9a0e321d60d20891314`.
 - API: https://d33totqtaqpyfs.cloudfront.net
 - Web: https://senior.toris.kr, Vercel `dpl_FumS2oKgsfdmRXbSCESNJrtRPRet`.
-- QA APK: `apps/mobile/android/app/build/outputs/apk/release/app-release.apk`, 0.1.1 / versionCode 212215980 / target API 36, arm64.
-- APK SHA-256: `ce40a404b23c7ac0851e17f48bbe1231fb0d8491db10b87738233e93a5f01f3f`, 64,126,255 bytes. 기기에 설치된 base APK 해시가 이 값과 일치했다.
-- APK는 standalone release 모드이며 debuggable=false다. 기존 기기 데이터를 보존하려고 **debug certificate로 서명한 QA 빌드**다. Play upload/signing artifact나 제출 AAB가 아니다. 공식 테스트 광고 ID를 번들에서 확인했다. 최종 APK의 실제 광고 수신은 이번 검사 범위가 아니다.
+- QA APK: `apps/mobile/build-output/android-design-qa-0d91c27/app-release.apk`, 0.1.1 / versionCode 212215980 / target API 36, arm64.
+- APK SHA-256: `8d117e63324d4de82c4550f2c2ced5e283a528704b07459bec80b7ae2014bad5`, 64,126,243 bytes. 기기에 설치된 base APK 해시가 이 값과 일치했다.
+- APK는 standalone release 모드이며 debuggable=false다. 기존 기기 데이터를 보존하려고 **debug certificate로 서명한 QA 빌드**다. Play upload/signing artifact나 제출 AAB가 아니다. 공식 테스트 광고 ID를 번들에서 확인했다. 최종 APK의 모임 화면에서 테스트 광고가 실제 표시됨을 확인했다. 광고 클릭은 0회다.
 
 ## 장애 원인과 수정
 
@@ -32,7 +32,7 @@ Galaxy M33 / Android 16에서 최신 Android 디자인 QA APK의 로그인 복�
 
 ## 최신 Android 디자인과 실기기 판정
 
-최종 Native source는 `7d435b497de5b7e4fd858245a4e3e16e6c6dad3f`이며 APK SHA-256은 `ce40a404b23c7ac0851e17f48bbe1231fb0d8491db10b87738233e93a5f01f3f`다. Gradle 강제 JS 재번들·release build 중 제품 소스 hash가 유지됐고, 기존 QA certificate와 같은 서명·package/version/target36·compiled manifest 34 permissions/10 exports·production endpoint와 테스트 banner·동일 사진 7개·Material font byte 일치를 확인했다. 기존 데이터를 유지하는 install-r 후 설치 APK hash가 일치했다.
+최종 Native source는 `0d91c279bb8d14c210a9dbac89326da9234a8428`이며 APK SHA-256은 `8d117e63324d4de82c4550f2c2ced5e283a528704b07459bec80b7ae2014bad5`다. Gradle 강제 JS 재번들·release build 중 제품 소스 hash가 유지됐고, 기존 QA certificate와 같은 서명·package/version/target36·compiled manifest 34 permissions/10 exports·production endpoint와 테스트 banner·동일 사진 7개·Material font byte 일치를 확인했다. 기존 데이터를 유지하는 install-r 후 설치 APK hash가 일치했다.
 
 - 기본 caption 13/body 16/title 24와 Regular/SemiBold 역할을 적용했다. 프로필·선택 번호 인증·채팅 입력란도 body 토큰을 사용한다.
 - 하단 탐색 기본 row는 실제 60.09dp였다. 실제 시스템 하단 inset을 한 번만 적용하며 각 탭의 touch 폭은 76.8dp다. 시스템 배율 2.0에서 라벨 줄 수 때문에 icon 줄이 달라지던 문제를 실제 캡처에서 찾고 고쳤다.
@@ -41,7 +41,8 @@ Galaxy M33 / Android 16에서 최신 Android 디자인 QA APK의 로그인 복�
 - 최신 현재 프로필 기준을 private local에 보관하고 여러 cold start 뒤 이름·연락처·지역 일치를 확인했다. 예전 baseline의 연락처만 달랐으므로 예전 값을 복원하지 않았다. 실제 프로필 저장·SMS 요청은 0회다.
 - 최종 8개 core 검사와 6개 확대 조합이 통과했다. 5개 탭 이동에 통신 오류가 없고 마지막 현재 PID의 FATAL EXCEPTION/ReactNativeJS Error/P2010은 모두 0이었다.
 - 앱은 기존 app.json의 `userInterfaceStyle: light`를 유지한다. 시스템 night mode에서 layout이 유지되는 검사이며 앱의 dark palette를 실제 검증한 결과는 아니다. 3버튼 탐색 실기기 384dp이며 다른 폭 360/393/430dp와 gesture inset은 unit 계산 범위다.
-- 마지막 core QA 후 다른 앱이 foreground가 돼 추가 모임 카드·상세 사진 실기기 검사는 입력 전에 중단했다. 해당 화면의 실제 pixel 검수를 완료했다고 주장하지 않는다. QA가 만든 지정 UI dump 파일은 제거했고 개인 캡처는 private local에만 보관했다.
+- 최종 APK에서 지난 모임 목록 사진 1.7762(16:9)와 상세 사진 1.5(3:2)의 실제 slot을 측정하고 두 화면의 pixels를 직접 확인했다. 모임과 프로필 변경은 0회였다. 기기가 자동 Dozing에 들어갔던 검사는 wake와 대상 앱 실행 뒤 새 foreground guard로 재개했다. QA가 만든 remote UI dump는 제거했고 개인 캡처는 private local에만 보관했다.
+- 탭 변경 뒤 선택 배경이 사각형으로 보이던 문제는 그래픽 wrapper의 native view 유지와 높이 절반인 14dp radius로 보완했다. 최종 5개 탭의 실제 캡처에서 둥근 선택 배경을 확인했다. 렌더러 내부 원인을 확정한 것은 아니다.
 
 최신 소스의 mobile 전체 348 tests / 45 files, TypeScript와 scoped ESLint, 하단 탐색 12개 회귀가 통과했다. 이 APK는 기존 QA 데이터를 유지하는 debug-certificate QA 빌드다. 최종 Play 제출 artifact나 모든 화면의 시각 승인을 의미하지 않는다. [실기기·확대·이미지 검증 증거](qa-evidence/20260930/native-design-live.json), [디자인 기준과 구현](MOBILE_DESIGN_REVISION_20260930.md).
 
@@ -132,7 +133,7 @@ ADB 조작은 fresh UI hierarchy와 현재 foreground package를 확인했다. �
 | 추가 실제 local DB 역할/후기/신고 | auth/events 9 + reviews 1 + safety 2 = 12 passed, 0 skipped |
 | DB 실행 안전성 guard | 4 passed; root ESLint와 CI YAML/전용 DB 계약 검사 통과 |
 | 이전 모바일 공통 디자인 통합 source | 330 tests / TypeScript / ESLint; 이후 상세 표시 2개 수정의 TypeScript·scoped ESLint·native rebuild 통과 |
-| 최종 Android 디자인 source `7d435b4…` | 348 tests / 45 files / TypeScript / scoped ESLint / 하단 탐색 회귀 12; 실제 APK 증거 참조 |
+| 최종 Android 디자인 source `0d91c27…` | 348 tests / 45 files / TypeScript / scoped ESLint / 하단 탐색 회귀 12; 실제 APK 증거 참조 |
 | 새 compiled manifest 회귀 | 35 tests; compiled AAB의 정확한 numeric enum도 검사 |
 | compiled release manifest | allowlist 권한 34개, 정확한 exported component 10개 |
 | Play production workflow 계약 | 7 tests / 세 workflow actionlint; exact screenshot 발급·수신 Python 계약 19 tests. hosted 실행 미관측 |
@@ -150,6 +151,6 @@ manifest export 10개는 intent가 제한된 activity 4개와 권한으로 보�
 - CloudFront→ALB는 HTTP. direct origin 403과 CloudFront prefix ingress는 적용했으나 origin DNS/ACM을 통한 HTTPS 전환은 남아 있음. Cloudflare DNS 로그인/권한이 필요하며 서울 ACM 인증서는 `PENDING_VALIDATION`. [정확한 DNS 레코드와 전환 순서](ORIGIN_TLS_HANDOFF.md).
 - RDS 공개 접근 해제, encrypted/backup/deletion protection 및 변경 후 strict DB certificate verification 확인. 임시 PITR 복구 DB의 migration/catalog 비교와 리소스 정리까지 통과. 기존 서브넷 구성과 single-AZ는 유지하며 전체 업무 데이터 복구·가용성 훈련은 별도 범위임.
 - 이메일/SMS outbox/FCM 채널은 disabled. 회원/리더/관리자 신청·승인·취소와 후기/신고는 위 local DB 범위를 통과했다. 외부 알림 수신, 실제 Plus 구매/복원, 역할별 운영 웹/앱 UI에서의 신청·취소/UGC/채팅/신고/관리자 E2E, 최종 서명 AAB/Play screenshot provenance와 Play 공개는 이번 재검사에서 완료하지 않음.
-- 화면 구조·접근성 상태는 XML/DOM으로 검사했다. 최신 Android 홈의 정상·확대 캡처는 직접 시각 검토했다. 전체 화면/웹/카드·상세 사진/스토어 screenshot의 미감 승인을 포괄하는 결과는 아니다.
+- 화면 구조·접근성 상태는 XML/DOM으로 검사했다. 최신 Android 홈의 정상·확대, 5개 탭 선택 배경, 모임 목록·상세 사진의 캡처를 직접 시각 검토했다. 전체 제품 화면·웹·스토어 screenshot의 미감 승인을 포괄하는 결과는 아니다.
 
 [운영 런북](DEPLOYMENT.md), [선택형 번호 인증 설정](../apps/mobile/src/phone-verification/NATIVE_SETUP.md).
