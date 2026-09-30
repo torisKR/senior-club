@@ -215,7 +215,7 @@ export default async function ClubsPage({ searchParams }: ClubsPageProps) {
                       className="object-cover transition duration-500 group-hover:scale-[1.025]"
                       fill
                       priority={index === 0}
-                      sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 380px"
+                      sizes="(max-width: 720px) calc(100vw - 1.25rem), (max-width: 767px) calc(100vw - 2rem), (max-width: 1279px) calc(50vw - 1.625rem), 380px"
                       image={club.image} category={club.interest.slug}
 
                     />

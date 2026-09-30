@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { Stack, type Href, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View, useWindowDimensions } from 'react-native';
@@ -7,8 +6,9 @@ import { isApiError } from '@/api/api-error';
 import { clubsApi, isSafeClubSlug, type PublicClub } from '@/api/clubs-api';
 import { apiErrorMessage } from '@/api/error-message';
 import { AppText, Card, EmptyState, Screen, SectionHeader } from '@/components/ui';
+import { CoverImage } from '@/components/ui/cover-image';
 import { Radius, Spacing } from '@/constants/theme';
-import { getClubImageSource } from '@/data/image-assets';
+import { getClubCoverImage } from '@/data/image-assets';
 import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -161,11 +161,9 @@ export function ClubDetailScreen({ slug }: ClubDetailScreenProps) {
       <Stack.Screen options={{ title: club.title, headerBackTitle: '커뮤니티' }} />
       <Screen contentContainerStyle={{ maxWidth: 980 }}>
         <Card padded={false}>
-          <Image
-            source={getClubImageSource(club)}
-            accessibilityLabel="커뮤니티 안내 이미지"
-            cachePolicy="memory-disk"
-            contentFit="cover"
+          <CoverImage
+            image={getClubCoverImage(club)}
+            accessibilityLabel={`${club.title} 커뮤니티 대표 이미지`}
             recyclingKey={club.id}
             transition={180}
             style={{

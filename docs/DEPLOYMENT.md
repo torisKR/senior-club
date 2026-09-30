@@ -13,7 +13,7 @@ Android / Vercel BFF → CloudFront → ALB → ECS API → RDS PostgreSQL
 | --- | --- |
 | 웹 canonical | https://senior.toris.kr |
 | 웹 보조 alias | https://clubsenior.vercel.app |
-| Vercel 배포 | dpl_BB1p8gbJMzejdR7nv7nzQtjPvLYU |
+| Vercel 배포 | dpl_9fK6bmYnVLeaP9PVhbY3HCFSuYcG |
 | API 공개 origin | https://d33totqtaqpyfs.cloudfront.net |
 | ECS cluster / service | senior-club / senior-club-api |
 | ECS task | senior-club-api:25, running 1, deployment COMPLETED |
@@ -81,6 +81,10 @@ Vercel encrypted production environment를 유지한 채 프로젝트 루트에�
 배포 후 실제 canonical 주소를 `playwright-cli`로 검사한다. `/index`로 prerender되는 home pathname을 `/`로 정규화하는 회귀가 이번 배포에 포함되어 있다. 360/390/1440px, 큰 글씨, 시간대·날짜 경계, localStorage 차단, 클라이언트 이동·뒤로가기, 로그인 오류·동의, 정책 페이지를 검사한다. 로컬 webpack build 통과만으로 원격 Turbopack/live 결과를 대신하지 않는다.
 
 웹 OAuth는 승인된 실제 계정으로 callback·cookie·로그아웃까지 추가 검증해야 한다. Android Kakao 성공만으로 웹 BFF 인증 성공을 보고하지 않는다.
+
+공통 색상·버튼 역할·터치 높이는 `shared/design/foundation.ts`에서 관리하고 웹 CSS adapter와 네이티브 theme이 함께 사용한다. 웹은 native OTF와 같은 Pretendard 1.3.9의 공식 variable subset을 자체 호스팅한다. 버전 경로의 font 파일은 immutable cache를 사용하며 모든 subset을 preload하지 않는다. 웹·앱의 주제 사진 7개는 byte 단위로 동일하고 실제 활동 사진이 없는 경우 참고 이미지라고 표시한다. 사진 `sizes`는 실제 container 폭을 반영한다. 최초 font 전송량 증가와 측정 한계는 QA 보고서에 함께 기록한다.
+
+운영 웹의 27개 렌더링·이동 검사, 익명 인증 경계 15개, 페이지당 3회의 성능/이미지 검사 24개를 실행했다. OAuth 진입/상태 쿠키/취소, anonymous logout 및 보호 API 거절은 실제 배포에서 확인했지만 실제 계정의 웹 provider 로그인·token exchange를 수행한 결과는 아니다.
 
 ## Android 배포와 QA
 

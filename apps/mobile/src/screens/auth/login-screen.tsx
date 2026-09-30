@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { kakaoErrorMessage } from '@/auth/kakao-error-message';
 import { Layout, Radius, Spacing, TouchTarget, FontWeights } from '@/constants/theme';
 import { getPublicWebPageUrl } from '@/config/public-web-links';
+import { fallbackActivityImage } from '@/data/image-assets';
 import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -120,7 +121,7 @@ export function LoginScreen() {
             </View>
 
             <ImageBackground
-              source={require('../../../assets/images/senior-club-hero-v2.jpg')}
+              source={fallbackActivityImage}
               style={styles.hero}
               imageStyle={styles.heroImage}
               accessibilityIgnoresInvertColors

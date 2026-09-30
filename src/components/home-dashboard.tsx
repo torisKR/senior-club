@@ -186,7 +186,7 @@ function EventPreview({ event }: { event: HomeEvent }) {
             category={event.category}
             alt={event.alt}
             fill
-            sizes="(max-width: 720px) 100vw, (max-width: 1100px) 50vw, 33vw"
+            sizes="(max-width: 720px) calc(100vw - 1.25rem), (max-width: 767px) calc(100vw - 2rem), (max-width: 1279px) calc(50vw - 1.625rem), 380px"
             className="object-cover transition-transform duration-500 group-hover:scale-[1.025]"
           />
           <div className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1.5 text-[0.85rem] font-black text-[var(--primary-strong)] shadow-sm">
@@ -304,7 +304,7 @@ export function HomeDashboard({
             alt="서울 산책길에서 지도를 함께 보며 다음 활동을 계획하는 시니어 다섯 명"
             fill
             priority
-            sizes="(max-width: 1024px) 100vw, 50vw"
+            sizes="(max-width: 720px) calc(100vw - 1.25rem), (max-width: 1023px) calc(100vw - 2rem), (max-width: 1212px) calc(49vw - 1.5925rem), 569px"
             className="object-cover"
           />
           <figcaption className="absolute bottom-3 right-3 max-w-[calc(100%-1.5rem)] rounded-2xl bg-white/95 px-3.5 py-2.5 text-[0.82rem] font-bold leading-relaxed text-[var(--ink)] shadow-lg backdrop-blur sm:bottom-4 sm:right-4 sm:max-w-[17rem] sm:px-4 sm:py-3 sm:text-[0.86rem]">

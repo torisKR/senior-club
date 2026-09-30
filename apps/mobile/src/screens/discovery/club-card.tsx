@@ -1,10 +1,10 @@
-import { Image } from 'expo-image';
 import { View } from 'react-native';
 
 import type { PublicClub } from '@/api/clubs-api';
 import { AppText, Card } from '@/components/ui';
+import { CoverImage } from '@/components/ui/cover-image';
 import { Radius, Spacing } from '@/constants/theme';
-import { getClubImageSource } from '@/data/image-assets';
+import { getClubCoverImage } from '@/data/image-assets';
 import { useTheme } from '@/hooks/use-theme';
 
 import { formatEventDate } from './discovery-utils';
@@ -24,11 +24,9 @@ export function ClubCard({ club, recommended, onPress }: ClubCardProps) {
       padded={false}
       onPress={onPress}
       accessibilityLabel={`${club.title}, ${club.interest.name}, 활성 회원 ${club.memberCount}명, ${region}, 자세히 보기`}>
-      <Image
-        source={getClubImageSource(club)}
-        accessibilityLabel="커뮤니티 안내 이미지"
-        cachePolicy="memory-disk"
-        contentFit="cover"
+      <CoverImage
+        image={getClubCoverImage(club)}
+        accessibilityLabel={`${club.title} 커뮤니티 대표 이미지`}
         recyclingKey={club.id}
         transition={180}
         style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor: theme.backgroundElement }}

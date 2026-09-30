@@ -1,5 +1,5 @@
 {
-  "mode": "Vercel production dpl_BB1p8gbJMzejdR7nv7nzQtjPvLYU",
+  "mode": "Vercel production dpl_9fK6bmYnVLeaP9PVhbY3HCFSuYcG",
   "scenarios": [
     {
       "name": "seoul-default",
@@ -288,9 +288,22 @@
   ],
   "pageErrors": [],
   "consoleErrors": [],
+  "badResponses": [],
   "failures": [],
   "sessionStatus": 200,
   "interestsStatus": 200,
   "passed": true,
-  "realAuthWrites": 0
+  "realAuthWrites": 0,
+  "observedAt": "2026-09-30T06:46:52.931370+00:00",
+  "firstRunObservation": {
+    "console404Count": 2,
+    "scenarios": [
+      "los-angeles-saved-large-profile",
+      "utc-new-year-saved-large"
+    ],
+    "flow": "client events -> home",
+    "resourcePathCaptured": false,
+    "instrumentedRepeatReproduced": false,
+    "rootCauseEstablished": false
+  }
 }

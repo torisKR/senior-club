@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { type Href, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, Switch, View, useWindowDimensions } from 'react-native';
@@ -14,6 +13,8 @@ import {
   SeniorButton,
 } from '@/components/ui';
 import { Layout, Radius, Spacing, TouchTarget } from '@/constants/theme';
+import { CoverImage } from '@/components/ui/cover-image';
+import { selectCoverImage } from '@/data/image-assets';
 import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -131,11 +132,10 @@ export function HomeScreen() {
   return (
     <Screen testID="home-screen" contentContainerStyle={{ paddingTop: Spacing.lg }}>
       <Card padded={false} style={{ backgroundColor: theme.surface }}>
-        <Image
-          source={require('@/assets/images/senior-club-hero-v2.jpg')}
-          accessibilityLabel="산책길에서 다음 활동을 함께 계획하는 중년 모임"
-          cachePolicy="memory-disk"
-          contentFit="cover"
+        <CoverImage
+          image={selectCoverImage(undefined, 'hiking')}
+          recyclingKey="home-hero"
+          accessibilityLabel="시니어클럽 활동 소개 이미지"
           style={{ width: '100%', aspectRatio: width < 420 ? 4 / 3 : 16 / 9, backgroundColor: theme.backgroundElement }}
         />
         <View style={{ minWidth: 0, gap: Spacing.xl, padding: Spacing.xl }}>

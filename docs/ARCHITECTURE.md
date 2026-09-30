@@ -35,6 +35,8 @@ Expo Android App                       Next.js Web / BFF
 | UI | Tailwind CSS 4, React Native StyleSheet | 반응형·접근성 UI |
 | Test | Vitest 4, TypeScript strict, ESLint | 단위·계약·빌드 gate |
 
+웹과 Android는 `shared/design/foundation.ts`의 공통 색상·버튼 역할·카드/터치 치수를 각 플랫폼 adapter에서 사용한다. Pretendard 1.3.9는 native OTF와 자체 호스팅 web variable subset으로 제공한다. 주제 사진 7개는 동일 파일이며, 서버가 제공한 유효한 사진이 우선이고 category fallback에는 참고 이미지 표시를 붙인다. 화면 폭과 네이티브 탐색 방식은 플랫폼에 맞게 유지한다.
+
 ### 인증 및 회원 프로필 아키텍처
 
 1. **모바일 앱 로그인 단일화 (카카오 로그인)**:

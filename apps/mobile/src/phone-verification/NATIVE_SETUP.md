@@ -17,7 +17,7 @@ Install matching maintained native packages **@react-native-firebase/app@26.4.0*
 
 Implementation includes the optional profile card, normalized freely saved contact edits, native modular `verifyPhoneNumber` (RNFirebase 26 modular `signInWithPhoneNumber` does not accept force resend), manual code and Android instant verification, 60-second resend cooldown, expiry/error handling, retry of backend linking using refreshed proof, and cleanup on cancel, blur, account change and success. Kakao session modules remain untouched.
 
-Validation on the shared workspace: mobile TypeScript check; scoped ESLint; mobile Vitest suite passed 273 tests across 39 files after the parent added real refresh-race and cached-profile regressions. Parent performed the ADB tests described above; this implementation worker did not operate devices.
+Validation on the shared workspace: mobile TypeScript check; scoped ESLint; mobile Vitest suite passed 330 tests across 41 files after refresh-race, cached-profile and cover-image regressions were integrated. Parent performed the ADB tests described above; implementation workers did not operate devices. The current artifact and subsequent shared-design ADB checks are recorded in docs/QA_PRODUCTION_20260930.md; these do not imply that Firebase billing, SMS or server ADC has been configured.
 
 Changed implementation paths:
 - `apps/mobile/src/api/profile-api-core.ts`

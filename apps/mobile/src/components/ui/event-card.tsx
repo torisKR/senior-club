@@ -1,13 +1,13 @@
-import { Image } from 'expo-image';
 import { View } from 'react-native';
 
 import { Radius, Spacing } from '@/constants/theme';
-import { getEventImageSource } from '@/data/image-assets';
+import { getEventCoverImage } from '@/data/image-assets';
 import { useTheme } from '@/hooks/use-theme';
 import type { Event, ParticipationStatus } from '@/types';
 
 import { AppText } from './app-text';
 import { Card } from './card';
+import { CoverImage } from './cover-image';
 import { SeatMeter } from './seat-meter';
 
 export interface EventCardProps {
@@ -82,11 +82,9 @@ export function EventCard({ event, participationStatus, onPress, compact = false
           : '눌러 모임 상세 정보와 신청 방법을 확인합니다.'
       }>
       {!compact ? (
-        <Image
-          source={getEventImageSource(event)}
-          accessibilityLabel={`${event.title} 모임 사진`}
-          cachePolicy="memory-disk"
-          contentFit="cover"
+        <CoverImage
+          image={getEventCoverImage(event)}
+          accessibilityLabel={`${event.title} 모임 대표 이미지`}
           recyclingKey={event.id}
           transition={180}
           style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor: theme.backgroundElement }}

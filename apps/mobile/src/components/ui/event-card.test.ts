@@ -5,13 +5,24 @@ import type { Event } from '@/types';
 
 import { EventCard } from './event-card';
 
+const coverMocks = vi.hoisted(() => ({
+  selection: { source: 4, fallbackSource: 4, isReference: true, sourceKey: 'photo' },
+  select: vi.fn(),
+}));
+
 vi.mock('react-native', () => ({
   View: 'View',
   Platform: { select: (options: { default: unknown }) => options.default },
 }));
 vi.mock('expo-image', () => ({ Image: 'Image' }));
 vi.mock('@/hooks/use-theme', () => ({ useTheme: () => ({}) }));
-vi.mock('@/data/image-assets', () => ({ getEventImageSource: () => 'event-image' }));
+vi.mock('@/data/image-assets', () => ({
+  getEventCoverImage: (value: Event) => {
+    coverMocks.select(value);
+    return coverMocks.selection;
+  },
+}));
+vi.mock('./cover-image', () => ({ CoverImage: 'CoverImage' }));
 vi.mock('./app-text', () => ({ AppText: 'AppText' }));
 vi.mock('./card', () => ({ Card: 'Card' }));
 vi.mock('./seat-meter', () => ({ SeatMeter: 'SeatMeter' }));
@@ -51,6 +62,24 @@ const event: Event = {
 };
 
 describe('EventCard lifecycle', () => {
+  it('passes the full event and image selection to the shared cover while preserving compact cards', () => {
+    const withPhoto = { ...event, imageUri: 'https://cdn.example.test/event.jpg', interestId: 'reading' };
+    coverMocks.select.mockClear();
+    const card = EventCard({ event: withPhoto });
+    expect(coverMocks.select).toHaveBeenCalledWith(withPhoto);
+    const cover = elements(card).find((element) => element.type === 'CoverImage');
+    expect(cover?.props).toMatchObject({
+      image: coverMocks.selection,
+      recyclingKey: event.id,
+      accessibilityLabel: `${event.title} 모임 대표 이미지`,
+      style: { width: '100%', aspectRatio: 16 / 9 },
+    });
+    coverMocks.select.mockClear();
+    const compact = EventCard({ event: withPhoto, compact: true });
+    expect(coverMocks.select).not.toHaveBeenCalled();
+    expect(elements(compact).some((element) => element.type === 'CoverImage')).toBe(false);
+  });
+
   it.each([
     ['completed', '종료된 모임'],
     ['cancelled', '취소된 모임'],

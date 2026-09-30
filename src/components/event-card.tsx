@@ -54,7 +54,7 @@ export function EventCard({ event, priority = false }: EventCardProps) {
           className="object-cover transition duration-500 group-hover:scale-[1.025]"
           fill
           priority={priority}
-          sizes="(max-width: 720px) 100vw, (max-width: 1100px) 50vw, 380px"
+          sizes="(max-width: 720px) calc(100vw - 1.25rem), (max-width: 767px) calc(100vw - 2rem), (max-width: 1279px) calc(50vw - 1.625rem), 380px"
           image={event.image}
           category={event.category}
         />

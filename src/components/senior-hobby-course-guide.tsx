@@ -77,7 +77,7 @@ export function SeniorHobbyCourseGuide() {
                     alt="숲길 산책을 소개하는 시니어클럽 주제 참고 이미지"
                     fill
                     className="object-cover"
-                    sizes="(max-width: 768px) 100vw, 33vw"
+                    sizes="(max-width: 720px) calc(100vw - 3.75rem - 2px), (max-width: 767px) calc(100vw - 4.5rem - 2px), (max-width: 1023px) calc(50vw - 4.125rem - 2px), (max-width: 1212px) calc(33.333vw - 4rem - 2px), 338px"
                   />
                   <div className="absolute left-3 top-3 rounded-lg bg-[var(--primary)]/90 px-3 py-1 text-sm font-bold text-white backdrop-blur-sm">
                     {course.difficultyLabel}
