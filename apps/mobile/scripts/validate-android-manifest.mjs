@@ -89,7 +89,7 @@ function validateProductionFcmClient(config) {
 
   const configuredPath = config.android?.googleServicesFile;
   if (typeof configuredPath !== 'string' || configuredPath.trim().length === 0) {
-    fail('production 빌드에는 EAS file secret GOOGLE_SERVICES_JSON이 필요합니다.');
+    fail('production 빌드에는 package와 일치하는 Firebase Android client 파일의 경로 GOOGLE_SERVICES_JSON이 필요합니다.');
     return;
   }
 

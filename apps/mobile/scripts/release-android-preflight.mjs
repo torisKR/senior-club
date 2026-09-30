@@ -122,7 +122,7 @@ export function main(args = process.argv.slice(2)) {
 
   console.log('\nPASS Android pre-build/config/endpoint/store-evidence preflight.');
   console.log(
-    'PENDING 실제 AAB binary 검사는 수행하지 않았습니다. EAS AAB 생성 후 Play App Bundle Explorer에서 package, versionCode, target API 36, signing, merged manifest를 별도로 확인하세요.',
+    'PENDING 이 preflight는 실제 AAB binary를 검사하지 않습니다. Direct Gradle로 생성한 정확한 AAB의 package, versionCode, target API 36, upload signing, merged manifest를 별도 binary gate로 검증하고 Play App Bundle Explorer와 pre-launch 결과도 확인하세요.',
   );
 }
 
