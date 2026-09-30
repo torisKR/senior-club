@@ -1,15 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --canvas: #edf4f4;
-  --canvas-deep: #dceaea;
+  --canvas: #eef2e9;
+  --canvas-deep: #dfe7d8;
   --surface: #ffffff;
-  --ink: #14342e;
-  --muted: #53655f;
-  --primary: #176956;
-  --primary-strong: #0e5142;
-  --sky: #5da9c6;
-  --sky-soft: #d9eef5;
+  --ink: #24382b;
+  --muted: #526451;
+  --primary: #356347;
+  --primary-strong: #274b34;
+  --sky: #779367;
+  --sky-soft: #e4edda;
+  --surface-soft: #e4edda;
+  --primary-light: #779367;
+  --line-soft: #d0daca;
   --accent: #bd522f;
   --accent-soft: #fde7df;
   --sun: #f0bf4f;
@@ -17,7 +20,7 @@
   --success: #277357;
   --warning: #9a501f;
   --danger: #a83b35;
-  --focus: #0e5142;
+  --focus: #274b34;
   --text-caption: 0.9rem;
   --text-small: 1rem;
   --text-body: 1.125rem;
@@ -47,8 +50,8 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(circle at 4% 8%, rgba(93, 169, 198, 0.14), transparent 24rem),
-    linear-gradient(180deg, #f7fbfa 0, var(--canvas) 32rem);
+    radial-gradient(circle at 4% 8%, rgba(119, 147, 103, 0.14), transparent 24rem),
+    linear-gradient(180deg, #f8faf5 0, var(--canvas) 32rem);
   color: var(--ink);
   font-family: "SUIT Variable", "Pretendard Variable", Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
   font-size: 18px;
@@ -73,9 +76,15 @@ textarea {
 
 button,
 [role="button"],
-input,
-select {
-  min-height: 52px;
+input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+select,
+textarea {
+  min-height: 56px;
+}
+
+label:has(input[type="checkbox"]),
+label:has(input[type="radio"]) {
+  min-height: 56px;
 }
 
 button:not(:disabled),
@@ -114,6 +123,7 @@ img {
   background: var(--ink);
   color: white;
   padding: 0.75rem 1rem;
+  min-height: 56px;
   font-weight: 800;
 }
 

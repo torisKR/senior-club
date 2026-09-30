@@ -273,6 +273,10 @@ jobs:
           test -s app/build/outputs/bundle/release/app-release.aab
           cp app/build/outputs/bundle/release/app-release.aab "$EVIDENCE_DIR/app-release.aab"
 
+      - name: Validate compiled Android manifest
+        working-directory: apps/mobile
+        run: pnpm validate:manifest:merged
+
       - name: Validate exact signed AAB
         working-directory: apps/mobile
         env:

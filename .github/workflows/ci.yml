@@ -69,6 +69,7 @@ jobs:
 
       - name: Check API
         run: |
+          node --test .github/scripts/prepare-api-task.test.mjs
           pnpm --filter @senior-club/api typecheck
           pnpm --filter @senior-club/api test
           pnpm --filter @senior-club/api build
@@ -79,6 +80,7 @@ jobs:
           pnpm --filter mobile typecheck
           pnpm --filter mobile test
           pnpm --filter mobile test:release-validators
+          pnpm --filter mobile test:manifest:merged
           pnpm --filter mobile validate:play-internal-workflow
           pnpm --filter mobile validate:play-production-workflow
           pnpm --filter mobile validate:play

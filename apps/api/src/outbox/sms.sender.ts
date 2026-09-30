@@ -3,6 +3,7 @@ import { HttpStatus, Inject, Injectable, Logger } from "@nestjs/common";
 import { ApiException } from "../common/http/api.exception";
 import type { ApiEnv } from "../config/env";
 import { API_ENV } from "../config/env.module";
+import { DisabledChannelError } from "./disabled-channel.error";
 
 export interface SendOtpSmsInput {
   phoneNumber: string;
@@ -24,6 +25,9 @@ export class ConfiguredSmsSender implements SmsSender {
   constructor(@Inject(API_ENV) private readonly env: ApiEnv) {}
 
   async sendOtp(input: SendOtpSmsInput) {
+    if (this.env.SMS_PROVIDER === "disabled") {
+      throw new DisabledChannelError("SMS_PROVIDER");
+    }
     if (this.env.SMS_PROVIDER === "console") {
       this.logger.log(
         `[development sms] ${maskPhoneNumber(input.phoneNumber)}: 인증번호 ${input.code} (${input.expiresAt} 만료)`,

@@ -8,7 +8,9 @@ import Constants from 'expo-constants';
 let sdkInitialization: Promise<void> | undefined;
 
 function initializeKakao() {
-  const appKey = Constants.expoConfig?.extra?.kakaoNativeAppKey;
+  const appKey =
+    Constants.expoConfig?.extra?.kakaoNativeAppKey ??
+    process.env.EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY;
   if (typeof appKey !== 'string' || appKey.length === 0) {
     throw new Error('Kakao native app key is missing from the Expo configuration.');
   }

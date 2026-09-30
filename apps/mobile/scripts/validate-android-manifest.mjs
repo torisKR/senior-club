@@ -60,7 +60,7 @@ function readIntrospectedConfig() {
     throw new Error('Expo CLI가 없습니다. apps/mobile에서 의존성을 먼저 설치하세요.');
   }
 
-  const result = spawnSync(process.execPath, [expoCli, 'config', '--type', 'introspect', '--json'], {
+  const result = spawnSync(process.execPath, [path.join(root, 'scripts/introspect-android.mjs')], {
     cwd: root,
     encoding: 'utf8',
     env: { ...process.env, CI: '1' },

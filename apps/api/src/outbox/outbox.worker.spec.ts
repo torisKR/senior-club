@@ -11,6 +11,7 @@ import type { TokenService } from "../auth/token.service";
 import type { ApiEnv } from "../config/env";
 import type { PrismaService } from "../prisma/prisma.service";
 import type { EmailSender } from "./email.sender";
+import { DisabledChannelError } from "./disabled-channel.error";
 import {
   OUTBOX_BATCH_SIZE,
   OUTBOX_LEASE_CLEANUP_INTERVAL_MS,
@@ -23,17 +24,15 @@ const NOW = new Date("2026-07-29T12:00:00.000Z");
 
 function createHarness(
   sendError?: Error,
-  expiresAt = "2026-07-29T12:10:00.000Z",
+  type = "ACCOUNT_DELETION_REQUESTED",
 ) {
   const claimedEvent = {
     id: "outbox-1",
-    type: "AUTH_OTP_REQUESTED",
-    dedupKey: "auth-otp:challenge-1",
+    type,
+    dedupKey: "account-deletion:request-1:requested",
     payload: {
-      challengeId: "challenge-1",
       email: "member@example.com",
-      sealedCode: "sealed-code",
-      expiresAt,
+      scheduledFor: "2026-08-05T00:00:00.000Z",
     },
     attempts: 2,
     maxAttempts: 5,
@@ -55,11 +54,11 @@ function createHarness(
     outboxEvent: { updateMany: finalUpdate },
   } as unknown as PrismaService;
   const email = {
-    sendOtp: sendError
+    sendOtp: vi.fn().mockResolvedValue(undefined),
+    sendApplicationUpdate: vi.fn().mockResolvedValue(undefined),
+    sendAccountDeletionRequested: sendError
       ? vi.fn().mockRejectedValue(sendError)
       : vi.fn().mockResolvedValue(undefined),
-    sendApplicationUpdate: vi.fn().mockResolvedValue(undefined),
-    sendAccountDeletionRequested: vi.fn().mockResolvedValue(undefined),
   } satisfies EmailSender;
   const push = {
     sendApplicationUpdate: vi.fn().mockResolvedValue(undefined),
@@ -79,6 +78,7 @@ function createHarness(
     transaction,
     finalUpdate,
     email,
+    tokens,
   };
 }
 
@@ -113,9 +113,9 @@ describe("OutboxWorker", () => {
           attempts: { increment: 1 },
         },
       });
-      expect(harness.email.sendOtp).toHaveBeenCalledWith(
+      expect(harness.email.sendAccountDeletionRequested).toHaveBeenCalledWith(
         expect.objectContaining({
-          idempotencyKey: "auth-otp:challenge-1",
+          idempotencyKey: "account-deletion:request-1:requested",
         }),
       );
       expect(harness.finalUpdate).toHaveBeenCalledWith(
@@ -175,18 +175,25 @@ describe("OutboxWorker", () => {
     }
   });
 
-  it("discards an expired OTP without paying for a provider request", async () => {
+  it("records an explicit terminal failure for a disabled outbound provider", async () => {
+    const harness = createHarness(new DisabledChannelError("EMAIL_PROVIDER"));
+    await expect(harness.worker.drainOnce()).resolves.toBe(1);
+    expect(harness.finalUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: OutboxStatus.FAILED, attempts: 5, lastError: "EMAIL_PROVIDER=disabled: delivery unavailable" }) }));
+  });
+
+  it.each(["AUTH_OTP_REQUESTED", "AUTH_PHONE_OTP_REQUESTED"])("retires legacy %s without decrypting or delivering OTP", async (type) => {
     vi.useFakeTimers();
     vi.setSystemTime(NOW);
     try {
-      const harness = createHarness(undefined, "2026-07-29T11:59:59.000Z");
+      const harness = createHarness(undefined, type);
 
       await expect(harness.worker.drainOnce()).resolves.toBe(1);
 
       expect(harness.email.sendOtp).not.toHaveBeenCalled();
+      expect(harness.tokens.openOtp).not.toHaveBeenCalled();
       expect(harness.finalUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ status: OutboxStatus.PROCESSED }),
+          data: expect.objectContaining({ status: OutboxStatus.FAILED, attempts: 5, lastError: "AUTH_PROVIDER=disabled: delivery unavailable" }),
         }),
       );
     } finally {

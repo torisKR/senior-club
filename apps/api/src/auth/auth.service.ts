@@ -7,6 +7,7 @@ import type { ApiEnv } from "../config/env";
 import { API_ENV } from "../config/env.module";
 import {
   AuthProvider,
+  Prisma,
   ConsentDocumentType,
   UserStatus,
   VerificationPurpose,
@@ -24,7 +25,9 @@ import type {
 } from "./auth.contracts";
 import { GoogleTokenVerifier } from "./google-token-verifier";
 import { KakaoTokenVerifier } from "./kakao-token-verifier";
+import { FirebasePhoneService } from "./firebase-phone.service";
 import { TokenService } from "./token.service";
+import { loginPolicy } from "./login-policy";
 
 const OTP_MAX_ATTEMPTS = 5;
 const OTP_REQUEST_WINDOW_MS = 10 * 60 * 1_000;
@@ -54,10 +57,12 @@ export class AuthService {
     private readonly tokens: TokenService,
     private readonly kakaoTokens: KakaoTokenVerifier,
     private readonly googleTokens: GoogleTokenVerifier,
+    private readonly firebasePhone: FirebasePhoneService,
     @Inject(API_ENV) private readonly env: ApiEnv,
   ) {}
 
   async requestEmailCode(input: RequestEmailCodeInput) {
+    loginPolicy.assertAllowed("email");
     const now = new Date();
     const recentCount = await this.prisma.emailVerification.count({
       where: {
@@ -118,6 +123,7 @@ export class AuthService {
   }
 
   async requestPhoneCode(input: RequestPhoneCodeInput) {
+    loginPolicy.assertAllowed("phone");
     const now = new Date();
     const recentCount = await this.prisma.phoneVerification.count({
       where: {
@@ -182,6 +188,7 @@ export class AuthService {
     input: VerifyEmailCodeInput,
     device: { userAgent?: string; ipAddress?: string },
   ): Promise<IssuedSession> {
+    loginPolicy.assertAllowed("email");
     const now = new Date();
     const refresh = this.tokens.createRefreshToken();
     const refreshTokenExpiresAt = new Date(
@@ -343,6 +350,7 @@ export class AuthService {
     input: VerifyPhoneCodeInput,
     device: { userAgent?: string; ipAddress?: string },
   ): Promise<IssuedSession> {
+    loginPolicy.assertAllowed("phone");
     const now = new Date();
     const refresh = this.tokens.createRefreshToken();
     const refreshTokenExpiresAt = new Date(
@@ -504,6 +512,7 @@ export class AuthService {
     input: KakaoLoginInput,
     device: { userAgent?: string; ipAddress?: string },
   ): Promise<IssuedSession> {
+    loginPolicy.assertAllowed("kakao");
     const identity = await this.kakaoTokens.verify(input.accessToken);
     const now = new Date();
     const refresh = this.tokens.createRefreshToken();
@@ -514,7 +523,8 @@ export class AuthService {
     const result = await this.prisma.$transaction<VerificationResult>(
       async (transaction) => {
         const lockKey = `kakao:${identity.providerAccountId}`;
-        await transaction.$queryRaw`
+        // Advisory locks return PostgreSQL void; execute without decoding rows.
+        await transaction.$executeRaw`
           SELECT pg_advisory_xact_lock(hashtext(${lockKey}))
         `;
 
@@ -649,6 +659,7 @@ export class AuthService {
     input: GoogleLoginInput,
     device: { userAgent?: string; ipAddress?: string },
   ): Promise<IssuedSession> {
+    loginPolicy.assertAllowed("google");
     const identity = await this.googleTokens.verify({
       idToken: input.idToken,
       accessToken: input.accessToken,
@@ -662,7 +673,8 @@ export class AuthService {
     const result = await this.prisma.$transaction<VerificationResult>(
       async (transaction) => {
         const lockKey = `google:${identity.providerAccountId}`;
-        await transaction.$queryRaw`
+        // Advisory locks return PostgreSQL void; execute without decoding rows.
+        await transaction.$executeRaw`
           SELECT pg_advisory_xact_lock(hashtext(${lockKey}))
         `;
 
@@ -933,6 +945,7 @@ export class AuthService {
         phoneNumber: true,
         name: true,
         birthYear: true,
+        phoneVerifiedAt: true,
         region: true,
         gender: true,
         avatarUrl: true,
@@ -989,6 +1002,48 @@ export class AuthService {
         email: result.user.email ?? "",
         onboardingCompletedAt:
           result.user.onboardingCompletedAt?.toISOString() ?? null,
+      },
+    };
+  }
+
+  async verifyAndLinkFirebasePhone(userId: string, idToken: string) {
+    const { phoneNumber } = await this.firebasePhone.verifyPhoneIdToken(idToken);
+    let updatedUser;
+    try {
+      updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { phoneNumber, phoneVerifiedAt: new Date() },
+      select: {
+        id: true,
+        email: true,
+        phoneNumber: true,
+        phoneVerifiedAt: true,
+        name: true,
+        role: true,
+        onboardingCompletedAt: true,
+      },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === "P2002") {
+          throw new ApiException(
+            HttpStatus.CONFLICT,
+            "PHONE_ALREADY_IN_USE",
+            "이미 사용 중인 휴대폰 번호입니다.",
+          );
+        }
+        if (error.code === "P2025") {
+          throw new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "회원 정보를 찾을 수 없습니다.");
+        }
+      }
+      throw error;
+    }
+    return {
+      success: true as const,
+      user: {
+        ...updatedUser,
+        email: updatedUser.email ?? "",
+        onboardingCompletedAt: updatedUser.onboardingCompletedAt?.toISOString() ?? null,
       },
     };
   }

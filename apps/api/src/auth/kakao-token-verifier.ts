@@ -40,7 +40,7 @@ export class KakaoTokenVerifier {
       );
     }
 
-    const signal = AbortSignal.timeout(5_000);
+    const signal = AbortSignal.timeout(10_000);
     let tokenInfoResponse: Response;
     try {
       tokenInfoResponse = await fetch(

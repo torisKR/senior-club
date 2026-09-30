@@ -9,6 +9,10 @@ const ERROR_MESSAGES: Readonly<Record<string, string>> = Object.freeze({
   AUTHENTICATION_REQUIRED: '로그인이 필요합니다.',
   INVALID_SESSION: '로그인 시간이 만료되었습니다. 다시 로그인해 주세요.',
   INVALID_REFRESH_TOKEN: '로그인 시간이 만료되었습니다. 다시 로그인해 주세요.',
+  INTERNAL_SERVER_ERROR: '서버와 일시적으로 통신하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  KAKAO_UNAVAILABLE: '카카오 로그인 서버 응답이 늦어지고 있어요. 잠시 후 다시 시도해 주세요.',
+  KAKAO_NOT_CONFIGURED: '카카오 로그인을 준비하고 있습니다. 잠시 후 다시 시도해 주세요.',
+  FIREBASE_NOT_CONFIGURED: '휴대폰 인증을 준비하고 있습니다. 번호는 내 정보에서 저장할 수 있어요.',
 });
 
 export function apiErrorMessage(error: unknown, fallback: string) {
@@ -17,9 +21,13 @@ export function apiErrorMessage(error: unknown, fallback: string) {
   }
 
   if (error instanceof ApiError) {
-    return ERROR_MESSAGES[error.code] ?? error.message ?? fallback;
+    const knownMessage = ERROR_MESSAGES[error.code];
+    if (knownMessage) return knownMessage;
+    if (error.status >= 500 || error.message?.toLowerCase().includes('internal server error')) {
+      return '서버와 일시적으로 통신하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+    }
+    return error.message ?? fallback;
   }
 
   return fallback;
 }
-

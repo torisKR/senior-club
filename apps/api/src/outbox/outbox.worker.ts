@@ -24,13 +24,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { EMAIL_SENDER, type EmailSender } from "./email.sender";
 import { PUSH_SENDER, type PushSender } from "./push.sender";
 import { SMS_SENDER, type SmsSender } from "./sms.sender";
-
-const otpPayloadSchema = z.object({
-  challengeId: z.string(),
-  email: z.email(),
-  sealedCode: z.string(),
-  expiresAt: z.iso.datetime(),
-});
+import { DisabledChannelError } from "./disabled-channel.error";
 
 const applicationPayloadSchema = z.object({
   notificationId: z.string(),
@@ -44,13 +38,6 @@ const applicationPayloadSchema = z.object({
 const accountDeletionPayloadSchema = z.object({
   email: z.email().nullable().optional(),
   scheduledFor: z.iso.datetime(),
-});
-
-const phoneOtpPayloadSchema = z.object({
-  challengeId: z.string(),
-  phoneNumber: z.string().regex(/^\+[1-9]\d{9,14}$/),
-  sealedCode: z.string(),
-  expiresAt: z.iso.datetime(),
 });
 
 const reviewRequestPayloadSchema = z
@@ -235,32 +222,10 @@ export class OutboxWorker
 
   private async processOne(event: ClaimedOutboxEvent) {
     try {
-      if (event.type === "AUTH_OTP_REQUESTED") {
-        const payload = otpPayloadSchema.parse(event.payload);
-        if (new Date(payload.expiresAt).getTime() <= Date.now()) {
-          this.logger.warn(`Expired OTP outbox event ${event.id} was discarded`);
-        } else {
-          await this.email.sendOtp({
-            email: payload.email,
-            code: this.tokens.openOtp(payload.sealedCode),
-            expiresAt: payload.expiresAt,
-            idempotencyKey: event.dedupKey,
-          });
-        }
-      } else if (event.type === "AUTH_PHONE_OTP_REQUESTED") {
-        const payload = phoneOtpPayloadSchema.parse(event.payload);
-        if (new Date(payload.expiresAt).getTime() <= Date.now()) {
-          this.logger.warn(`Expired phone OTP outbox event ${event.id} was discarded`);
-        } else if (!this.sms) {
-          throw new Error("SMS sender is not configured");
-        } else {
-          await this.sms.sendOtp({
-            phoneNumber: payload.phoneNumber,
-            code: this.tokens.openOtp(payload.sealedCode),
-            expiresAt: payload.expiresAt,
-            idempotencyKey: event.dedupKey,
-          });
-        }
+      if (event.type === "AUTH_OTP_REQUESTED" || event.type === "AUTH_PHONE_OTP_REQUESTED") {
+        // Retire previously queued login challenges under the Kakao-only policy
+        // without decrypting or delivering their login codes.
+        throw new DisabledChannelError("AUTH_PROVIDER");
       } else if (event.type === "EVENT_APPLICATION_EMAIL") {
         const payload = applicationPayloadSchema.parse(event.payload);
         const preference = await this.prisma.notificationPreference.findUnique({
@@ -366,6 +331,9 @@ export class OutboxWorker
         },
         data: {
           status: OutboxStatus.FAILED,
+          ...(error instanceof DisabledChannelError
+            ? { attempts: event.maxAttempts }
+            : {}),
           availableAt: new Date(Date.now() + backoffSeconds * 1_000),
           lockedAt: null,
           lockedBy: null,

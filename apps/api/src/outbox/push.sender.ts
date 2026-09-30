@@ -5,6 +5,7 @@ import { getMessaging } from "firebase-admin/messaging";
 import type { ApiEnv } from "../config/env";
 import { API_ENV } from "../config/env.module";
 import { PrismaService } from "../prisma/prisma.service";
+import { DisabledChannelError } from "./disabled-channel.error";
 
 export interface PushSender {
   sendApplicationUpdate(input: {
@@ -89,7 +90,7 @@ export class FirebasePushSender implements PushSender {
     collapseKey: string;
     notificationTag?: string;
   }) {
-    if (this.env.PUSH_PROVIDER === "disabled") return;
+    if (this.env.PUSH_PROVIDER === "disabled") throw new DisabledChannelError("PUSH_PROVIDER");
     const preference = await this.prisma.notificationPreference.findUnique({
       where: { userId: input.userId },
       select: { pushEnabled: true, pushEventUpdates: true },

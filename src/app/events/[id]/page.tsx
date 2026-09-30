@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import { CoverImage } from "@/components/cover-image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -20,7 +20,6 @@ import { EventApplication } from "@/components/event-application";
 import { EventCard } from "@/components/event-card";
 import { JsonLd } from "@/components/json-ld";
 import { PurposeJourney } from "@/components/purpose-journey";
-import { resolveCoverImage } from "@/lib/cover-image";
 import { INTERESTS } from "@/lib/data";
 import {
   getEffectiveEventStatus,
@@ -122,7 +121,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
 
         <section className="overflow-hidden rounded-[2rem] bg-[var(--ink)] text-white">
           <div className="relative aspect-[16/8] min-h-72 overflow-hidden sm:aspect-[16/7]">
-            <Image alt={`${event.title} 모임의 활동 모습`} className="object-cover" fill priority sizes="(max-width: 1180px) 100vw, 1180px" src={resolveCoverImage(event.image, event.category)} unoptimized={Boolean(event.image?.startsWith("https://"))} />
+            <CoverImage alt={`${event.title} 모임의 활동 모습`} className="object-cover" fill priority sizes="(max-width: 1180px) 100vw, 1180px" image={event.image} category={event.category}  />
             <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[var(--ink)] via-[var(--ink)]/20 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 p-6 sm:p-9 lg:p-12">
               <div className="mb-3 flex flex-wrap gap-2">

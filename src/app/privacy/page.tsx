@@ -13,7 +13,7 @@ const collectedData = [
   {
     title: "계정과 프로필",
     detail:
-      "이름, 휴대폰 번호, 선택적 이메일, 출생연도·연령대, 지역, 관심사를 수집합니다. 현재 로그인 수단은 휴대폰 SMS 일회용 인증번호(OTP)입니다.",
+      "카카오 계정 식별자로 회원을 인증합니다. 카카오가 제공한 닉네임은 초기 표시 이름으로 사용할 수 있으며, 이름·닉네임·전화번호 입력은 선택입니다. 프로필 설정에는 출생연도·연령대, 지역, 관심사를 사용합니다. 웹 로그인은 카카오 계정으로만 제공합니다.",
   },
   {
     title: "활동과 콘텐츠",
@@ -53,7 +53,7 @@ export default function PrivacyPage() {
             <span className="tag">
               <Clock3 aria-hidden="true" className="size-4" /> 시행일 2026년 7월 30일
             </span>
-            <span className="tag">최종 수정 2026년 9월 9일</span>
+            <span className="tag">최종 수정 2026년 9월 30일</span>
           </div>
         </header>
 
@@ -73,9 +73,9 @@ export default function PrivacyPage() {
             ))}
           </div>
           <p className="mt-4 text-[17px] leading-7 text-[var(--muted)] sm:text-[18px]">
-            현재 MVP는 정밀 위치, 연락처, 통화·문자 기록, 건강 정보, 음성 녹음,
-            신용카드 번호, 사용자 사진·파일을 수집하지 않습니다. 성별, 프로필 사진,
-            소셜 로그인도 현재 출시 범위에 없습니다. Android 앱의 배너 광고는
+            현재 MVP는 정밀 위치, 기기의 주소록, 통화·문자 기록, 건강 정보, 음성 녹음,
+            신용카드 번호, 사용자 사진·파일을 수집하지 않습니다. 성별과 프로필 사진은
+            현재 출시 범위에 없습니다. Android 앱의 배너 광고는
             Google AdMob이 처리하며, 시니어클럽 플러스 결제는 Google Play가
             결제 정보를 처리합니다. 기능이나 외부 SDK가 추가되면 수집 항목과 이
             방침도 함께 바뀝니다.
@@ -108,8 +108,9 @@ export default function PrivacyPage() {
           </h2>
           <div className="panel mt-5 p-5 sm:p-7">
             <p className="text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
-              회원 가입, 휴대폰 SMS 인증, 프로필 입력, 모임 참여, 콘텐츠 작성과 고객
-              문의 과정에서 이용자가 직접 정보를 제공합니다. SMS·이메일 전송,
+              카카오 로그인, 프로필 입력, 모임 참여, 콘텐츠 작성과 고객
+              문의 과정에서 정보를 제공합니다. 카카오 인증 과정에서 계정 식별자와
+              제공된 닉네임을 확인하며, 카카오 비밀번호는 시니어클럽에 저장하지 않습니다. 이메일 전송,
               클라우드 호스팅·데이터베이스, 푸시 알림과 앱 빌드·배포 서비스가
               시니어클럽을 대신해 필요한 정보를 처리할 수 있습니다.
             </p>
@@ -154,7 +155,7 @@ export default function PrivacyPage() {
           <div className="panel mt-5 p-5 sm:p-7">
             <p className="text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
               이용자는 자신의 개인정보를 조회·수정하고 처리 정지 또는 계정 삭제를
-              요청할 수 있습니다. 본인 확인을 위해 가입 휴대폰 번호를 확인할 수 있지만
+              요청할 수 있습니다. 본인 확인에는 로그인한 카카오 계정을 사용하며,
               비밀번호, 주민등록번호, 신분증 사진을 이메일로 요구하지 않습니다.
             </p>
             <a className="button-primary mt-6 w-full sm:w-auto" href="/account-deletion">
@@ -210,7 +211,7 @@ export default function PrivacyPage() {
             <Mail aria-hidden="true" className="size-8 text-[var(--sun)]" />
             <p className="mt-4 text-xl font-black">시니어클럽 개인정보 담당자</p>
             <a
-              className="mt-4 inline-flex min-h-13 items-center rounded-xl bg-white px-5 py-3 text-[18px] font-black text-[var(--ink)]"
+              className="mt-4 inline-flex min-h-14 items-center rounded-xl bg-white px-5 py-3 text-[18px] font-black text-[var(--ink)]"
               href="mailto:privacy@clubsenior.kr"
             >
               privacy@clubsenior.kr

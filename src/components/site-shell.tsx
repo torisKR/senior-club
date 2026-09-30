@@ -52,12 +52,12 @@ function NotificationLink({ compact = false, pathname }: { compact?: boolean; pa
       aria-current={isActive ? "page" : undefined}
       aria-label="알림 보기"
       className={clsx(
-        "relative inline-flex min-h-13 shrink-0 items-center justify-center gap-2 rounded-xl border font-extrabold no-underline transition-colors",
+        "relative inline-flex min-h-14 shrink-0 items-center justify-center gap-2 rounded-xl border font-extrabold no-underline transition-colors",
         "hover:border-[var(--primary)] hover:bg-[var(--canvas)] focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[var(--sun)] motion-reduce:transition-none",
         isActive
           ? "border-[var(--primary)] bg-[var(--sky-soft)] text-[var(--primary-strong)]"
           : "border-[var(--line)] bg-[var(--surface)] text-[var(--ink)]",
-        compact ? "w-13 px-0" : "px-3.5 text-[0.9rem]",
+        compact ? "w-14 px-0" : "px-3.5 text-[0.9rem]",
       )}
       href="/notifications"
     >
@@ -77,7 +77,7 @@ function DesktopNavigation({ pathname }: { pathname: string }) {
           <Link
             aria-current={isActive ? "page" : undefined}
             className={clsx(
-              "relative inline-flex min-h-13 items-center justify-center rounded-xl px-3.5 text-[0.95rem] font-extrabold no-underline transition-colors",
+              "relative inline-flex min-h-14 items-center justify-center rounded-xl px-3.5 text-[0.95rem] font-extrabold no-underline transition-colors",
               "focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[var(--sun)] motion-reduce:transition-none",
               isActive
                 ? "bg-[var(--primary)] text-white shadow-sm"
@@ -148,7 +148,9 @@ function MobileNavigation({ pathname }: { pathname: string }) {
 }
 
 export function SiteShell({ children }: Readonly<{ children: ReactNode }>) {
-  const pathname = usePathname();
+  const routerPathname = usePathname();
+  // Vercel can prerender home as /index while the browser hydrates /.
+  const pathname = routerPathname === "/index" ? "/" : routerPathname;
 
   if (shouldHideChrome(pathname)) {
     return children;
@@ -188,10 +190,10 @@ export function SiteShell({ children }: Readonly<{ children: ReactNode }>) {
         <div className="page-container flex min-h-24 items-center justify-between gap-6 py-5 text-sm font-bold text-[var(--muted)]">
           <p>© 2026 시니어클럽 · 목적에서 관계까지 이어지는 시니어 커뮤니티</p>
           <nav aria-label="서비스 정보" className="flex flex-wrap justify-end gap-x-5 gap-y-2">
-            <Link href={"/about" as Route}>서비스 안내</Link>
-            <Link href="/privacy">개인정보 처리방침</Link>
-            <Link href="/terms">이용약관</Link>
-            <Link href="/account-deletion">계정 삭제</Link>
+            <Link className="inline-flex min-h-14 items-center" href={"/about" as Route}>서비스 안내</Link>
+            <Link className="inline-flex min-h-14 items-center" href="/privacy">개인정보 처리방침</Link>
+            <Link className="inline-flex min-h-14 items-center" href="/terms">이용약관</Link>
+            <Link className="inline-flex min-h-14 items-center" href="/account-deletion">계정 삭제</Link>
           </nav>
         </div>
       </footer>

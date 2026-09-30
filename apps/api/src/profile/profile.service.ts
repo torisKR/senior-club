@@ -2,6 +2,7 @@ import { HttpStatus, Injectable } from "@nestjs/common";
 
 import type { AuthenticatedPrincipal } from "../auth/auth.contracts";
 import { ApiException } from "../common/http/api.exception";
+import { normalizePhoneNumber } from "../auth/phone-number";
 import { Prisma } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import type { UpdateProfileInput } from "./profile.contracts";
@@ -18,6 +19,7 @@ const profileSelect = {
   id: true,
   email: true,
   phoneNumber: true,
+  phoneVerifiedAt: true,
   name: true,
   birthYear: true,
   region: true,
@@ -52,10 +54,16 @@ export class ProfileService {
     input: UpdateProfileInput,
     principal: AuthenticatedPrincipal,
   ) {
-    return this.prisma.$transaction(async (transaction) => {
+    try {
+      return await this.prisma.$transaction(async (transaction) => {
+      // Serialize manual edits with phone verification. Comparing outside this
+      // lock could preserve a verification timestamp for a different number.
+      await transaction.$queryRaw`
+        SELECT "id" FROM "users" WHERE "id" = ${principal.userId} FOR UPDATE
+      `;
       const existingUser = await transaction.user.findUnique({
         where: { id: principal.userId },
-        select: { id: true, onboardingCompletedAt: true },
+        select: { id: true, onboardingCompletedAt: true, phoneNumber: true },
       });
       if (!existingUser) {
         throw new ApiException(
@@ -106,12 +114,23 @@ export class ProfileService {
         skipDuplicates: true,
       });
 
+      const phoneNumber = input.phoneNumber === undefined
+        ? existingUser.phoneNumber
+        : input.phoneNumber === null ? null : normalizePhoneNumber(input.phoneNumber);
       const profile = await transaction.user.update({
         where: { id: principal.userId },
         data: {
           name: input.name,
           region: input.region,
           birthYear: input.birthYear,
+          ...(input.phoneNumber !== undefined
+            ? {
+                phoneNumber,
+                ...(phoneNumber !== existingUser.phoneNumber
+                  ? { phoneVerifiedAt: null }
+                  : {}),
+              }
+            : {}),
           onboardingCompletedAt:
             existingUser.onboardingCompletedAt ?? new Date(),
         },
@@ -119,7 +138,17 @@ export class ProfileService {
       });
 
       return this.toProfileResponse(profile);
-    });
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        throw new ApiException(
+          HttpStatus.CONFLICT,
+          "PHONE_ALREADY_IN_USE",
+          "이미 사용 중인 휴대폰 번호입니다.",
+        );
+      }
+      throw error;
+    }
   }
 
   private toProfileResponse(profile: ProfileRow) {

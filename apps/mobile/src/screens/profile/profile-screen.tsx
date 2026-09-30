@@ -1,9 +1,11 @@
-import { type Href, router } from 'expo-router';
-import { useState } from 'react';
+import { type Href, router, useFocusEffect } from 'expo-router';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { Alert, Linking, Pressable, Switch, TextInput, View } from 'react-native';
 
 import { ApiError } from '@/api/api-error';
 import { apiErrorMessage } from '@/api/error-message';
+import { profileApi } from '@/api/profile-api';
+import type { ProfileStateSnapshot } from '@/api/profile-api-core';
 import { BlockedUsersSection } from '@/components/safety';
 import { PlusCard } from '@/screens/profile/plus-card';
 import { AppText, Card, InterestChip, Screen, SectionHeader, SeniorButton } from '@/components/ui';
@@ -11,6 +13,9 @@ import { Radius, Spacing, TouchTarget, FontWeights } from '@/constants/theme';
 import { getPublicWebPageUrl } from '@/config/public-web-links';
 import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
+import { hasVerifiedPhone, samePhoneNumber } from '@/phone-verification/phone-number';
+import { PhoneVerificationCard } from '@/screens/profile/phone-verification-card';
+import { buildContactProfileUpdate } from '@/screens/profile/profile-edit';
 import type { ParticipationStatus } from '@/types';
 
 const STATUS_LABELS: Record<ParticipationStatus, { label: string; description: string }> = {
@@ -34,14 +39,48 @@ export function ProfileScreen() {
     toggleInterest,
     resetSession,
     deleteAccount,
+    updateUser,
   } = useAppState();
   const [announcement, setAnnouncement] = useState('');
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editName, setEditName] = useState(profile.name);
+  const [editPhoneNumber, setEditPhoneNumber] = useState(profile.phoneNumber ?? '');
+  const [editRegion, setEditRegion] = useState(profile.region ?? '');
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState('');
   const [showDeletionForm, setShowDeletionForm] = useState(false);
   const [deletionConfirmation, setDeletionConfirmation] = useState('');
   const [deletionReason, setDeletionReason] = useState('');
   const [deletionError, setDeletionError] = useState('');
   const [deletionLoading, setDeletionLoading] = useState(false);
   const [recentAuthenticationRequired, setRecentAuthenticationRequired] = useState(false);
+  const [profileSyncError, setProfileSyncError] = useState('');
+  const [phoneVerificationSaving, setPhoneVerificationSaving] = useState(false);
+  const userIdRef = useRef(session?.userId);
+  const profileRef = useRef(profile);
+  const profileMutationVersion = useRef(0);
+  useLayoutEffect(() => {
+    userIdRef.current = session?.userId;
+    profileRef.current = profile;
+  }, [session?.userId, profile]);
+
+  const applyProfile = useCallback((snapshot: ProfileStateSnapshot) => {
+    if (snapshot.user.id !== userIdRef.current) return;
+    updateUser({ ...snapshot.user, joinedClubIds: profileRef.current.joinedClubIds });
+  }, [updateUser]);
+
+  useFocusEffect(useCallback(() => {
+    if (!session?.userId) return;
+    const abort = new AbortController();
+    const version = profileMutationVersion.current;
+    setProfileSyncError('');
+    void profileApi.me(abort.signal).then((snapshot) => {
+      if (!abort.signal.aborted && version === profileMutationVersion.current) applyProfile(snapshot);
+    }).catch((error) => {
+      if (!abort.signal.aborted) setProfileSyncError(apiErrorMessage(error, '최신 프로필과 인증 상태를 확인하지 못했어요.'));
+    });
+    return () => abort.abort();
+  }, [session?.userId, applyProfile]));
 
   async function openPolicy(url: string, label: string) {
     try {
@@ -105,7 +144,7 @@ export function ProfileScreen() {
       }).format(new Date(deletionRequest.scheduledFor));
       Alert.alert(
         '계정 삭제 요청을 접수했어요',
-        `${scheduledDate}에 삭제될 예정입니다. 안내 이메일도 보내드렸습니다.`,
+        `${scheduledDate}에 삭제될 예정입니다.`,
       );
       router.replace('/login');
     } catch (error) {
@@ -131,6 +170,49 @@ export function ProfileScreen() {
     router.replace({ pathname: '/login', params: { returnTo: '/me' } });
   }
 
+  const startEditingProfile = () => {
+    setAnnouncement('');
+    setEditName(profile.name);
+    setEditPhoneNumber(profile.phoneNumber ?? '');
+    setEditRegion(profile.region ?? '');
+    setEditError('');
+    setIsEditingProfile(true);
+  };
+
+  const saveProfile = async () => {
+    if (editLoading) return;
+    const expectedUserId = session?.userId;
+    if (!expectedUserId) {
+      setEditError('내 정보를 저장하려면 카카오 로그인이 필요합니다.');
+      return;
+    }
+    setEditLoading(true);
+    setEditError('');
+    try {
+      const input = buildContactProfileUpdate(
+        { name: editName, phoneNumber: editPhoneNumber, region: editRegion }, profile, selectedInterestIds,
+      );
+      profileMutationVersion.current += 1;
+      const snapshot = await profileApi.update(input);
+      if (userIdRef.current !== expectedUserId || snapshot.user.id !== expectedUserId) return;
+      if (!samePhoneNumber(profile.phoneNumber, input.phoneNumber)) {
+        // Contact editing never promotes a number to verified, even with an older server.
+        snapshot.user.phoneVerifiedAt = null;
+      }
+      applyProfile(snapshot);
+      setIsEditingProfile(false);
+      setProfileSyncError('');
+      setAnnouncement('내 정보가 성공적으로 저장되었습니다.');
+    } catch (error) {
+      if (userIdRef.current === expectedUserId) {
+        setEditError(error instanceof Error && !(error instanceof ApiError)
+          ? error.message : apiErrorMessage(error, '프로필 정보를 저장하지 못했습니다.'));
+      }
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   return (
     <Screen contentContainerStyle={{ gap: Spacing.xxxl }}>
       <View style={{ gap: Spacing.xs }}>
@@ -139,6 +221,7 @@ export function ProfileScreen() {
       </View>
 
       <Card>
+        {!isEditingProfile ? (
         <View style={{ gap: Spacing.xl }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.lg }}>
             <View
@@ -159,16 +242,159 @@ export function ProfileScreen() {
               <AppText variant="sectionTitle">{profile.name}</AppText>
               <AppText color="textSecondary">{profile.ageGroup} · {profile.region}</AppText>
               <AppText variant="caption" color="textMuted">
-                휴대폰 SMS 인증 회원
+                카카오 로그인 회원
               </AppText>
             </View>
           </View>
           <View style={{ gap: Spacing.sm, paddingTop: Spacing.lg, borderTopWidth: 1, borderTopColor: theme.divider }}>
             <AppText variant="bodyStrong">휴대폰 번호</AppText>
             <AppText color="textSecondary">{profile.phoneNumber ?? '등록된 번호 없음'}</AppText>
+            <AppText variant="caption" color={hasVerifiedPhone(profile) ? 'success' : 'textMuted'}>
+              {hasVerifiedPhone(profile) ? '휴대폰 인증 완료' : '휴대폰 미인증 · 인증은 선택입니다'}
+            </AppText>
+          </View>
+          <SeniorButton
+            label="내 정보 수정"
+            variant="secondary"
+            disabled={phoneVerificationSaving}
+            onPress={startEditingProfile}
+          />
+        </View>
+        ) : (
+        <View style={{ gap: Spacing.lg }}>
+          <AppText variant="sectionTitle">내 정보 수정</AppText>
+          <AppText color="textSecondary">이름 또는 별명, 휴대폰 번호, 활동 지역을 직접 수정할 수 있어요.</AppText>
+
+          <View style={{ gap: Spacing.xs }}>
+            <AppText variant="bodyStrong">이름 또는 별명</AppText>
+            <TextInput
+              value={editName}
+              onChangeText={(text) => {
+                setEditName(text);
+                setEditError('');
+              }}
+              placeholder="예: 김현정"
+              placeholderTextColor={theme.textMuted}
+              maxLength={40}
+              editable={!editLoading}
+              style={{
+                minHeight: TouchTarget.minimum,
+                borderWidth: 2,
+                borderColor: theme.border,
+                borderRadius: Radius.md,
+                backgroundColor: theme.surface,
+                color: theme.text,
+                paddingHorizontal: Spacing.lg,
+                fontSize: 18,
+                fontFamily: FontWeights.emphasis,
+              }}
+              accessibilityLabel="이름 또는 별명 입력"
+            />
+          </View>
+
+          <View style={{ gap: Spacing.xs }}>
+            <AppText variant="bodyStrong">휴대폰 번호</AppText>
+            <AppText variant="caption" color="textSecondary">
+              인증 없이 저장하거나 지울 수 있어요. 번호를 바꾸면 이전 인증 상태는 해제됩니다.
+            </AppText>
+            <TextInput
+              value={editPhoneNumber}
+              onChangeText={(text) => {
+                setEditPhoneNumber(text);
+                setEditError('');
+              }}
+              placeholder="010-1234-5678"
+              placeholderTextColor={theme.textMuted}
+              keyboardType="phone-pad"
+              maxLength={24}
+              editable={!editLoading}
+              style={{
+                minHeight: TouchTarget.minimum,
+                borderWidth: 2,
+                borderColor: theme.border,
+                borderRadius: Radius.md,
+                backgroundColor: theme.surface,
+                color: theme.text,
+                paddingHorizontal: Spacing.lg,
+                fontSize: 18,
+                fontFamily: FontWeights.emphasis,
+              }}
+              accessibilityLabel="휴대폰 번호 입력"
+            />
+          </View>
+
+          <View style={{ gap: Spacing.xs }}>
+            <AppText variant="bodyStrong">활동 지역</AppText>
+            <TextInput
+              value={editRegion}
+              onChangeText={(text) => {
+                setEditRegion(text);
+                setEditError('');
+              }}
+              placeholder="예: 서울 마포구"
+              placeholderTextColor={theme.textMuted}
+              maxLength={80}
+              editable={!editLoading}
+              style={{
+                minHeight: TouchTarget.minimum,
+                borderWidth: 2,
+                borderColor: theme.border,
+                borderRadius: Radius.md,
+                backgroundColor: theme.surface,
+                color: theme.text,
+                paddingHorizontal: Spacing.lg,
+                fontSize: 18,
+                fontFamily: FontWeights.emphasis,
+              }}
+              accessibilityLabel="활동 지역 입력"
+            />
+          </View>
+
+          {editError ? (
+            <AppText color="danger" variant="bodyStrong" accessibilityLiveRegion="assertive">
+              {editError}
+            </AppText>
+          ) : null}
+
+          <View style={{ gap: Spacing.sm }}>
+            <SeniorButton
+              label="저장하기"
+              variant="primary"
+              loading={editLoading}
+              onPress={() => void saveProfile()}
+            />
+            <SeniorButton
+              label="취소"
+              variant="ghost"
+              disabled={editLoading}
+              onPress={() => {
+                setIsEditingProfile(false);
+                setEditError('');
+              }}
+            />
           </View>
         </View>
+        )}
       </Card>
+
+      {profileSyncError ? (
+        <AppText color="danger" accessibilityLiveRegion="polite">{profileSyncError}</AppText>
+      ) : null}
+      {!isEditingProfile ? (
+        <PhoneVerificationCard
+          key={session?.userId ?? 'anonymous'}
+          userId={session?.userId}
+          phoneNumber={profile.phoneNumber}
+          phoneVerifiedAt={(profile as ProfileStateSnapshot['user']).phoneVerifiedAt}
+          onSavingChange={setPhoneVerificationSaving}
+          onVerified={(snapshot) => {
+            profileMutationVersion.current += 1;
+            applyProfile(snapshot);
+            setProfileSyncError('');
+            setAnnouncement('휴대폰 인증이 완료되었습니다.');
+          }}
+        />
+      ) : null}
 
       <View style={{ gap: Spacing.md }}>
         <SectionHeader

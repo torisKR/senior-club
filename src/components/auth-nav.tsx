@@ -117,7 +117,7 @@ export function AuthNav({
       <div className="flex items-center gap-1.5">
         <Link
           className={clsx(
-            "relative inline-flex min-h-13 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3.5 text-[0.9rem] font-extrabold text-[var(--ink)] no-underline transition-colors",
+            "relative inline-flex min-h-14 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3.5 text-[0.9rem] font-extrabold text-[var(--ink)] no-underline transition-colors",
             "hover:border-[var(--primary)] hover:bg-[var(--canvas)] focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[var(--sun)]",
           )}
           href="/me"
@@ -128,7 +128,7 @@ export function AuthNav({
         <button
           aria-label="로그아웃"
           className={clsx(
-            "inline-flex min-h-13 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-[0.85rem] font-bold text-[var(--muted)] transition-colors",
+            "inline-flex min-h-14 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-[0.85rem] font-bold text-[var(--muted)] transition-colors",
             "hover:border-[var(--line)] hover:bg-[var(--canvas)] hover:text-[var(--ink)] focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[var(--sun)] disabled:opacity-50",
           )}
           disabled={isLoggingOut}
@@ -147,7 +147,7 @@ export function AuthNav({
       <Link
         aria-label="로그인하기"
         className={clsx(
-          "inline-flex min-h-10 items-center justify-center gap-1 rounded-xl bg-[var(--primary)] px-3 py-1.5 text-[0.85rem] font-extrabold text-white no-underline shadow-sm transition-colors",
+          "inline-flex min-h-14 items-center justify-center gap-1 rounded-xl bg-[var(--primary)] px-3 py-1.5 text-[0.85rem] font-extrabold text-white no-underline shadow-sm transition-colors",
           "hover:bg-[var(--primary-strong)] focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[var(--sun)]",
         )}
         href={loginHref as Route}
@@ -162,7 +162,7 @@ export function AuthNav({
     <Link
       aria-label="로그인하기"
       className={clsx(
-        "inline-flex min-h-13 items-center justify-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 py-2 text-[0.95rem] font-extrabold text-white no-underline shadow-sm transition-colors",
+        "inline-flex min-h-14 items-center justify-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 py-2 text-[0.95rem] font-extrabold text-white no-underline shadow-sm transition-colors",
         "hover:bg-[var(--primary-strong)] focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[var(--sun)]",
       )}
       href={loginHref as Route}

@@ -18,6 +18,7 @@ import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
 
 import { HomeEventCard } from './home-event-card';
+import { SeniorHobbyCourseSection } from './senior-hobby-course-section';
 
 const purposeJourney = [
   { number: '1', title: '목적', description: '좋아하는 일과 배우고 싶은 것을 고릅니다.', emoji: '🧭' },
@@ -311,16 +312,25 @@ export function HomeScreen() {
           ))}
           {recommendedEvents.length === 0 ? (
             <Card style={{ width: availableWidth }}>
-              <View style={{ minWidth: 0, gap: Spacing.sm }}>
-                <AppText variant="sectionTitle">조건에 맞는 새 모임을 준비 중이에요.</AppText>
-                <AppText variant="body" color="textSecondary">
-                  관심사를 다시 고르거나 전체 모임에서 다른 활동을 먼저 둘러보세요.
-                </AppText>
+              <View style={{ minWidth: 0, gap: Spacing.md }}>
+                <View style={{ gap: Spacing.xs }}>
+                  <AppText variant="sectionTitle">새로운 모임 일정을 준비하고 있어요</AppText>
+                  <AppText variant="body" color="textSecondary">
+                    관심사를 다시 선택하거나 아래의 5060 추천 등산 코스 및 활력 취미생활을 먼저 둘러보세요.
+                  </AppText>
+                </View>
+                <SeniorButton
+                  label="전체 모임 둘러보기"
+                  variant="secondary"
+                  onPress={() => router.push('/events')}
+                />
               </View>
             </Card>
           ) : null}
         </View>
       </View>
+
+      <SeniorHobbyCourseSection />
 
       <View style={{ minWidth: 0, gap: Spacing.lg }}>
         <SectionHeader

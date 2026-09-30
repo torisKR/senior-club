@@ -251,7 +251,7 @@ export function EventsScreen() {
                   label={filter.label}
                   selected={activeFilter === filter.id}
                   onPress={() => setActiveFilter(filter.id)}
-                  accessibilityLabel={`${filter.label} 모임만 보기`}
+                  accessibilityLabel={`${filter.label}${filter.label.endsWith('모임') ? '' : ' 모임'}만 보기`}
                 />
               ))}
             </ScrollView>

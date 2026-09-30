@@ -67,4 +67,12 @@ describe("ConfiguredEmailSender", () => {
     ).rejects.toThrow("Invalid Resend idempotency key");
     expect(fetchMock).not.toHaveBeenCalled();
   });
+  it("rejects all disabled email deliveries without HTTP requests", async () => {
+    const sender = new ConfiguredEmailSender({ ...env, EMAIL_PROVIDER: "disabled", RESEND_API_KEY: undefined });
+    await expect(sender.sendApplicationUpdate({ email: "member@example.com", eventTitle: "모임", status: "APPROVED", idempotencyKey: "application:1" })).rejects.toThrow("EMAIL_PROVIDER=disabled");
+    await expect(sender.sendAccountDeletionRequested({ email: "member@example.com", scheduledFor: "2026-10-01T00:00:00.000Z", idempotencyKey: "deletion:1" })).rejects.toThrow("EMAIL_PROVIDER=disabled");
+    await expect(sender.sendOtp({ email: "member@example.com", code: "123456", expiresAt: "2026-10-01T00:00:00.000Z", idempotencyKey: "auth-otp:1" })).rejects.toThrow("disabled");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
 });

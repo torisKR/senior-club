@@ -1,6 +1,6 @@
 # 시니어클럽 기술 아키텍처
 
-> 구현 기준선: 2026-07-30  
+> 운영 확인: 2026-09-30
 > 현재 저장소는 Expo Android 앱, Next.js 웹/BFF, NestJS/Socket.IO API, Prisma/PostgreSQL을 함께 둔다.
 
 ## 1. 현재 구조
@@ -21,9 +21,7 @@ Expo Android App                       Next.js Web / BFF
                                       └─ Firebase FCM
 ```
 
-웹은 ChatGPT Sites, API·Socket.IO·worker는 AWS ECS 같은 상시 실행 환경, DB는 관리형 PostgreSQL에
-배포하는 구성을 사용한다. 현재 코드는 준비됐지만 production 인프라와 자격 증명은 아직 연결·검증되지
-않았다.
+웹은 Vercel의 `https://senior.toris.kr`, API·Socket.IO·worker는 서울 리전 AWS ECS, DB는 Amazon RDS PostgreSQL에 배포되어 있다. API의 공개 진입점은 CloudFront이며 실제 카카오 네이티브 로그인과 프로필 저장을 운영 API에서 확인했다. 상세 배포 증거와 남은 출시 조건은 `docs/QA_PRODUCTION_20260930.md`와 `docs/DEPLOYMENT.md`를 따른다.
 
 ### 사용 기술
 
@@ -33,9 +31,22 @@ Expo Android App                       Next.js Web / BFF
 | Web | Next.js 16, React 19 | 공개 SEO/GEO, BFF, 회원·리더·관리 UI |
 | API | NestJS 11, Socket.IO | 인증, 권한, 상태 전이, 실시간 메시지 |
 | Data | Prisma 7, PostgreSQL | 영속 상태, transaction, cursor feed |
-| Async | PostgreSQL transaction outbox worker | SMS/email OTP·이벤트 email/FCM, 계정 삭제 |
+| Async | PostgreSQL transaction outbox worker | 이벤트 알림·계정 삭제; 미설정 외부 발송 채널은 disabled |
 | UI | Tailwind CSS 4, React Native StyleSheet | 반응형·접근성 UI |
 | Test | Vitest 4, TypeScript strict, ESLint | 단위·계약·빌드 gate |
+
+### 인증 및 회원 프로필 아키텍처
+
+1. **모바일 앱 로그인 단일화 (카카오 로그인)**:
+   - 복잡한 휴대폰 SMS 인증을 로그인 진입점에서 걷어내고, 카카오 네이티브 SDK 기반 1-Click 간편 로그인으로 단일화.
+   - 시니어 사용자(5060)의 인증 이탈 방지 및 간편한 접근성 보장.
+   - 이름/별명, 휴대폰 번호, 활동 지역은 로그인 후 [내 정보] 화면에서 본인이 직접 설정 및 수정 가능.
+
+2. **Firebase 휴대폰 인증 연동 구조 (Firebase Phone Auth)**:
+   - Firebase Authentication(Identity Platform)의 Phone Auth 지원:
+     - **클라이언트 흐름**: Firebase Phone Auth를 통해 안전한 SMS 인증코드 발송 및 사용자 확인 완료 후 Firebase ID Token 발급.
+     - **백엔드 검증**: `FirebasePhoneService` (`POST /v1/auth/firebase/verify-phone`)가 `firebase-admin/auth`의 `verifyIdToken()`을 호출하여 토큰 위변조 여부 및 E.164 전화번호 claim(`phone_number`) 검증.
+     - **프로필 동기화**: 검증된 전화번호를 `prisma.user` 레코드의 `phoneNumber` 필드에 안전하게 연결.
 
 ## 2. 소스 경계
 
@@ -61,19 +72,17 @@ docs/                      제품·API·배포·Play 문서
 
 ## 3. 인증과 session
 
-### 휴대폰 SMS OTP
+### 카카오 로그인과 선택형 휴대폰 인증
 
-1. `POST /v1/auth/phone/request`가 E.164 전화번호로 OTP를 생성·hash하고 outbox에 SMS 요청을 기록한다.
-2. 개발은 콘솔 sender, production은 Twilio Messaging sender를 사용하며 운영 자격증명이 없으면 시작을 거부한다.
-3. `POST /v1/auth/phone/verify`가 만료·시도 횟수·소비 여부를 확인하고 session을 발급한다.
-4. refresh token은 DB에 hash로 저장하며 사용할 때 회전한다.
-5. 로그아웃·계정 삭제 요청은 session을 폐기한다.
+1. Android는 카카오 네이티브 SDK, 웹은 카카오 OAuth와 쿠키에 연결된 만료 가능한 state를 사용한다.
+2. API는 카카오 토큰의 애플리케이션 ID와 사용자 식별자를 검증하고 앱 session을 발급한다. 이메일이 없어도 카카오 가입이 가능하다.
+3. 이전 휴대폰·이메일·Google 로그인 API는 비활성화되어 있다. Firebase는 로그인 수단이 아닌 선택형 프로필 번호 증명이다.
+4. refresh token은 DB에 hash로 저장되고 사용 시 회전한다. Android session 소유자가 복원과 보호 API 호출의 refresh를 하나의 Promise로 합쳐 중복 소비를 방지한다.
+5. 이름·별명·연락처는 프로필에서 수정한다. 저장 결과는 프로필 cache와 session 표시 metadata에 함께 반영한다. 번호가 바뀌거나 지워지면 `phoneVerifiedAt`을 해제한다.
 
-웹 BFF는 access/refresh token을 `HttpOnly`, `Secure`, `SameSite=Lax`, host-only cookie로 저장한다.
-upstream `401`에서 refresh를 한 번만 수행하고 원요청을 한 번 재시도한다. Android는 refresh token을
-SecureStore에, access token을 메모리에 보관하며 동일한 single-flight 규칙을 사용한다.
+웹 BFF의 운영 session은 `__Host-` 접두어, `HttpOnly`, `Secure`, `SameSite=Lax`, host-only cookie를 사용한다. Android의 장기 session은 SecureStore에 보관하며 cache만으로 서버 권한을 부여하지 않는다.
 
-OAuth와 비밀번호 인증은 현재 출시 범위가 아니다.
+Firebase Admin은 FCM과 별도 ADC app에서 폐기 여부를 포함해 ID token을 검증한다. phone provider, 전화번호 identity, 프로젝트 issuer/audience, E.164, 최근 `auth_time`을 검사한 뒤 현재 카카오 계정에 연결한다. 운영 Phone Auth의 결제/초기화와 서버 ADC가 아직 준비되지 않아 실제 SMS 성공은 검증되지 않았다.
 
 ## 4. 요청과 데이터 흐름
 
@@ -137,12 +146,12 @@ batch lease, 만료 lease 회수, 최대 시도, backoff, dedup key를 적용한
 
 지원 발송:
 
-- OTP 이메일
+- 이전 OTP 로그인과 관련 발송은 비활성화
 - 신청 승인·거절·모임 취소 이메일/FCM
 - 후기 요청 이메일/FCM
 - Android FCM token 등록·해제와 수신 설정
 
-발송 실패는 이미 commit된 신청 상태를 되돌리지 않는다. 운영은 outbox oldest age, 실패 횟수와 terminal
+현재 운영 email/SMS/push 외부 채널은 disabled다. 발송하지 않은 outbox를 DELIVERED로 기록하지 않으며, disabled 채널은 명시적 실패로 처리한다. 발송 실패는 이미 commit된 신청 상태를 되돌리지 않는다. 운영은 outbox oldest age, 실패 횟수와 terminal
 failure를 감시해야 한다.
 
 계정 삭제 요청은 즉시 session과 push token을 해제하고 7일 유예 상태를 만든다. 사용자가 다시

@@ -64,9 +64,13 @@ jobs:
           image="$REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA"
           docker build --file apps/api/Dockerfile --tag "$image" .
           docker push "$image"
-          printf 'image=%s\n' "$image" >> "$GITHUB_OUTPUT"
+          digest="$(docker image inspect "$image" --format '{{index .RepoDigests 0}}')"
+          test -n "$digest"
+          printf 'image=%s\n' "$digest" >> "$GITHUB_OUTPUT"
 
       - name: Render ECS task definition
+        env:
+          API_IMAGE: ${{ steps.image.outputs.image }}
         run: |
           set -euo pipefail
           current_task="$(aws ecs describe-services \
@@ -77,13 +81,13 @@ jobs:
             --task-definition "$current_task" \
             --query taskDefinition \
             --output json > task-definition.json
-          node -e '
-            const fs = require("node:fs");
-            const path = "task-definition.json";
-            const value = JSON.parse(fs.readFileSync(path, "utf8"));
-            for (const key of ["taskDefinitionArn", "revision", "status", "requiresAttributes", "compatibilities", "registeredAt", "registeredBy"]) delete value[key];
-            fs.writeFileSync(path, JSON.stringify(value));
-          '
+          node .github/scripts/prepare-api-task.mjs task-definition.json task-definition.json "$API_IMAGE"
+
+      - name: Enable automatic rollback for unhealthy deployments
+        run: |
+          aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" \
+            --deployment-configuration '{"deploymentCircuitBreaker":{"enable":true,"rollback":true},"minimumHealthyPercent":100,"maximumPercent":200}' \
+            --query 'service.deploymentConfiguration' --output json
 
       - name: Update API container image
         id: render

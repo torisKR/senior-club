@@ -49,13 +49,24 @@ function formatPrice(price: number) {
 export function EventCard({ event, participationStatus, onPress, compact = false }: EventCardProps) {
   const theme = useTheme();
   const remainingSeats = Math.max(0, event.capacity - event.participantCount);
+  const lifecycleLabel =
+    event.lifecycle === 'completed'
+      ? '종료된 모임'
+      : event.lifecycle === 'cancelled'
+        ? '취소된 모임'
+        : undefined;
+  const participationLabel =
+    participationStatus &&
+    (!lifecycleLabel || participationStatus === 'attended' || participationStatus === 'reviewed')
+      ? statusLabels[participationStatus]
+      : undefined;
   const accessibilityLabel = [
     event.title,
     formatDate(event.startsAt),
     event.location,
-    `남은 자리 ${remainingSeats}명`,
+    lifecycleLabel ?? `남은 자리 ${remainingSeats}명`,
     formatPrice(event.price),
-    participationStatus ? statusLabels[participationStatus] : undefined,
+    participationLabel,
   ]
     .filter(Boolean)
     .join(', ');
@@ -65,7 +76,11 @@ export function EventCard({ event, participationStatus, onPress, compact = false
       padded={false}
       onPress={onPress ? () => onPress(event) : undefined}
       accessibilityLabel={accessibilityLabel}
-      accessibilityHint="눌러 모임 상세 정보와 신청 방법을 확인합니다.">
+      accessibilityHint={
+        lifecycleLabel
+          ? '눌러 모임 상세 정보를 확인합니다.'
+          : '눌러 모임 상세 정보와 신청 방법을 확인합니다.'
+      }>
       {!compact ? (
         <Image
           source={getEventImageSource(event)}
@@ -90,7 +105,7 @@ export function EventCard({ event, participationStatus, onPress, compact = false
               난이도 {difficultyLabels[event.difficulty]}
             </AppText>
           </View>
-          {participationStatus ? (
+          {participationLabel ? (
             <View
               style={{
                 paddingHorizontal: Spacing.md,
@@ -99,7 +114,7 @@ export function EventCard({ event, participationStatus, onPress, compact = false
                 backgroundColor: theme.successSurface,
               }}>
               <AppText variant="caption" color="success" selectable={false}>
-                {statusLabels[participationStatus]}
+                {participationLabel}
               </AppText>
             </View>
           ) : null}
@@ -118,14 +133,22 @@ export function EventCard({ event, participationStatus, onPress, compact = false
             장소 · {event.location}
           </AppText>
           <View style={{ gap: Spacing.sm }}>
-            <SeatMeter
-              capacity={event.capacity}
-              participantCount={event.participantCount}
-              accessibilityLabel={`정원 ${event.capacity}명 중 ${event.participantCount}명 참여`}
-            />
+            {!lifecycleLabel ? (
+              <SeatMeter
+                capacity={event.capacity}
+                participantCount={event.participantCount}
+                accessibilityLabel={`정원 ${event.capacity}명 중 ${event.participantCount}명 참여`}
+              />
+            ) : null}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.lg }}>
-              <AppText variant="bodyStrong" color={remainingSeats <= 3 ? 'accent' : 'primary'}>
-                남은 자리 {remainingSeats}명
+              <AppText
+                variant="bodyStrong"
+                color={
+                  lifecycleLabel
+                    ? event.lifecycle === 'cancelled' ? 'danger' : 'textSecondary'
+                    : remainingSeats <= 3 ? 'accent' : 'primary'
+                }>
+                {lifecycleLabel ?? `남은 자리 ${remainingSeats}명`}
               </AppText>
               <AppText variant="bodyStrong">{formatPrice(event.price)}</AppText>
             </View>

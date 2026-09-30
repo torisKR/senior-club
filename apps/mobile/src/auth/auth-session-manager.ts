@@ -32,6 +32,7 @@ let accessToken: string | null = null;
 let persistedSession: StoredSession | null = null;
 let snapshot: AuthManagerSnapshot = { status: 'idle', session: null };
 let restorePromise: Promise<AuthSession | null> | null = null;
+let tokenRefreshPromise: Promise<string | null> | null = null;
 let anonymousClient: { baseUrl: string; client: HttpClient } | null = null;
 let authenticatedClient: { baseUrl: string; client: HttpClient } | null = null;
 const listeners = new Set<AuthListener>();
@@ -119,7 +120,7 @@ async function clearLocalSession(restoreError?: unknown) {
   });
 }
 
-async function refreshAccessToken() {
+async function performRefreshAccessToken() {
   persistedSession ??= await sessionStore.read();
   if (!persistedSession) {
     accessToken = null;
@@ -133,6 +134,17 @@ async function refreshAccessToken() {
   });
   await installIssuedSession(response.body);
   return accessToken;
+}
+
+function refreshAccessToken() {
+  // Restoration and screen requests use different HTTP paths. Share rotation at
+  // the session owner so they cannot both spend the same stored refresh token.
+  if (!tokenRefreshPromise) {
+    tokenRefreshPromise = performRefreshAccessToken().finally(() => {
+      tokenRefreshPromise = null;
+    });
+  }
+  return tokenRefreshPromise;
 }
 
 const tokenSource: AuthTokenSource = {

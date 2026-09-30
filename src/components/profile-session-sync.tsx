@@ -52,11 +52,15 @@ export function ProfileSessionSync() {
     }
 
     const controller = new AbortController();
-    void synchronizeProfileSession({
-      markerStorage: window.sessionStorage,
-      profileStorage: window.localStorage,
-      signal: controller.signal,
-    }).catch(() => undefined);
+    try {
+      void synchronizeProfileSession({
+        markerStorage: window.sessionStorage,
+        profileStorage: window.localStorage,
+        signal: controller.signal,
+      }).catch(() => undefined);
+    } catch {
+      // Storage getters can throw too; this optional mirror must not crash the page.
+    }
 
     return () => controller.abort();
   }, []);
