@@ -13,6 +13,11 @@ on:
         required: false
         default: false
         type: boolean
+      screenshot_evidence_run_id:
+        description: Successful main screenshot-evidence issuer run at the exact release SHA
+        required: false
+        default: ''
+        type: string
       submit_to_play:
         description: Submit the validated AAB to the Google Play production draft track
         required: false
@@ -20,6 +25,10 @@ on:
         type: boolean
   workflow_dispatch:
     inputs:
+      screenshot_evidence_run_id:
+        description: Reviewed android-play-screenshot-evidence workflow run at this exact main SHA
+        required: true
+        type: string
       binary_update:
         description: Published app binary only; retain existing listing assets and use published-update validation
         required: true
@@ -33,6 +42,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: android-play-release
@@ -49,12 +59,13 @@ jobs:
       EXPO_NO_DOTENV: '1'
       ANDROID_UPLOAD_CERT_SHA256: ${{ secrets.ANDROID_UPLOAD_CERT_SHA256 }}
       KAKAO_NATIVE_APP_KEY: ${{ secrets.KAKAO_NATIVE_APP_KEY }}
-      FINAL_SCREENSHOT_MANIFEST: store-listing/screenshots/final/ko-KR/manifest.json
       SUBMIT_TO_PLAY: ${{ inputs.submit_to_play }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Prepare ephemeral release paths
         env:
@@ -125,6 +136,17 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      - name: Test exact screenshot evidence delivery contract
+        run: python3 -B -m unittest discover -s .github/scripts -p 'test_play_screenshot_*.py' -v
+
+      # No binary_update condition: every release consumes the same strict proof.
+      - name: Receive exact reviewed screenshot evidence
+        id: screenshot_evidence
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SCREENSHOT_EVIDENCE_RUN_ID: ${{ inputs.screenshot_evidence_run_id }}
+        run: python3 -B .github/scripts/download-play-screenshot-evidence.py
+
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
 
@@ -162,8 +184,9 @@ jobs:
           echo "Release endpoints and Play service account are valid."
 
       - name: Bind final screenshot evidence to checked-out commit
-        if: ${{ !inputs.binary_update }}
         working-directory: apps/mobile
+        env:
+          FINAL_SCREENSHOT_MANIFEST: ${{ steps.screenshot_evidence.outputs.manifest }}
         run: |
           set -euo pipefail
           node -e '
@@ -204,12 +227,13 @@ jobs:
           printf 'path=%s\n' "$google_services_path" >> "$GITHUB_OUTPUT"
 
       - name: Run production release preflight with final screenshot evidence
-        if: ${{ !inputs.binary_update }}
         working-directory: apps/mobile
         env:
           EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
           EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
           GOOGLE_SERVICES_JSON: ${{ steps.google_services.outputs.path }}
+          FINAL_SCREENSHOT_MANIFEST: ${{ steps.screenshot_evidence.outputs.manifest }}
+          VERIFIED_SCREENSHOT_PROVENANCE: ${{ steps.screenshot_evidence.outputs.provenance }}
         run: |
           set -euo pipefail
           mkdir -p "$EVIDENCE_DIR"
@@ -217,6 +241,8 @@ jobs:
             --screenshot-manifest "$FINAL_SCREENSHOT_MANIFEST" \
             2>&1 | tee "$EVIDENCE_DIR/preflight.log"
           cp "$FINAL_SCREENSHOT_MANIFEST" "$EVIDENCE_DIR/final-screenshot-manifest.json"
+          cp "$VERIFIED_SCREENSHOT_PROVENANCE" "$EVIDENCE_DIR/screenshot-issuer.json"
+          cp -R "$(dirname "$FINAL_SCREENSHOT_MANIFEST")" "$EVIDENCE_DIR/reviewed-screenshots"
           sha256sum "$FINAL_SCREENSHOT_MANIFEST" > "$EVIDENCE_DIR/final-screenshot-manifest.sha256"
           printf '%s\n' "$GITHUB_SHA" > "$EVIDENCE_DIR/source-commit.txt"
 
@@ -287,6 +313,7 @@ jobs:
           curl --fail --location --silent --show-error https://github.com/google/bundletool/releases/download/1.18.2/bundletool-all-1.18.2.jar -o "$BUNDLETOOL_JAR"
           printf '378b5434cd1378bef6b2bc527b8c7f0ff2584b273830335bce54d6d0813c8584  %s\n' "$BUNDLETOOL_JAR" | sha256sum --check
           python3 scripts/direct-play-release.py validate
+          node scripts/validate-merged-android-manifest.mjs "$EVIDENCE_DIR/merged-manifest.xml"
 
       - name: Submit exact validated artifact to Play
         if: ${{ success() && env.SUBMIT_TO_PLAY == 'true' }}

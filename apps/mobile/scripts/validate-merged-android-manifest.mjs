@@ -203,6 +203,17 @@ function assertWellFormedDocument(xml) {
   if (roots !== 1 || depth !== 0) throw new Error('Expected one complete XML document');
 }
 
+// bundletool's compiled AAB dump renders these Android enums as integers.
+// Accept only the exact constant, including its hexadecimal representation;
+// flags such as signature|privileged must not inherit the plain-signature gate.
+// https://developer.android.com/reference/android/content/pm/PermissionInfo#PROTECTION_SIGNATURE
+// https://developer.android.com/reference/android/content/pm/ActivityInfo#LAUNCH_SINGLE_TASK
+function exactEnum(value, literal, numeric) {
+  if (value === literal) return true;
+  if (typeof value !== 'string' || !/^(?:\d+|0x[0-9a-fA-F]+)$/.test(value)) return false;
+  return BigInt(value) === BigInt(numeric);
+}
+
 /** Validate compiled, merged XML. Expo introspection cannot substitute for this release gate. */
 export async function validateMergedAndroidManifest(xml, { expoConfig = checkedInConfig } = {}) {
   if (typeof xml !== 'string' || Buffer.byteLength(xml) > 5 * 1024 * 1024 || /<!\s*(?:DOCTYPE|ENTITY)\b/i.test(xml)) {
@@ -239,7 +250,7 @@ export async function validateMergedAndroidManifest(xml, { expoConfig = checkedI
     const name = attrs['android:name'];
     check(!declaredPermissions.has(name), `Duplicate permission declaration: ${name}`);
     declaredPermissions.add(name);
-    check(name === dynamicReceiverPermission && attrs['android:protectionLevel'] === 'signature',
+    check(name === dynamicReceiverPermission && exactEnum(attrs['android:protectionLevel'], 'signature', 2),
       `Unreviewed or weakened permission declaration: ${name}`);
   }
   check(declaredPermissions.has(dynamicReceiverPermission), 'Missing signature permission for AndroidX private receivers');
@@ -282,7 +293,7 @@ export async function validateMergedAndroidManifest(xml, { expoConfig = checkedI
       }
       check(exported === 'true', `Required explicit android:exported=true: ${key}`);
       check(attrs['android:permission'] === contract.permission, `Export permission contract mismatch: ${key}`);
-      if (contract.launchMode) check(attrs['android:launchMode'] === contract.launchMode, `Launch mode contract mismatch: ${key}`);
+      if (contract.launchMode) check(exactEnum(attrs['android:launchMode'], contract.launchMode, 2), `Launch mode contract mismatch: ${key}`);
       try {
         const actual = sorted((node['intent-filter'] ?? []).map(filterSignature));
         const expected = sorted(contract.filters.map(expectedFilterSignature));

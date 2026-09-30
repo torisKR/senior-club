@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      screenshot_evidence_run_id:
+        description: Optional reviewed screenshot issuer run at this exact main SHA; enables Android candidate build
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -146,10 +152,14 @@ jobs:
   android:
     name: Play production workflow
     needs: [backend, sites-package]
-    if: ${{ needs.backend.result == 'success' && needs.sites-package.result == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.screenshot_evidence_run_id != '' && needs.backend.result == 'success' && needs.sites-package.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/android-play-production.yml
     with:
+      screenshot_evidence_run_id: ${{ inputs.screenshot_evidence_run_id }}
       binary_update: true
-      # Build artifacts on merge; publishing to Play requires explicit consent.
+      # Build the Android candidate only with reviewed evidence at this source SHA.
       submit_to_play: false
     secrets: inherit

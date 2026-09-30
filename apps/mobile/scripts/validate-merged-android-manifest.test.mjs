@@ -75,6 +75,22 @@ test('merged contracts accept the necessary Firebase callbacks and protected SDK
   assert.ok(result.exportedComponents.includes('activity:com.google.firebase.auth.internal.GenericIdpActivity'));
 });
 
+test('actual AAB enum encodings preserve the exact signature and singleTask contracts', async () => {
+  for (const numeric of ['2', '0x00000002']) {
+    const xml = validManifest.replace('android:protectionLevel="signature"', `android:protectionLevel="${numeric}"`)
+      .replaceAll('android:launchMode="singleTask"', `android:launchMode="${numeric}"`);
+    const result = await validate(xml);
+    assert.equal(result.exportedComponents.length, 10);
+  }
+});
+
+test('numeric aliases cannot weaken signature permissions or activity launch contracts', async () => {
+  for (const numeric of ['0', '1', '3', '0x00000012', '4294967298', '-2', '2x', '2.0']) {
+    await assert.rejects(validate(validManifest.replace('android:protectionLevel="signature"', `android:protectionLevel="${numeric}"`)), /weakened permission/);
+    await assert.rejects(validate(changeComponent('.MainActivity', (node) => node.replace('android:launchMode="singleTask"', `android:launchMode="${numeric}"`))), /Launch mode contract mismatch/);
+  }
+});
+
 test('an unmerged app-only manifest cannot pass as compiled SDK evidence', async () => {
   let appOnly = validManifest;
   for (const name of [

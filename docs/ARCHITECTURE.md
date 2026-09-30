@@ -234,12 +234,14 @@ Redis와 S3는 현재 단일 API·텍스트 UGC 출시에 필수가 아니다. �
 - Play icon·feature graphic·splash·manifest·후보 screenshot 규격
 - production release script와 GitHub workflow 계약
 
+실제 QA에서는 별도 PostgreSQL의 migration·카카오/profile/session·역할·후기·신고 회귀가 통과했다. 운영 DB의 공개 접근을 해제하고 새 strict TLS 연결을 확인했으며, read-only migration/catalog baseline과 임시 PITR 복구본의 동일 해시 및 리소스 정리를 검증했다. 범위와 증거는 [운영 QA 보고서](QA_PRODUCTION_20260930.md)를 따른다.
+
 아직 필요한 검증:
 
-- 실제 PostgreSQL에서 migration과 동시 승인·중복 신고/차단 E2E
+- 실제 provider·역할별 운영 웹/앱 UI와 업무 데이터 복구 정합성
 - production Resend·FCM·Socket.IO·계정 삭제 E2E
 - 실기기 성능·접근성·푸시·딥링크
-- backup 복구, 장애 경보와 보안 운영
+- 운영 교체·failback·장애 경보와 가용성 훈련
 - 최종 screenshot provenance와 서명 AAB의 App Bundle Explorer 확인
 
 ## 관련 문서

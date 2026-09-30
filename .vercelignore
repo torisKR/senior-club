@@ -26,3 +26,6 @@ output/
 **/GoogleService-Info.plist
 **/service-account*.json
 .aws/
+docs/
+apps/api/test/
+.github/
