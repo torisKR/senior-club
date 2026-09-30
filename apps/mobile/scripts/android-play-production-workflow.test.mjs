@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 const workflow = fs.readFileSync(new URL('../../../.github/workflows/android-play-production.yml', import.meta.url), 'utf8');
 const deploy = fs.readFileSync(new URL('../../../.github/workflows/deploy-main.yml', import.meta.url), 'utf8');
+const internal = fs.readFileSync(new URL('../../../.github/workflows/android-play-internal.yml', import.meta.url), 'utf8');
 function step(name) {
   const marker = `      - name: ${name}`;
   const start = workflow.indexOf(marker);
@@ -34,6 +35,16 @@ test('main caller explicitly forwards reviewed evidence with artifact read permi
   const android = deploy.slice(deploy.indexOf('\n  android:'));
   assert.match(android, /permissions:\n      contents: read\n      actions: read/);
   assert.match(android, /submit_to_play: false/);
+});
+
+test('internal caller requires and forwards exact screenshot evidence with artifact read permission', () => {
+  const input = internal.slice(internal.indexOf('      screenshot_evidence_run_id:'), internal.indexOf('      submit_to_play:'));
+  assert.match(input, /required: true/);
+  assert.match(input, /type: string/);
+  assert.match(internal, /permissions:\n  contents: read\n  actions: read\n/);
+  assert.match(internal, /uses: \.\/\.github\/workflows\/android-play-production.yml/);
+  assert.match(internal, /screenshot_evidence_run_id: \$\{\{ inputs.screenshot_evidence_run_id \}\}/);
+  assert.match(internal, /binary_update: false/);
 });
 
 test('quality, live endpoints and strict screenshot provenance remain before native build', () => {

@@ -22,6 +22,10 @@ const RELEASE_BLOCKERS = [
   { label: '시행 예정일', pattern: /시행\s*예정일/u },
   { label: '확정 필요', pattern: /확정해야\s*합니다/u },
   { label: '교체 필요', pattern: /교체해야\s*합니다/u },
+  {
+    label: '공급자 처리정보 미확정',
+    pattern: /(?:수탁자|위탁처리자)[^<>]{0,160}공급자\s*계약을\s*확정한\s*뒤/u,
+  },
 ];
 
 function requireReleaseUrl(rawValue, variableName, { originOnly = false } = {}) {

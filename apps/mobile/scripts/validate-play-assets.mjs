@@ -4,6 +4,8 @@ import path from 'node:path';
 import process from 'node:process';
 import zlib from 'node:zlib';
 
+import { inspectNavigationIcons } from './validate-navigation-icons.mjs';
+
 const root = path.resolve(import.meta.dirname, '..');
 
 function fail(message) {
@@ -257,13 +259,6 @@ function resolveAppAssetReference(reference, label) {
   return normalizedPath;
 }
 
-function referencedTabIconPaths() {
-  const layoutPath = path.join(root, 'src/app/(tabs)/_layout.tsx');
-  const source = fs.readFileSync(layoutPath, 'utf8');
-  const matcher = /require\(\s*['"]@\/assets\/images\/(tab-icons-v2\/[^'"]+\.png)['"]\s*\)/g;
-  return [...source.matchAll(matcher)].map((match) => `assets/images/${match[1]}`);
-}
-
 function checkAdaptiveIcon() {
   const relativePath = 'assets/images/senior-club-adaptive-foreground-v2.png';
   try {
@@ -410,25 +405,8 @@ checkRgbaAsset(uiLogoPath, {
 });
 
 try {
-  const tabIconPaths = referencedTabIconPaths();
-  if (tabIconPaths.length === 0) {
-    fail('tab layout has no statically verifiable tab icon references');
-  } else if (new Set(tabIconPaths).size !== tabIconPaths.length) {
-    fail('tab layout contains duplicate tab icon references');
-  } else {
-    pass(`tab layout references ${tabIconPaths.length} unique icons`);
-  }
-
-  for (const tabIconPath of new Set(tabIconPaths)) {
-    const resolved = resolveAppAssetReference(`./${tabIconPath}`, 'tab icon');
-    if (!resolved) continue;
-    checkRgbaAsset(resolved, {
-      width: 96,
-      height: 96,
-      maxBytes: 65_536,
-      requireMonochrome: true,
-    });
-  }
+  const tabIcons = inspectNavigationIcons(root);
+  pass(`tab layout renders ${tabIcons.length} distinct Material Symbols with verified font glyphs`);
 } catch (error) {
   fail(error instanceof Error ? error.message : String(error));
 }
