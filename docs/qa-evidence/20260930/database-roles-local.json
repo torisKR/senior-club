@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-30T06:12:28.234Z",
+  "observedAtMeaning": "Evidence recorded after final typecheck, frozen-source hash verification, and database-removal recheck; DB suite results are from the preceding observed integrated-command run.",
+  "scope": "Local disposable PostgreSQL QA; hosted CI run was not observed.",
+  "runtime": {
+    "nodeVersion": "v24.16.0",
+    "postgresVersion": "17.11"
+  },
+  "database": {
+    "exactName": "senior_role_qa_20260930",
+    "host": "127.0.0.1",
+    "port": 55432,
+    "disposable": true,
+    "sslMode": "disable",
+    "appliedMigrations": 10,
+    "seedCompleted": true
+  },
+  "integratedInvocation": {
+    "databaseSuites": "pnpm --filter @senior-club/api test:e2e:db",
+    "guardTests": "pnpm --filter @senior-club/api test:e2e:db:guard",
+    "packageAndCiEnvironmentMatchVerified": true
+  },
+  "databaseSuites": {
+    "status": "passed",
+    "runnerExitCode": 0,
+    "suiteCount": 3,
+    "suites": [
+      {
+        "file": "apps/api/src/auth/auth-events.e2e.spec.ts",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "file": "apps/api/src/reviews/reviews.database.spec.ts",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "file": "apps/api/src/safety/safety.database.spec.ts",
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0
+      }
+    ],
+    "totals": {
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "runnerReportedStartTime": "15:07:58",
+    "runnerReportedDurationSeconds": 2.95,
+    "runnerRunDate": "2026-09-30",
+    "sessionTimeZone": "Asia/Seoul",
+    "allThreeSuitesAndZeroSkipVerifiedByRunner": true
+  },
+  "guardTests": {
+    "status": "passed",
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0
+  },
+  "externalProviders": {
+    "calls": 0,
+    "evidence": "Auth suite afterAll asserted externalFetch was never called; only KakaoTokenVerifier was overridden, delivery providers disabled, and workers disabled.",
+    "emailProvider": "disabled",
+    "smsProvider": "disabled",
+    "pushProvider": "disabled",
+    "outboxWorkerEnabled": false,
+    "appDotEnvLoaded": false,
+    "runnerChildEnvironmentAllowlisted": true
+  },
+  "cleanup": {
+    "verified": true,
+    "remainingQaUsers": 0,
+    "remainingAuthSessions": 0,
+    "remainingReviews": 0,
+    "remainingReports": 0,
+    "remainingBlocks": 0,
+    "remainingOutboxEvents": 0,
+    "otherDatabaseConnectionsBeforeRemoval": 0,
+    "databaseRemovalVerified": true,
+    "matchingDatabasesAfterRemoval": 0,
+    "removalScope": "Only the separate database created by this QA run was dropped; QA PostgreSQL container retained."
+  },
+  "frozenSource": {
+    "sha256MatchVerified": true,
+    "files": {
+      "apps/api/src/auth/auth-events.e2e.spec.ts": "2108f5200a98099b7593bf4ff29723d13c80239052ee28504457710343c1941f",
+      "apps/api/src/reviews/reviews.database.spec.ts": "16168b4e16430c12d1f1df873f0d156ddf34be715da55525a1a1d564d29f3796",
+      "apps/api/src/safety/safety.database.spec.ts": "89b4f342d1ac2cd725b0b9d0512319bfcd73de2a4bc9cfb4fadc1fbf39d1b2d1",
+      "apps/api/scripts/database-qa.mjs": "40b9553bb87861b21364f65c17736abc7d4e840dacfb4a8bd240d774d6f654c4",
+      "apps/api/scripts/database-qa.d.mts": "038154052d413c88e920c152e16a596172a54681184f90ce2a462818be27ec15",
+      "apps/api/scripts/database-qa.test.mjs": "9561163318c104f06d46cf8122e9f87042a219a4e361e95f3b483a495002fe4c"
+    }
+  },
+  "apiTypecheck": {
+    "status": "passed",
+    "exitCode": 0,
+    "afterFrozenChanges": true,
+    "command": "node apps/api/node_modules/typescript/bin/tsc --noEmit --incremental false -p apps/api/tsconfig.json",
+    "testCount": null,
+    "parentRerunNeededForReviewedFrozenSource": false
+  },
+  "apiUnitTests": {
+    "status": "not_run",
+    "counts": null,
+    "note": "The full API unit suite was not run by this worker; DB suites and runner guard tests are reported separately.",
+    "parentRunNeeded": true,
+    "recommendedCommand": "pnpm --filter @senior-club/api test"
+  },
+  "runnerLogPath": null,
+  "runnerLogAvailability": "Runner stdout/stderr was observed in this chat; no persistent runner log was captured. Temporary results.json was removed by runner cleanup.",
+  "sanitized": true
+}

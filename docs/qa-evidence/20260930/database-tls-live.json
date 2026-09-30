@@ -1,0 +1,11 @@
+{
+  "event": "senior-live-db-tls-proof",
+  "authorized": true,
+  "tlsProtocol": "TLSv1.3",
+  "databaseSsl": true,
+  "databaseTlsVersion": "TLSv1.3",
+  "incorrectHostnameRejected": true,
+  "untrustedCaRejected": true,
+  "untrustedCaErrorCode": "SELF_SIGNED_CERT_IN_CHAIN",
+  "passed": true
+}

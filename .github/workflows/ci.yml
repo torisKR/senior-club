@@ -70,6 +70,7 @@ jobs:
       - name: Check API
         run: |
           node --test .github/scripts/prepare-api-task.test.mjs
+          pnpm --filter @senior-club/api test:e2e:db:guard
           pnpm --filter @senior-club/api typecheck
           pnpm --filter @senior-club/api test
           pnpm --filter @senior-club/api build
@@ -94,3 +95,57 @@ jobs:
         run: |
           docker run --rm --entrypoint node senior-club-api:ci -e "require('node:fs').accessSync('/app/dist/main.js')"
           test "$(docker image inspect senior-club-api:ci --format '{{.Config.User}}')" = "node"
+
+  database-quality:
+    name: Kakao, profile, roles, and safety on disposable PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: senior-qa-local-only
+          POSTGRES_DB: senior_role_qa_20260930
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d senior_role_qa_20260930"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      CI: "true"
+      NODE_ENV: test
+      RUN_DATABASE_E2E: "true"
+      DATABASE_QA_URL: postgresql://postgres:senior-qa-local-only@127.0.0.1:55432/senior_role_qa_20260930?sslmode=disable
+      DATABASE_URL: postgresql://postgres:senior-qa-local-only@127.0.0.1:55432/senior_role_qa_20260930?sslmode=disable
+      EMAIL_PROVIDER: disabled
+      SMS_PROVIDER: disabled
+      PUSH_PROVIDER: disabled
+      OUTBOX_WORKER_ENABLED: "false"
+      AUTH_DEV_OTP_EXPOSE: "false"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          version: 9.14.2
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @senior-club/api prisma:generate
+
+      - name: Run all DB suites without skipped tests
+        run: pnpm --filter @senior-club/api test:e2e:db

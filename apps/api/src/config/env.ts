@@ -3,6 +3,10 @@ import { createPrivateKey } from "node:crypto";
 
 const DEFAULT_DEVELOPMENT_ORIGIN = "http://localhost:3000";
 const POSTGRES_PROTOCOLS = new Set(["postgres:", "postgresql:"]);
+const DATABASE_TLS_QUERY_PARAMETERS = new Set([
+  "ssl", "sslmode", "sslrootcert", "sslcert", "sslkey",
+  "uselibpqcompat", "sslnegotiation",
+]);
 const DEVELOPMENT_ACCESS_SECRET =
   "development-only-access-token-secret-change-me";
 const DEVELOPMENT_OTP_PEPPER =
@@ -158,6 +162,53 @@ export function parseCorsOrigins(
   return Object.freeze([...new Set(normalized)]);
 }
 
+function validateProductionDatabaseTransport(databaseUrl: string): string[] {
+  // pg-connection-string rewrites URLs containing spaces or malformed escapes.
+  // Require encoded input so its query keys match WHATWG URL parsing here.
+  if (/ |%(?![a-f0-9]{2})/i.test(databaseUrl)) {
+    return ["DATABASE_URL must percent-encode spaces and use valid percent escapes in production"];
+  }
+
+  const parameters = new URL(databaseUrl).searchParams;
+  const seen = new Set<string>();
+  for (const key of parameters.keys()) {
+    const normalizedKey = key.toLowerCase();
+    if (!DATABASE_TLS_QUERY_PARAMETERS.has(normalizedKey)) continue;
+    if (key !== normalizedKey) {
+      return ["DATABASE_URL must use lowercase TLS query parameter names in production"];
+    }
+    // URLSearchParams.get reads the first value; pg uses the last. Even
+    // identical or percent-encoded duplicates must fail closed.
+    if (seen.has(key)) {
+      return ["DATABASE_URL must not repeat TLS query parameters in production"];
+    }
+    seen.add(key);
+  }
+
+  const issues: string[] = [];
+  // Other modes either weaken verification under libpq compatibility or are
+  // deprecated aliases whose guarantees can change with a driver upgrade.
+  if (parameters.get("sslmode") !== "verify-full") {
+    issues.push("DATABASE_URL must set sslmode=verify-full in production");
+  }
+  if (parameters.has("ssl") && !["true", "1"].includes(parameters.get("ssl")!)) {
+    issues.push("DATABASE_URL ssl must be true or 1 when specified in production");
+  }
+  for (const key of ["sslrootcert", "sslcert", "sslkey"]) {
+    if (parameters.has(key) && !parameters.get(key)?.trim()) {
+      issues.push("DATABASE_URL must use nonempty TLS certificate paths in production");
+      break;
+    }
+  }
+  if (parameters.has("uselibpqcompat") && !["true", "false"].includes(parameters.get("uselibpqcompat")!)) {
+    issues.push("DATABASE_URL uselibpqcompat must be true or false when specified in production");
+  }
+  if (parameters.has("sslnegotiation") && !["postgres", "direct"].includes(parameters.get("sslnegotiation")!)) {
+    issues.push("DATABASE_URL sslnegotiation must be postgres or direct when specified in production");
+  }
+  return issues;
+}
+
 export function parseApiEnv(input: NodeJS.ProcessEnv = process.env): ApiEnv {
   const parsed = rawApiEnvSchema.safeParse(input);
 
@@ -262,7 +313,10 @@ export function parseApiEnv(input: NodeJS.ProcessEnv = process.env): ApiEnv {
   }
 
   if (parsed.data.NODE_ENV === "production") {
-    const productionIssues: string[] = [];
+    const productionIssues = validateProductionDatabaseTransport(parsed.data.DATABASE_URL);
+    if (input.NODE_TLS_REJECT_UNAUTHORIZED === "0") {
+      productionIssues.push("NODE_TLS_REJECT_UNAUTHORIZED=0 is forbidden in production");
+    }
     if (input.FIREBASE_AUTH_EMULATOR_HOST) {
       productionIssues.push("FIREBASE_AUTH_EMULATOR_HOST is forbidden in production");
     }

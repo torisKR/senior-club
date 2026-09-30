@@ -1,6 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { databaseTestUrl } from "../../scripts/database-qa.mjs";
 import type { AuthenticatedPrincipal } from "../auth/auth.contracts";
 import {
   PrismaClient,
@@ -15,11 +16,8 @@ import {
 } from "./safety.contracts";
 import { SafetyService } from "./safety.service";
 
-const databaseUrl = process.env.DATABASE_URL;
-const describeWithDatabase =
-  process.env.RUN_DATABASE_E2E === "true" && databaseUrl
-    ? describe
-    : describe.skip;
+const databaseUrl = databaseTestUrl();
+const describeWithDatabase = databaseUrl ? describe : describe.skip;
 
 describeWithDatabase("SafetyService PostgreSQL concurrency", () => {
   const runId = `safety-race-${process.pid}-${Date.now()}`;

@@ -1,71 +1,183 @@
-import type { INestApplication } from "@nestjs/common";
+import "reflect-metadata";
+import { randomUUID } from "node:crypto";
+import { HttpStatus, type INestApplication } from "@nestjs/common";
+import { Test } from "@nestjs/testing";
+import helmet from "helmet";
 import request from "supertest";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
+import { databaseTestUrl } from "../../scripts/database-qa.mjs";
+import { ApiException } from "../common/http/api.exception";
+import { requestIdMiddleware } from "../common/http/request-id.middleware";
+import { createCorsOptions } from "../config/cors.config";
+import type { ApiEnv } from "../config/env";
+import { API_ENV } from "../config/env.module";
+import { ConfiguredIoAdapter } from "../config/socket-io.adapter";
+import { AuthProvider, UserRole } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { KakaoTokenVerifier, type KakaoIdentity } from "./kakao-token-verifier";
 
-const runDatabaseTests = process.env.RUN_DATABASE_E2E === "true";
+const databaseUrl = databaseTestUrl();
 
-describe.skipIf(!runDatabaseTests)("email auth and event application (database e2e)", () => {
+describe.skipIf(!databaseUrl)("Kakao auth and event application (database e2e)", () => {
   let app: INestApplication;
   let accessToken = "";
   let refreshToken = "";
   let applicationId = "";
-  const email = `e2e-${Date.now()}@seniorclub.test`;
+  let memberId = "";
+  let outsiderId = "";
+  let existingRoomIds: string[] = [];
+  let existingRoleConsentIds: string[] = [];
+  let existingRolePreferenceIds: string[] = [];
+  let roleLoginTimes: Array<{ id: string; lastLoginAt: Date | null }> = [];
+  let fixturesStarted = false;
+  const roleUserIds = ["seed-user-leader", "seed-user-admin"];
+  const runId = `events-qa-${randomUUID()}`;
+  const email = `${runId}@seniorclub.test`;
+  const identities = new Map<string, KakaoIdentity>([
+    ["qa-member-token", { providerAccountId: `${runId}-member`, name: "통합테스트 회원" }],
+    ["qa-leader-token", { providerAccountId: `${runId}-leader`, name: "김선영" }],
+    ["qa-outsider-token", { providerAccountId: `${runId}-outsider`, name: "다른 모임 리더" }],
+    ["qa-admin-token", { providerAccountId: `${runId}-admin`, name: "시니어클럽 관리자" }],
+  ]);
+  const kakaoVerifier = {
+    verify: vi.fn(async (token: string): Promise<KakaoIdentity> => {
+      const identity = identities.get(token);
+      if (!identity) throw new ApiException(HttpStatus.UNAUTHORIZED, "KAKAO_TOKEN_INVALID", "테스트 카카오 토큰이 유효하지 않습니다.");
+      return identity;
+    }),
+  };
+  const externalFetch = vi.fn(() => { throw new Error("External providers are forbidden in DB QA"); });
+  const login = (token: string) => request(app.getHttpServer())
+    .post("/v1/auth/kakao")
+    .send({ accessToken: token, clientType: "WEB", termsAccepted: true, privacyAccepted: true });
 
   beforeAll(async () => {
-    const { createApplication } = await import("../bootstrap");
-    app = await createApplication();
+    // Import AppModule directly: bootstrap imports dotenv/config. All application
+    // services, guards, Prisma transactions and session issuance remain real.
+    vi.stubGlobal("fetch", externalFetch);
+    const { AppModule } = await import("../app.module");
+    const module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(KakaoTokenVerifier).useValue(kakaoVerifier).compile();
+    app = module.createNestApplication();
+    const env = app.get<ApiEnv>(API_ENV);
+    expect(env.DATABASE_URL).toBe(databaseUrl);
+    expect(env.NODE_ENV).toBe("test");
+    app.use(helmet());
+    app.use(requestIdMiddleware);
+    app.enableCors(createCorsOptions(env.CORS_ORIGINS));
+    app.useWebSocketAdapter(new ConfiguredIoAdapter(app, env));
     await app.init();
+    // One loopback listener avoids Supertest reopening/closing the same server
+    // between requests while Node 24 may still hold a keep-alive connection.
+    await app.listen(0, "127.0.0.1");
+
+    const prisma = app.get(PrismaService);
+    existingRoomIds = (await prisma.chatRoom.findMany({ select: { id: true } })).map(({ id }) => id);
+    existingRoleConsentIds = (await prisma.consentRecord.findMany({ where: { userId: { in: roleUserIds } }, select: { id: true } })).map(({ id }) => id);
+    existingRolePreferenceIds = (await prisma.notificationPreference.findMany({ where: { userId: { in: roleUserIds } }, select: { userId: true } })).map(({ userId }) => userId);
+    roleLoginTimes = await prisma.user.findMany({ where: { id: { in: roleUserIds } }, select: { id: true, lastLoginAt: true } });
+    fixturesStarted = true;
+    // Existing role fixtures are linked by provider identity, never by email or
+    // by a request-controlled role. A leader with no club tests ownership scope.
+    const outsider = await prisma.user.create({
+      data: { name: "다른 모임 리더", role: UserRole.LEADER, onboardingCompletedAt: new Date() },
+    });
+    outsiderId = outsider.id;
+    await prisma.authIdentity.createMany({ data: [
+      { userId: "seed-user-leader", provider: AuthProvider.KAKAO, providerAccountId: `${runId}-leader` },
+      { userId: "seed-user-admin", provider: AuthProvider.KAKAO, providerAccountId: `${runId}-admin` },
+      { userId: outsiderId, provider: AuthProvider.KAKAO, providerAccountId: `${runId}-outsider` },
+    ] });
+    const future = await prisma.event.findUniqueOrThrow({ where: { id: "event-bukhansan-dullegil" } });
+    const past = await prisma.event.findUniqueOrThrow({ where: { id: "event-spring-photo-archive" } });
+    // Fail clearly on stale fixtures; seed uses dates relative to the QA run.
+    expect(future.startAt.getTime()).toBeGreaterThan(Date.now());
+    expect((past.endAt ?? past.startAt).getTime()).toBeLessThan(Date.now());
   });
 
   afterAll(async () => {
-    await app.close();
+    try {
+      if (!app || !fixturesStarted) return;
+      const prisma = app.get(PrismaService);
+      const userIds = [memberId, outsiderId].filter(Boolean);
+      const sessions = await prisma.authSession.findMany({
+        where: { user: { authIdentities: { some: { providerAccountId: { startsWith: runId } } } } },
+        select: { id: true },
+      });
+      const applications = await prisma.eventMember.findMany({ where: { userId: { in: userIds } }, select: { id: true } });
+      const deletions = await prisma.accountDeletionRequest.findMany({ where: { userId: { in: userIds } }, select: { id: true } });
+      await prisma.outboxEvent.deleteMany({ where: { OR: [
+        { aggregateType: "EventMember", aggregateId: { in: applications.map(({ id }) => id) } },
+        { aggregateType: "AccountDeletionRequest", aggregateId: { in: deletions.map(({ id }) => id) } },
+      ] } });
+      await prisma.notification.deleteMany({ where: { OR: [
+        { actorId: { in: userIds } }, { recipientId: { in: userIds } },
+      ] } });
+      await prisma.chatRoomMember.deleteMany({ where: { userId: { in: userIds } } });
+      await prisma.chatRoom.deleteMany({ where: {
+        eventId: { in: ["event-bukhansan-dullegil", "event-seoulforest-photo"] },
+        id: { notIn: existingRoomIds },
+      } });
+      await prisma.eventMember.deleteMany({ where: { userId: { in: userIds } } });
+      await prisma.authSession.deleteMany({ where: { id: { in: sessions.map(({ id }) => id) } } });
+      await prisma.authIdentity.deleteMany({ where: { providerAccountId: { startsWith: runId } } });
+      await prisma.user.deleteMany({ where: { id: { in: userIds } } });
+      await prisma.consentRecord.deleteMany({ where: { userId: { in: roleUserIds }, id: { notIn: existingRoleConsentIds } } });
+      await prisma.notificationPreference.deleteMany({ where: { userId: { in: roleUserIds, notIn: existingRolePreferenceIds } } });
+      for (const { id, lastLoginAt } of roleLoginTimes) {
+        await prisma.user.update({ where: { id }, data: { lastLoginAt } });
+      }
+      expect(externalFetch).not.toHaveBeenCalled();
+    } finally {
+      if (app) await app.close();
+      vi.unstubAllGlobals();
+    }
   });
 
   it("probes the real database", async () => {
     await request(app.getHttpServer()).get("/readyz").expect(200);
   });
 
-  it("requests and verifies a one-time email code", async () => {
-    const challenge = await request(app.getHttpServer())
-      .post("/v1/auth/email/request")
-      .send({ email })
-      .expect(201);
+  it("keeps legacy logins disabled without creating challenges or sessions", async () => {
+    const prisma = app.get(PrismaService);
+    const counts = async () => [await prisma.emailVerification.count(), await prisma.phoneVerification.count(),
+      await prisma.authSession.count(), await prisma.outboxEvent.count()];
+    const before = await counts();
+    for (const path of ["email/request", "email/verify", "phone/request", "phone/verify", "google"]) {
+      const rejected = await request(app.getHttpServer()).post(`/v1/auth/${path}`).send({}).expect(403);
+      expect(rejected.body).toMatchObject({ error: { code: "AUTH_PROVIDER_DISABLED" } });
+    }
+    expect(await counts()).toEqual(before);
+    expect(kakaoVerifier.verify).not.toHaveBeenCalled();
+  });
 
-    expect(challenge.body.challengeId).toEqual(expect.any(String));
-    expect(challenge.body.devCode).toMatch(/^\d{6}$/);
-
-    await request(app.getHttpServer())
-      .post("/v1/auth/email/verify")
-      .send({
-        challengeId: challenge.body.challengeId,
-        email,
-        code: "999999",
-        name: "통합테스트 회원",
-        clientType: "WEB",
-        termsAccepted: true,
-        privacyAccepted: true,
-      })
-      .expect(401);
-
-    const verified = await request(app.getHttpServer())
-      .post("/v1/auth/email/verify")
-      .send({
-        challengeId: challenge.body.challengeId,
-        email,
-        code: challenge.body.devCode,
-        name: "통합테스트 회원",
-        clientType: "WEB",
-        termsAccepted: true,
-        privacyAccepted: true,
-      })
-      .expect(201);
+  it("rejects invalid Kakao tokens and persists the real member identity, consent and session", async () => {
+    const prisma = app.get(PrismaService);
+    const before = await prisma.authSession.count();
+    await login("invalid-token").expect(401);
+    expect(await prisma.authSession.count()).toBe(before);
+    const verified = await login("qa-member-token").expect(201);
 
     accessToken = verified.body.accessToken;
     refreshToken = verified.body.refreshToken;
+    memberId = verified.body.user.id;
     expect(accessToken).toEqual(expect.any(String));
     expect(refreshToken).toEqual(expect.any(String));
+    expect(verified.body.user).toMatchObject({ email: "", role: "MEMBER", onboardingCompletedAt: null });
+    expect(await prisma.user.findUniqueOrThrow({ where: { id: memberId } })).toMatchObject({ email: null });
+    expect(kakaoVerifier.verify).toHaveBeenLastCalledWith("qa-member-token");
+    const identity = await prisma.authIdentity.findUniqueOrThrow({ where: {
+      provider_providerAccountId: { provider: AuthProvider.KAKAO, providerAccountId: `${runId}-member` },
+    } });
+    expect(identity.userId).toBe(memberId);
+    const session = await prisma.authSession.findUniqueOrThrow({ where: { id: verified.body.sessionId } });
+    expect(session.userId).toBe(memberId);
+    expect(session.refreshTokenHash).not.toBe(refreshToken);
+    expect(session.revokedAt).toBeNull();
+    const consent = await prisma.consentRecord.findMany({ where: { userId: memberId } });
+    expect(consent.map(({ documentType }) => documentType).sort()).toEqual(["PRIVACY", "TERMS"]);
+    expect(consent.every(({ granted, withdrawnAt }) => granted && withdrawnAt === null)).toBe(true);
   });
 
   it("protects member data and rotates refresh tokens", async () => {
@@ -74,7 +186,7 @@ describe.skipIf(!runDatabaseTests)("email auth and event application (database e
       .get("/v1/me")
       .set("Authorization", `Bearer ${accessToken}`)
       .expect(200);
-    expect(me.body.email).toBe(email);
+    expect(me.body).toMatchObject({ id: memberId, email: "", role: "MEMBER" });
 
     const rotated = await request(app.getHttpServer())
       .post("/v1/auth/refresh")
@@ -86,6 +198,10 @@ describe.skipIf(!runDatabaseTests)("email auth and event application (database e
       .expect(401);
     refreshToken = rotated.body.refreshToken;
     accessToken = rotated.body.accessToken;
+    expect(refreshToken).toEqual(expect.any(String));
+    expect(rotated.body.user.id).toBe(memberId);
+    await request(app.getHttpServer()).get("/v1/me")
+      .set("Authorization", `Bearer ${accessToken}`).expect(200);
   });
 
   it("persists onboarding profile and rolls back an unknown interest selection", async () => {
@@ -182,6 +298,26 @@ describe.skipIf(!runDatabaseTests)("email auth and event application (database e
     ).toEqual([...profileInput.interestSlugs].sort());
   });
 
+  it("queues only push for an applicant without email and supports a contact-email fixture", async () => {
+    const applied = await request(app.getHttpServer())
+      .post("/v1/events/event-seoulforest-photo/applications")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .set("Idempotency-Key", `${runId}-no-email`).expect(201);
+    const prisma = app.get(PrismaService);
+    const deliveries = await prisma.outboxEvent.findMany({ where: { aggregateId: applied.body.id } });
+    expect(deliveries.map(({ type }) => type)).toEqual(["EVENT_APPLICATION_PUSH"]);
+    expect(deliveries[0]?.payload).toMatchObject({ email: null, recipientUserId: memberId });
+    expect(deliveries[0]).toMatchObject({ status: "PENDING", attempts: 0 });
+    await request(app.getHttpServer()).delete("/v1/events/event-seoulforest-photo/applications/me")
+      .set("Authorization", `Bearer ${accessToken}`).expect(200);
+    // Contact email is optional under Kakao login. Supply it only in this local
+    // fixture to retain the existing email + push transaction assertions below.
+    await prisma.user.update({ where: { id: memberId }, data: { email } });
+    const me = await request(app.getHttpServer()).get("/v1/me")
+      .set("Authorization", `Bearer ${accessToken}`).expect(200);
+    expect(me.body.email).toBe(email);
+  });
+
   it("applies once when the same idempotency key is retried", async () => {
     const events = await request(app.getHttpServer()).get("/v1/events").expect(200);
     expect(events.body.data.length).toBeGreaterThan(0);
@@ -214,6 +350,13 @@ describe.skipIf(!runDatabaseTests)("email auth and event application (database e
       .get("/v1/events?view=drafts")
       .expect(400);
 
+    const closed = await request(app.getHttpServer())
+      .post("/v1/events/event-spring-photo-archive/applications")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .set("Idempotency-Key", `${runId}-past-event`).expect(404);
+    expect(closed.body).toMatchObject({ error: { code: "EVENT_NOT_AVAILABLE" } });
+    expect(await app.get(PrismaService).eventMember.count({ where: { eventId: "event-spring-photo-archive", userId: memberId } })).toBe(0);
+
     const beforeApplication = await request(app.getHttpServer())
       .get("/v1/events/event-bukhansan-dullegil/applications/me")
       .set("Authorization", `Bearer ${accessToken}`)
@@ -235,6 +378,7 @@ describe.skipIf(!runDatabaseTests)("email auth and event application (database e
     applicationId = first.body.id;
     expect(second.body.id).toBe(applicationId);
     expect(first.body.status).toBe("PENDING");
+    expect(await app.get(PrismaService).eventMember.count({ where: { eventId: "event-bukhansan-dullegil", userId: memberId } })).toBe(1);
 
     const afterApplication = await request(app.getHttpServer())
       .get("/v1/events/event-bukhansan-dullegil/applications/me")
@@ -252,7 +396,7 @@ describe.skipIf(!runDatabaseTests)("email auth and event application (database e
     ]);
   });
 
-  it("allows only the owning leader to approve", async () => {
+  it("rejects members and non-owning leaders, and allows the owning leader to approve", async () => {
     await request(app.getHttpServer())
       .get("/v1/leader/events")
       .set("Authorization", `Bearer ${accessToken}`)
@@ -262,22 +406,23 @@ describe.skipIf(!runDatabaseTests)("email auth and event application (database e
       .set("Authorization", `Bearer ${accessToken}`)
       .expect(403);
 
-    const challenge = await request(app.getHttpServer())
-      .post("/v1/auth/email/request")
-      .send({ email: "leader@seniorclub.kr" })
-      .expect(201);
-    const leader = await request(app.getHttpServer())
-      .post("/v1/auth/email/verify")
-      .send({
-        challengeId: challenge.body.challengeId,
-        email: "leader@seniorclub.kr",
-        code: challenge.body.devCode,
-        name: "김선영",
-        clientType: "WEB",
-        termsAccepted: true,
-        privacyAccepted: true,
-      })
-      .expect(201);
+    await request(app.getHttpServer()).patch(`/v1/applications/${applicationId}`)
+      .set("Authorization", `Bearer ${accessToken}`).send({ status: "APPROVED" }).expect(403);
+    const outsider = await login("qa-outsider-token").expect(201);
+    expect(outsider.body.user).toMatchObject({ id: outsiderId, role: "LEADER" });
+    const unrelatedEvents = await request(app.getHttpServer()).get("/v1/leader/events")
+      .set("Authorization", `Bearer ${outsider.body.accessToken}`).expect(200);
+    expect(unrelatedEvents.body.data).toEqual([]);
+    await request(app.getHttpServer()).get("/v1/events/event-bukhansan-dullegil/applications")
+      .set("Authorization", `Bearer ${outsider.body.accessToken}`).expect(404);
+    const forbidden = await request(app.getHttpServer()).patch(`/v1/applications/${applicationId}`)
+      .set("Authorization", `Bearer ${outsider.body.accessToken}`).send({ status: "APPROVED" }).expect(403);
+    expect(forbidden.body).toMatchObject({ error: { code: "LEADER_SCOPE_REQUIRED" } });
+    expect(await app.get(PrismaService).eventMember.findUniqueOrThrow({ where: { id: applicationId } }))
+      .toMatchObject({ status: "PENDING", reviewedById: null });
+
+    const leader = await login("qa-leader-token").expect(201);
+    expect(leader.body.user).toMatchObject({ id: "seed-user-leader", role: "LEADER" });
 
     const managedEvents = await request(app.getHttpServer())
       .get("/v1/leader/events")
@@ -408,11 +553,25 @@ describe.skipIf(!runDatabaseTests)("email auth and event application (database e
       status: "PENDING",
     });
 
+    const admin = await login("qa-admin-token").expect(201);
+    expect(admin.body.user).toMatchObject({ id: "seed-user-admin", role: "ADMIN" });
+    const adminEvents = await request(app.getHttpServer()).get("/v1/leader/events")
+      .set("Authorization", `Bearer ${admin.body.accessToken}`).expect(200);
+    expect(adminEvents.body.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "event-bukhansan-dullegil" }),
+    ]));
+    const adminApplications = await request(app.getHttpServer()).get("/v1/events/event-bukhansan-dullegil/applications")
+      .set("Authorization", `Bearer ${admin.body.accessToken}`).expect(200);
+    expect(adminApplications.body.applications).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: applicationId, status: "PENDING" }),
+    ]));
     await request(app.getHttpServer())
       .patch(`/v1/applications/${applicationId}`)
-      .set("Authorization", `Bearer ${leader.body.accessToken}`)
+      .set("Authorization", `Bearer ${admin.body.accessToken}`)
       .send({ status: "APPROVED" })
       .expect(200);
+    expect(await prisma.eventMember.findUniqueOrThrow({ where: { id: applicationId } }))
+      .toMatchObject({ status: "APPROVED", reviewedById: "seed-user-admin" });
 
     const restoredMembership = await prisma.chatRoomMember.findUniqueOrThrow({
       where: {
@@ -455,23 +614,14 @@ describe.skipIf(!runDatabaseTests)("email auth and event application (database e
       .set("Authorization", `Bearer ${accessToken}`)
       .expect(401);
 
-    const challenge = await request(app.getHttpServer())
-      .post("/v1/auth/email/request")
-      .send({ email })
-      .expect(201);
-    const verified = await request(app.getHttpServer())
-      .post("/v1/auth/email/verify")
-      .send({
-        challengeId: challenge.body.challengeId,
-        email,
-        code: challenge.body.devCode,
-        name: "통합테스트 회원",
-        clientType: "WEB",
-        termsAccepted: true,
-        privacyAccepted: true,
-      })
-      .expect(201);
+    await request(app.getHttpServer()).post("/v1/auth/refresh").send({ refreshToken }).expect(401);
+    const sessions = await app.get(PrismaService).authSession.findMany({ where: { userId: memberId } });
+    expect(sessions.length).toBeGreaterThan(0);
+    expect(sessions.every(({ revokedAt }) => revokedAt !== null)).toBe(true);
+    const verified = await login("qa-member-token").expect(201);
+    expect(verified.body.user.id).toBe(memberId);
     accessToken = verified.body.accessToken;
+    refreshToken = verified.body.refreshToken;
 
     const current = await request(app.getHttpServer())
       .get("/v1/me/deletion-request")
@@ -489,5 +639,10 @@ describe.skipIf(!runDatabaseTests)("email auth and event application (database e
       .set("Authorization", `Bearer ${accessToken}`)
       .expect(200);
     expect(afterCancellation.body).toEqual({ deletionRequest: null });
+    expect(await app.get(PrismaService).accountDeletionRequest.findUniqueOrThrow({ where: { id: deletion.body.id } }))
+      .toMatchObject({ userId: memberId, status: "CANCELED", completedAt: null });
+    expect(await app.get(PrismaService).user.findUniqueOrThrow({ where: { id: memberId } }))
+      .toMatchObject({ deletionRequestedAt: null });
+    expect(await app.get(PrismaService).authIdentity.count({ where: { userId: memberId, provider: AuthProvider.KAKAO } })).toBe(1);
   });
 });

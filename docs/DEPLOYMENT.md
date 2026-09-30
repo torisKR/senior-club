@@ -16,8 +16,8 @@ Android / Vercel BFF → CloudFront → ALB → ECS API → RDS PostgreSQL
 | Vercel 배포 | dpl_BB1p8gbJMzejdR7nv7nzQtjPvLYU |
 | API 공개 origin | https://d33totqtaqpyfs.cloudfront.net |
 | ECS cluster / service | senior-club / senior-club-api |
-| ECS task | senior-club-api:24, running 1, deployment COMPLETED |
-| API image digest | sha256:395ecfef6ec5acbe8de6dbd88fc98853a11486d9f590044041381986b8438dec |
+| ECS task | senior-club-api:25, running 1, deployment COMPLETED |
+| API image digest | sha256:a7c01a4561a39478742d0298ea8d2143c09cf2b579d0e9a0e321d60d20891314 |
 | RDS | senior-club-db, PostgreSQL 18.3, encrypted, 7일 backup, deletion protection |
 | Firebase project | clubsenior-app |
 
@@ -55,7 +55,24 @@ Node 24.16.0 / pnpm 9.14.2 및 루트 workspace lockfile을 사용한다. API ty
 
 `.github/workflows/deploy-main.yml`의 API job은 CI 성공 후 이 경로를 사용한다. 이 workflow의 Sites job은 별도 artifact 생성이며 Vercel live 배포를 대신하지 않는다. 현재 Vercel 웹 배포는 Vercel CLI로 수행했다.
 
-Prisma production migration은 `migrate deploy`를 사용한다. `db push`나 seed로 운영 모임을 만들지 않는다. 빈 local PostgreSQL 17에 10개 migration과 12개 실제 auth DB 회귀를 검증했으며, 이것은 운영 backup 복구 훈련이나 모든 역할 E2E를 증명하지 않는다.
+Prisma production migration은 `migrate deploy`를 사용한다. `db push`나 seed로 운영 모임을 만들지 않는다. 빈 local PostgreSQL 17에 10개 migration과 기존 auth DB 회귀 12개를 검증했다. 추가로 전용 DB에서 카카오·프로필·역할·후기·신고 12개를 실제 실행했으며 상세 범위는 QA 보고서를 확인한다. 운영 backup 복구 훈련이나 실제 provider·기기의 모든 역할 E2E를 증명하지 않는다.
+
+## 안전한 실제 DB QA 실행
+
+API의 test:e2e:db 명령은 카카오 전용 정책과 맞지 않던 email OTP 테스트 실행을 대체했다. 전용 local DB가 먼저 준비되어 있어야 한다. Node 24에서 아래 explicit 환경으로 실행한다.
+
+```sh
+env NODE_ENV=test RUN_DATABASE_E2E=true \
+  DATABASE_QA_URL='postgresql://postgres:senior-qa-local-only@127.0.0.1:55432/senior_role_qa_20260930?sslmode=disable' \
+  DATABASE_URL='postgresql://postgres:senior-qa-local-only@127.0.0.1:55432/senior_role_qa_20260930?sslmode=disable' \
+  EMAIL_PROVIDER=disabled SMS_PROVIDER=disabled PUSH_PROVIDER=disabled \
+  OUTBOX_WORKER_ENABLED=false \
+  pnpm --filter @senior-club/api test:e2e:db
+```
+
+위 비밀번호는 일회성 local QA fixture다. 운영 credential을 사용하지 않는다. runner는 loopback·전용 DB 이름·포트·명시적인 두 URL의 일치를 요구하고 다른 DB와 추가 URL option을 거절한다. migration/seed/test를 실행할 때 프로젝트 .env와 상속된 cloud/provider/PG/TLS credential을 전달하지 않는다. 세 suite의 실행 결과에 누락·실패·skip이 있으면 실패한다. fixture 정리는 해당 suite가 담당하며 local DB의 폐기는 생성한 QA 환경에서 수행한다.
+
+CI의 database-quality job은 전용 PostgreSQL 17 service와 이 명령을 사용한다. main API 배포는 reusable CI 전체 성공 이후에 진행하므로 DB suite 실패도 배포를 차단한다. 현재 local 실행은 통과했으며 hosted CI 실행은 아직 관찰하지 않았다.
 
 ## 웹 배포와 QA
 
@@ -87,8 +104,8 @@ ADB 재검사 기기: Galaxy M33, Android 16. 실제 운영 API를 사용하는 
 
 CloudFront가 생성한 secret origin header를 ALB forward 조건으로 검사하고 기본 응답은 403이다. ALB ingress는 CloudFront origin-facing managed prefix list만 허용한다. ECS ingress는 ALB SG, DB ingress는 기존 승인 SG/관리 IP로 제한되어 있다. direct ALB 요청 403, CloudFront readiness 200을 확인했다.
 
-CloudFront→ALB는 아직 HTTP다. origin 전용 DNS와 서울 리전 ACM certificate를 준비해 HTTPS로 전환해야 한다. 공개 NS 조회로 `toris.kr`의 DNS 관리 서비스가 Cloudflare임을 확인했다. 해당 zone의 DNS 변경 권한과 ACM 검증 레코드 등록이 아직 준비되지 않아 TLS 완료로 보고하지 않는다.
+CloudFront→ALB는 아직 HTTP다. 공개 NS 조회로 `toris.kr`의 DNS 관리 서비스가 Cloudflare임을 확인했다. origin 전용 DNS 레코드와 서울 리전 ACM certificate 요청은 준비했고 `PENDING_VALIDATION`이다. 현재 CLI 인증은 DNS API에서 403을 받으므로 Cloudflare 계정 로그인/권한이 필요하다. [DNS 레코드와 HTTPS 전환 순서](ORIGIN_TLS_HANDOFF.md)를 사용한다. TLS 완료로 보고하지 않는다.
 
-RDS public endpoint가 켜져 있으나 SG는 인터넷 전체에 개방되어 있지 않다. private endpoint 전환·백업 복구 훈련·DB SSL 검증과 단일 인스턴스의 가용성 검토는 추가 작업이다. 현재 production task의 서버 DB/TLS 인증 수준을 실제 검사하기 전까지 엄격한 certificate verification을 완료했다고 주장하지 않는다.
+RDS public endpoint가 켜져 있으나 SG는 인터넷 전체에 개방되어 있지 않다. 운영 DB의 일회성 read-only ECS 검사에서 TLS 1.3, 인증서 검증 authorized=true, 잘못된 hostname 및 신뢰하지 않는 CA 거절을 실제 확인했다. task 25는 sslmode=verify-full과 모호하지 않은 TLS URL을 시작 시 요구하며 검증을 전역 해제하는 설정도 거절한다. [실제 DB TLS 증거](qa-evidence/20260930/database-tls-live.json)를 확인한다. private endpoint 전환·백업 복구 훈련·단일 인스턴스의 가용성 검토는 추가 작업이다.
 
 readiness/5xx/p95/DB pool/outbox failure/계정 삭제 worker를 모니터링한다. 구조화 로그·QA 보고서에 사용자 이름·연락처·token·origin secret·Admin credential을 기록하지 않는다. 최종 출시 전에는 실제 역할별 UGC/신청·취소/채팅·차단·관리자 E2E와 웹 OAuth, SMS, 푸시·결제를 검증한다.
