@@ -2,7 +2,50 @@
 
 Galaxy M33 / Android 16에서 Android 디자인 QA APK `8d117e…`의 로그인 복원·프로필·5개 탭·사진 슬롯과 6개 글자 확대 조합을 검사했다. 기본 글자와 하단 탐색을 조정하고 실기기에서 발견한 확대 아이콘 정렬 문제도 수정했다. 이후 스크롤 상태 표시줄 겹침을 수정한 새 APK `3fa88a…`를 설치했으며 아래 추가 절에 검증 한계를 기록했다. 웹은 새 Vercel production에 배포해 Playwright CLI 검사가 통과했다. 전체 출시 검증 완료는 아니며 Firebase SMS 설정·origin TLS·별도 Play 조건이 남아 있다.
 
-## 추가 상태 표시줄 수정과 최신 후보
+## 최신 API 탈퇴 복구 배포
+
+API source `84c4fe751cc426c1839c44b74a58ff81750b38d3`를 추적 파일만 고정한 사본에서 linux/amd64
+비root image로 빌드하고 기존 ECR/ECS에 배포했다. 실제 task `senior-club-api:26`, running1 /
+pending0 / rollout COMPLETED와 container image digest
+`sha256:38fd2444038fec5bd8177214f8ff12a82f6f0a9ec2c523f0caf90f8a9d0600ee` 일치,
+automatic rollback 유지, readiness/health·익명 보호 경계·legacy 로그인 거절 8개를 확인했다.
+관찰한 새 task 로그 ERROR/FATAL/P2010은 0개다. [운영 readback](qa-evidence/20260930/api-deletion-live.json).
+
+탈퇴 claim·비식별화의 원자 transaction, 실패 5분 재시도·stale PROCESSING15분 복구와 동시
+취소/실패 비교 갱신은 실제 PostgreSQL17의 탈퇴18개 / 전체 DB30개·skip0개를 통과했다.
+API 기본415 passed / 42 opt-in skip, typecheck/build, 탈퇴 unit37와 runner guard8도 통과했다.
+[코드와 실제 DB 검증](qa-evidence/20260930/account-deletion-recovery.json).
+
+운영 환경·secret은 보존했다. `OUTBOX_WORKER_ENABLED=true`는 전후 동일하며 발송 채널만
+EMAIL/SMS/PUSH disabled다. QA에서 운영 탈퇴 요청·worker drain을 호출하지 않았다. 자동 예약
+삭제의 실제 결과·외부 provider 삭제·새 task의 실제 Kakao login은 이번 운영 검사의 범위가 아니다.
+아래 task25의 실제 TLS1.3 연결과 task24의 Kakao 검증은 각각의 원래 증거로 보존한다.
+
+## 추가 모바일 인증 회귀 수정
+
+Native source `948c2327c70eaf42b997dd11ae384e1258bfc63f`에서 로그아웃·새 로그인 중 늦은 응답이
+세션을 되살리거나 이전 계정의 프로필을 전달하는 경쟁 조건을 수정했다. storage 읽기/쓰기/삭제를
+직렬화하고, 로그인 경계가 바뀌면 과거 응답과 계정 간 재시도를 거절한다. 늦게 발급된 refresh token은
+서버 해제를 시도하지만 오프라인 해제나 실패한 기기 저장소의 물리적 삭제를 보장하지 않는다.
+Mobile 361 tests / 46 files, manager/HTTP 집중 검사 30개, TypeScript·scoped ESLint가 통과했다.
+이 검사는 합성 transport/storage 회귀이며 실제 Kakao 또는 native SecureStore 수용을 대신하지 않는다.
+[인증 수정 증거](qa-evidence/20260930/android-session-concurrency.json).
+
+새 QA APK SHA-256은 `d0c86145bc909e55a4da25412d906e24c09fed306788ac2c65052c9bd9101bc5`,
+64,132,359 bytes다. 기존 QA 서명·실제 manifest·운영 주소·사진/font 포함을 확인했다.
+기기 사용 인수를 기다리고 있어 설치·runtime/provider 재검사는 수행하지 않았다.
+현재 설치 확인된 `3fa88a…` APK와 기존 `968066…` AAB에는 이 인증 수정이 없다.
+[새 APK와 검증 한계](qa-evidence/20260930/native-auth-session-candidate.json).
+
+같은 Native source `948c2327c70eaf42b997dd11ae384e1258bfc63f`에서 새 upload-signed AAB 후보를 생성했다.
+파일은 `apps/mobile/build-output/signed-candidate-948c2327c70e/app-release.aab`, SHA-256
+`0a1a15f6a29bd1808a1b24013293c67f83bcae5f656909ff573ad0f2c02596f3`, 93,681,400 bytes다. 4개 ABI·target36·pinned bundletool·전체
+서명·실제 manifest·운영 주소/광고 설정·7개 사진/Material font·SDK property metadata 검증이 통과했다.
+[새 서명 후보 증거](qa-evidence/20260930/android-auth-session-signed-candidate.json).
+기기 설치/provider 검증·Play version/signing 대조·최종 screenshot·hosted run·업로드는 남았다.
+이후 API·증거·문서 변경은 이 AAB의 full source SHA에 포함되지 않는다.
+
+## 앞선 상태 표시줄 수정 후보
 
 앞선 모임 목록 캡처를 직접 검토하면서 검색창이 스크롤 시 상태 표시줄 뒤로 올라가는 문제를
 발견했다. source `9a9825b32ae47f5abcfdbbc2af1b8f7103cabecd`에서 상태 표시줄 inset을 고정 viewport로
@@ -19,15 +62,15 @@ SHA-256 `3fa88ac99743a0ff593a697b500cdfb99973461139d72eed30ac36263b4a04a7`, 64,1
 시각/스크롤 QA는 미완료이며 아래 `8d117e…`의 검사 결과를 새 APK 성공으로 바꾸지 않는다.
 [새 native 후보 증거](qa-evidence/20260930/native-scroll-inset-candidate.json).
 
-같은 source에서 생성한 최신 upload-signed AAB 후보는
+같은 상태 표시줄 source에서 생성한 앞선 upload-signed AAB 후보는
 `apps/mobile/build-output/signed-candidate-9a9825b32ae4/app-release.aab`, SHA-256
 `968066c227bf77dfa7ba210cbdd7b3d310c5daa5c2e189514a60543f104086e0`, 93,679,910 bytes다.
 4개 ABI·target36·pinned bundletool·전체 서명·compiled manifest·운영 설정·동일 사진/font와 SDK
-property metadata를 검증했다. [최신 서명 후보 증거](qa-evidence/20260930/android-scroll-inset-signed-candidate.json).
+property metadata를 검증했다. [앞선 서명 후보 증거](qa-evidence/20260930/android-scroll-inset-signed-candidate.json).
 Play max version/signing/provider·최종 screenshot 검토·hosted run·업로드는 아직 없다.
 아래 `8f25f7d…` AAB는 상태 표시줄 수정 전 후보로 보존한다.
 
-## 실제 배포
+## 앞선 API task25와 웹·디자인 배포
 
 - API: 서울 ECS `senior-club-api:25`, running 1, rollout `COMPLETED`, automatic rollback 활성화.
 - Image: `sha256:a7c01a4561a39478742d0298ea8d2143c09cf2b579d0e9a0e321d60d20891314`.

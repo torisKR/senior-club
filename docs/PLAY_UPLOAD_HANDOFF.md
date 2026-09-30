@@ -5,6 +5,18 @@
 현재 production release는 아래 전달 계약을 사용한다. 뒤의 2026-07-30 기록은 과거 인수 자료이며,
 당시 `v5`, versionCode `6`, SMS 로그인 설명을 현재 출시 지침으로 사용하지 않는다.
 
+추가 Native 인증 수정 소스 `948c232…`의 QA APK `d0c861…`는 빌드와 artifact 검증만 통과했다.
+기기 설치/provider 검사는 남았으며, 뒤의 `9a9825b…` / `968066…` AAB에는 이 인증 수정이 없다.
+[현재 소스·검증 구분](QA_PRODUCTION_20260930.md#추가-모바일-인증-회귀-수정).
+
+같은 Native source `948c2327c70eaf42b997dd11ae384e1258bfc63f`에서 새 upload-signed AAB 후보를 생성했다.
+파일은 `apps/mobile/build-output/signed-candidate-948c2327c70e/app-release.aab`, SHA-256
+`0a1a15f6a29bd1808a1b24013293c67f83bcae5f656909ff573ad0f2c02596f3`, 93,681,400 bytes다. 4개 ABI·target36·pinned bundletool·전체
+서명·실제 manifest·운영 주소/광고 설정·7개 사진/Material font·SDK property metadata 검증이 통과했다.
+[새 서명 후보 증거](qa-evidence/20260930/android-auth-session-signed-candidate.json).
+기기 설치/provider 검증·Play version/signing 대조·최종 screenshot·hosted run·업로드는 남았다.
+이후 API·증거·문서 변경은 이 AAB의 full source SHA에 포함되지 않는다.
+
 ## 소스 고정 후 screenshot evidence 전달
 
 `capture.commit`을 Git 안의 manifest에 쓰고 다시 commit하는 방식은 사용하지 않는다. 모든 release
@@ -167,7 +179,7 @@ binary 검사와 최종 Play 제출 승인은 이 screenshot 전달 검사와 �
 ## 현재 로컬 서명 AAB 후보
 
 2026-09-30에 소스 `9a9825b32ae47f5abcfdbbc2af1b8f7103cabecd`에서 기존 upload keystore로
-최신 Android 디자인을 포함한 AAB를 생성했다. `0.1.1` / versionCode `212215980`, 4개 ABI,
+앞선 상태 표시줄 수정 디자인을 포함한 AAB를 생성했다. `0.1.1` / versionCode `212215980`, 4개 ABI,
 93,679,910 bytes다. SHA-256은 `968066c227bf77dfa7ba210cbdd7b3d310c5daa5c2e189514a60543f104086e0`이며
 파일은 `apps/mobile/build-output/signed-candidate-9a9825b32ae4/app-release.aab`다.
 
@@ -177,7 +189,7 @@ production endpoint 및 설정된 banner를 확인했다. 기기의 기존 debug
 유지했다. 후보 AAB 설치·실제 provider 로그인·최신 Play versionCode 대조·최종 screenshot 검토·
 Play 제출은 수행하지 않았다. 이후 증거/문서 변경은 이 후보의 전체 소스 SHA에
 포함되지 않는다. 최종 고정 소스의 capture/build 계약을 다시 충족해야 한다.
-[최신 후보 검증 증거](qa-evidence/20260930/android-scroll-inset-signed-candidate.json).
+[앞선 후보 검증 증거](qa-evidence/20260930/android-scroll-inset-signed-candidate.json).
 
 앞선 `f513abe6569f479a5e014ede29f4135e4650353e` / AAB SHA-256
 `99f577e1e70c38806c86c1f4b1273891827243dc24937fc011ac0f937dd9598b`는 Android 디자인 수정 전
@@ -341,7 +353,7 @@ find /tmp/aabcheck -iname "*Pretendard*"
 ## 2026-09-30 Android 디자인 재수정
 
 native UI source `0d91c27…`는 글자·하단 탐색·사진 슬롯을 수정했고 앞선 APK `8d117e…`에서 검증했다.
-추가 source `9a9825b…`는 스크롤 상태 표시줄 겹침을 수정했다. 상단의 최신 AAB에 포함됐고 새 QA
+추가 source `9a9825b…`는 스크롤 상태 표시줄 겹침을 수정했다. 상단의 `968066…` AAB에 포함됐고 새 QA
 APK `3fa88a…`의 설치 해시를 확인했으나 기기 foreground 변경으로 runtime 재검사는 중단됐다. 디자인 실기기 결과는
 [QA 보고서](QA_PRODUCTION_20260930.md)를 따른다. 제출할 전체 소스 SHA를 고정하고 실제
 screenshot provenance·Play versionCode·certificate·provider 조건을 확인해야 한다.

@@ -16,8 +16,8 @@ Android / Vercel BFF → CloudFront → ALB → ECS API → RDS PostgreSQL
 | Vercel 배포 | dpl_FumS2oKgsfdmRXbSCESNJrtRPRet |
 | API 공개 origin | https://d33totqtaqpyfs.cloudfront.net |
 | ECS cluster / service | senior-club / senior-club-api |
-| ECS task | senior-club-api:25, running 1, deployment COMPLETED |
-| API image digest | sha256:a7c01a4561a39478742d0298ea8d2143c09cf2b579d0e9a0e321d60d20891314 |
+| ECS task | senior-club-api:26, running 1 / pending 0, deployment COMPLETED |
+| API image digest | sha256:38fd2444038fec5bd8177214f8ff12a82f6f0a9ec2c523f0caf90f8a9d0600ee |
 | RDS | senior-club-db, PostgreSQL 18.3, 공개 접근 해제, encrypted, 7일 backup, deletion protection |
 | Firebase project | clubsenior-app |
 
@@ -57,6 +57,26 @@ Node 24.16.0 / pnpm 9.14.2 및 루트 workspace lockfile을 사용한다. API ty
 
 Prisma production migration은 `migrate deploy`를 사용한다. `db push`나 seed로 운영 모임을 만들지 않는다. 빈 local PostgreSQL 17에 10개 migration과 기존 auth DB 회귀 12개를 검증했다. 추가로 전용 DB에서 카카오·프로필·역할·후기·신고 12개를 실제 실행했으며 상세 범위는 QA 보고서를 확인한다. 별도 실제 운영 read-only 스키마 검사와 PITR 복구본의 메타데이터 비교·정리도 통과했다. 업무 row 복구와 실제 provider·기기의 모든 역할 E2E는 별도 검증이다.
 
+최신 source `84c4fe7…`는 기존 ECS task26에 배포했다. 실행 container image digest·rollout
+COMPLETED·running1/pending0·health/readiness·익명 인증/legacy 차단 8개·새 task 로그 오류0개를
+확인했다. 기존 environment/secret과 true인 worker 설정은 유지했다.
+[정확한 운영 readback](qa-evidence/20260930/api-deletion-live.json).
+
+## 탈퇴 복구 코드와 실제 DB 회귀
+
+추가 소스 `84c4fe751cc426c1839c44b74a58ff81750b38d3`는 탈퇴 claim·비식별화를 한 transaction으로
+묶고 FAILED 5분 재시도·stale PROCESSING 15분 복구를 추가했다. 예정일과 7일 유예, terminal 상태,
+기존 비식별화 범위·schema/migration은 유지한다. 취소/실패 상태 갱신은 status와 updatedAt을 비교한다.
+worker drain과 저장된 실패 코드는 고정 문자열이며 raw 오류 메시지를 기록하지 않는다.
+
+API 기본 415 tests / 42 opt-in skip, typecheck/build, 탈퇴 unit 37개와 DB runner guard 8개가
+통과했다. 전용 PostgreSQL17의 네 suite 30개 / skip 0개 중 탈퇴 SQL·롤백/재시도·실제 row lock/
+동시 취소 18개가 통과했다. 생성한 전용 QA DB는 검사 후 제거했다.
+[정제된 검증 증거](qa-evidence/20260930/account-deletion-recovery.json).
+운영 worker 설정은 전후 모두 `OUTBOX_WORKER_ENABLED=true`로 유지됐다. 발송 채널의 disabled와
+worker 비활성은 다르다. QA가 운영 탈퇴 요청·worker drain을 직접 호출하지 않았으며 자동 예약
+삭제의 실제 처리 결과는 이번 검사에서 확인하지 않았다. 외부 Firebase/Play 삭제도 추가하지 않았다.
+
 ## 안전한 실제 DB QA 실행
 
 API의 test:e2e:db 명령은 카카오 전용 정책과 맞지 않던 email OTP 테스트 실행을 대체했다. 전용 local DB가 먼저 준비되어 있어야 한다. Node 24에서 아래 explicit 환경으로 실행한다.
@@ -70,7 +90,7 @@ env NODE_ENV=test RUN_DATABASE_E2E=true \
   pnpm --filter @senior-club/api test:e2e:db
 ```
 
-위 비밀번호는 일회성 local QA fixture다. 운영 credential을 사용하지 않는다. runner는 loopback·전용 DB 이름·포트·명시적인 두 URL의 일치를 요구하고 다른 DB와 추가 URL option을 거절한다. migration/seed/test를 실행할 때 프로젝트 .env와 상속된 cloud/provider/PG/TLS credential을 전달하지 않는다. 세 suite의 실행 결과에 누락·실패·skip이 있으면 실패한다. fixture 정리는 해당 suite가 담당하며 local DB의 폐기는 생성한 QA 환경에서 수행한다.
+위 비밀번호는 일회성 local QA fixture다. 운영 credential을 사용하지 않는다. runner는 loopback·전용 DB 이름·포트·명시적인 두 URL의 일치를 요구하고 다른 DB와 추가 URL option을 거절한다. migration/seed/test를 실행할 때 프로젝트 .env와 상속된 cloud/provider/PG/TLS credential을 전달하지 않는다. 네 suite의 실행 결과에 누락·실패·skip이 있으면 실패한다. fixture 정리는 해당 suite가 담당하며 local DB의 폐기는 생성한 QA 환경에서 수행한다.
 
 CI의 database-quality job은 전용 PostgreSQL 17 service와 이 명령을 사용한다. main API 배포는 reusable CI 전체 성공 이후에 진행하므로 DB suite 실패도 배포를 차단한다. 현재 local 실행은 통과했으며 hosted CI 실행은 아직 관찰하지 않았다.
 
@@ -116,6 +136,11 @@ Play version 대조·최종 screenshot 검토·hosted CI·Play 업로드는 아�
 [현재 release preflight 증거](qa-evidence/20260930/android-release-preflight.json).
 내부 release wrapper에도 필수 screenshot run ID와 `actions: read`를 전달하도록 수정했다.
 이 검사 결과를 아래 운영 수용 조건 전체의 완료로 해석하지 않는다.
+
+추가 인증 수정 source `948c232…`의 APK `d0c861…`와 AAB `0a1a15…`는 로컬 build/서명/
+manifest/번들 검증이 통과했다. 기기 인수 없이 새 APK를 설치하지 않았다. 앞선 `3fa88a…` 설치와
+`968066…` AAB가 새 인증 회귀 수정의 runtime 증거는 아니다.
+[현재 후보와 검증 구분](QA_PRODUCTION_20260930.md#추가-모바일-인증-회귀-수정).
 
 ## Firebase Phone Auth의 남은 설정
 

@@ -10,12 +10,26 @@ Railway 배포와 EAS release 절차를 현재 출시 지침으로 사용하지 
 모임 이용의 필수 조건이 아니다. 선택 기능 자체의 공급자 설정과 실제 성공 검증은 아직 남아 있다.
 모임 신청에는 로그인과 서버 온보딩 완료가 필요하다. UGC는 게시글·댓글·후기·채팅의 텍스트 범위다.
 
-현재 제품 검증과 production 제출 완료를 구분한다. 저장소 소스
+최신 Native 인증 소스는 `948c2327c70eaf42b997dd11ae384e1258bfc63f`다. 늦은 인증/보호 응답의
+계정 간 전달과 로그아웃 후 복원을 차단했고 mobile 361 tests / 46 files와 정적 검사가 통과했다.
+새 QA APK `d0c861…`는 빌드와 artifact 검증만 완료됐으며 기기 설치·runtime/provider 수용은 남았다.
+기존 `3fa88a…` 설치 APK와 아래 `968066…` 서명 AAB에는 이 인증 수정이 없다.
+[인증 회귀 및 새 APK](QA_PRODUCTION_20260930.md#추가-모바일-인증-회귀-수정).
+
+최신 Native source `948c2327c70eaf42b997dd11ae384e1258bfc63f`에서 새 upload-signed AAB 후보를 생성했다.
+파일은 `apps/mobile/build-output/signed-candidate-948c2327c70e/app-release.aab`, SHA-256
+`0a1a15f6a29bd1808a1b24013293c67f83bcae5f656909ff573ad0f2c02596f3`, 93,681,400 bytes다. 4개 ABI·target36·pinned bundletool·전체
+서명·실제 manifest·운영 주소/광고 설정·7개 사진/Material font·SDK property metadata 검증이 통과했다.
+[새 서명 후보 증거](qa-evidence/20260930/android-auth-session-signed-candidate.json).
+기기 설치/provider 검증·Play version/signing 대조·최종 screenshot·hosted run·업로드는 남았다.
+이후 API·증거·문서 변경은 이 AAB의 full source SHA에 포함되지 않는다.
+
+서명 후보 정적 검증과 production 제출 완료를 구분한다. 앞선 상태 표시줄 수정 소스
 `9a9825b32ae47f5abcfdbbc2af1b8f7103cabecd`에서 로컬 업로드 서명 AAB 후보를 생성하고,
 4개 ABI·target 36·실제 병합 manifest·업로드 서명·운영 주소/광고 설정·사진/Material font를 검증했다.
 AAB SHA-256은 `968066c227bf77dfa7ba210cbdd7b3d310c5daa5c2e189514a60543f104086e0`다.
 [정확한 후보 증거](qa-evidence/20260930/android-scroll-inset-signed-candidate.json)를 확인한다.
-최신 native 제품 소스도 `9a9825b…`다. 상태 표시줄 겹침을 추가 수정한 새 QA APK `3fa88a…`는
+해당 AAB의 native 제품 소스는 `9a9825b…`다. 상태 표시줄 겹침을 추가 수정한 새 QA APK `3fa88a…`는
 동일 QA 서명과 실제 설치 해시를 확인했지만 기기에 다른 앱이 foreground여서 스크롤 재검사는 중단됐다.
 아래 6개 확대 조합과 시각 검토는 앞선 native 소스 `0d91c27…` / APK `8d117e…`의 증거다.
 [새 APK의 검증 한계](qa-evidence/20260930/native-scroll-inset-candidate.json).
@@ -32,10 +46,10 @@ full SHA 계약이 바뀐다. `capture.commit`을 새 SHA로 덮어써 기존 �
 
 | 대상 | 현재 증거 | 증거의 한계 |
 | --- | --- | --- |
-| API | 서울 AWS ECS `senior-club-api:25`, running 1 / rollout COMPLETED, 공개 HTTPS 진입점은 CloudFront | 실제 Kakao provider 로그인은 앞선 task 24에서 확인했다. task 25의 readiness·기존 로그인 거절·익명 인증 경계 통과가 provider 재검증을 대신하지 않는다. |
+| API | 서울 AWS ECS `senior-club-api:26`, running 1 / pending 0 / rollout COMPLETED, 공개 HTTPS 진입점은 CloudFront. 새 image·readiness·익명 경계/legacy 차단 8개와 관찰 로그 오류0개 확인 | 실제 Kakao provider 로그인은 앞선 task24에서 확인했다. task26의 운영 smoke가 provider·자동 예약 삭제 결과를 대신하지 않는다. |
 | DB | Amazon RDS PostgreSQL 18.3, 공개 접근 해제, encrypted, 7일 backup, deletion protection. task 25 새 연결의 TLS 1.3·인증서 검증과 migration 10개 / 테이블 35개 일치 | private subnet 이전·Multi-AZ·전체 업무 row 검증은 완료하지 않았다. PITR 훈련은 복구 DB의 read-only migration/catalog 비교와 임시 자원 정리까지다. |
 | 웹 | `https://senior.toris.kr`, Vercel `dpl_FumS2oKgsfdmRXbSCESNJrtRPRet`. 공개 페이지·인증 경계·자체 호스팅 Pretendard·사진 검사 통과 | 로컬 역할 UI E2E는 외부 Kakao verifier를 대체했다. 운영 웹의 실제 provider callback·HttpOnly cookie·로그아웃 E2E는 별도다. |
-| Native 정적 검사 | mobile 354 tests / 46 files, TypeScript·scoped ESLint 통과. 기본/큰 글씨 토큰, 하단 탐색·inset·image slot과 고정 스크롤 viewport 검사 | 테스트 계산과 mocked 컴포넌트 결과는 실제 기기 렌더링·공급자 동작·Play 승인 증거가 아니다. |
+| Native 정적 검사 | mobile 361 tests / 46 files, TypeScript·scoped ESLint 통과. 기본/큰 글씨 토큰, 하단 탐색·inset·image slot과 고정 스크롤 viewport 검사 | 테스트 계산과 mocked 컴포넌트 결과는 실제 기기 렌더링·공급자 동작·Play 승인 증거가 아니다. |
 | 앞선 실기기 QA APK | SHA-256 `8d117e63324d4de82c4550f2c2ced5e283a528704b07459bec80b7ae2014bad5`, 0.1.1 / versionCode 212215980 / target API 36 / arm64. 설치 base APK hash 일치 | standalone release 모드지만 기존 기기 데이터를 보존하기 위한 debug certificate 서명이다. 새 상태 표시줄 수정의 runtime 검증이나 Play upload/signing AAB가 아니다. |
 | 실기기 Native | Galaxy M33 / Android 16, core 8개와 기본/큰 글씨 × 시스템 배율 1.0 / 1.3 / 2.0의 6개 조합 통과. 확대 탭 icon 정렬·5개 selected 상태, 홈/목록 16:9와 상세 3:2 실제 사진 측정·픽셀 검토 | 임시 글자 설정 원복. 실제 앱 dark palette, 전체 화면·스토어 screenshot 승인, 최신 APK의 provider 재로그인·SMS·FCM·Plus 구매를 포괄하지 않는다. |
 
@@ -84,6 +98,12 @@ draft 전송 성공을 공개 출시나 전체 정책 수용 완료로 표현하
 있을 때만** build-only로 호출된다. push만으로 Android 후보를 자동 생성하지 않는다. 웹 Vercel 배포
 증거는 sites-package 성공과 구분한다. `android-play-internal.yml`에도 screenshot run ID를 필수 입력으로 받아 전달하고
 `actions: read`를 부여했다. production과 internal의 계약 검사가 통과했지만 hosted 실행 증거는 아직 없다.
+
+추가 탈퇴 복구 소스 `84c4fe7…`는 ECS task26에 배포하고 실제 실행 image·안정화·운영 경계를 확인했다.
+[운영 readback](qa-evidence/20260930/api-deletion-live.json). 실제 PostgreSQL18개 / 전체 DB30개·skip0개 검사는 통과했다.
+이는 local fixture 검증이다. 운영 worker 설정은 기존 true를 유지했으며 자동 예약 삭제의 실제 결과와
+외부 provider 삭제의 수용을 대신하지 않는다.
+[탈퇴 복구 검증 증거](qa-evidence/20260930/account-deletion-recovery.json).
 
 ## production 제출에 남은 실제 수용 조건
 
