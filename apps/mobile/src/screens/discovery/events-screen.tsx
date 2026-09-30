@@ -180,7 +180,7 @@ export function EventsScreen() {
   });
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: theme.background, paddingTop: insets.top }}>
       <Stack.Screen options={{ title: '모임', headerBackTitle: '뒤로' }} />
       <FlatList
         key={`event-grid-${columns}`}
@@ -191,13 +191,13 @@ export function EventsScreen() {
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={false}
-        style={{ flex: 1, backgroundColor: theme.background }}
+        style={{ flex: 1, backgroundColor: theme.background, overflow: 'hidden' }}
         contentContainerStyle={{
           width: '100%',
           maxWidth: 980,
           alignSelf: 'center',
           paddingHorizontal: width < 360 ? Spacing.lg : Layout.screenPadding,
-          paddingTop: insets.top + Spacing.lg,
+          paddingTop: Spacing.lg,
           paddingBottom: Spacing.xxxl,
           gap: Spacing.lg,
         }}
@@ -322,6 +322,6 @@ export function EventsScreen() {
         }
         keyExtractor={(item) => item.id}
       />
-    </>
+    </View>
   );
 }

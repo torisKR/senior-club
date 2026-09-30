@@ -196,205 +196,207 @@ export function NotificationsScreen() {
   }, [markingAll, unreadCount]);
 
   return (
-    <FlatList
-      data={visibleItems}
-      keyExtractor={(item) => item.id}
-      contentInsetAdjustmentBehavior="never"
-      refreshing={refreshing}
-      onRefresh={() => void replaceNotifications(undefined, true)}
-      style={{ flex: 1, backgroundColor: theme.background }}
-      contentContainerStyle={{
-        width: '100%',
-        maxWidth: Layout.maxContentWidth,
-        alignSelf: 'center',
-        paddingHorizontal: Spacing.xl,
-        paddingTop: insets.top + Spacing.lg,
-        paddingBottom: Math.max(Spacing.xxxl, insets.bottom + Spacing.xl),
-        gap: Spacing.md,
-        flexGrow: visibleItems.length === 0 ? 1 : undefined,
-      }}
-      ListHeaderComponent={
-        <View style={{ gap: Spacing.xl, paddingBottom: Spacing.sm }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing.md }}>
-            <View style={{ flex: 1, gap: Spacing.xs }}>
-              <AppText variant="title">알림</AppText>
-              <AppText color="textSecondary">현재 목록의 읽지 않은 새 소식 {unreadCount}개</AppText>
+    <View style={{ flex: 1, backgroundColor: theme.background, paddingTop: insets.top, overflow: 'hidden' }}>
+      <FlatList
+        data={visibleItems}
+        keyExtractor={(item) => item.id}
+        contentInsetAdjustmentBehavior="never"
+        refreshing={refreshing}
+        onRefresh={() => void replaceNotifications(undefined, true)}
+        style={{ flex: 1, backgroundColor: theme.background, overflow: 'hidden' }}
+        contentContainerStyle={{
+          width: '100%',
+          maxWidth: Layout.maxContentWidth,
+          alignSelf: 'center',
+          paddingHorizontal: Spacing.xl,
+          paddingTop: Spacing.lg,
+          paddingBottom: Math.max(Spacing.xxxl, insets.bottom + Spacing.xl),
+          gap: Spacing.md,
+          flexGrow: visibleItems.length === 0 ? 1 : undefined,
+        }}
+        ListHeaderComponent={
+          <View style={{ gap: Spacing.xl, paddingBottom: Spacing.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing.md }}>
+              <View style={{ flex: 1, gap: Spacing.xs }}>
+                <AppText variant="title">알림</AppText>
+                <AppText color="textSecondary">현재 목록의 읽지 않은 새 소식 {unreadCount}개</AppText>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="모든 알림 읽음 처리"
+                accessibilityState={{ disabled: unreadCount === 0 || markingAll, busy: markingAll }}
+                disabled={unreadCount === 0 || markingAll}
+                onPress={() => void markEverythingRead()}
+                style={({ pressed }) => ({
+                  minHeight: TouchTarget.minimum,
+                  paddingHorizontal: Spacing.md,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: Radius.md,
+                  backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement,
+                  opacity: unreadCount === 0 || markingAll ? 0.55 : 1,
+                })}>
+                {markingAll ? (
+                  <ActivityIndicator accessibilityLabel="읽음 처리 중" color={theme.primary} />
+                ) : (
+                  <AppText variant="bodyStrong" color="primary" selectable={false}>
+                    모두 읽음
+                  </AppText>
+                )}
+              </Pressable>
             </View>
+
+            <View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: Spacing.sm }}>
+              {(
+                [
+                  { id: 'all', label: `전체 ${items.length}` },
+                  { id: 'unread', label: `안 읽음 ${unreadCount}` },
+                ] as const
+              ).map((option) => {
+                const selected = filter === option.id;
+                return (
+                  <Pressable
+                    key={option.id}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected }}
+                    onPress={() => setFilter(option.id)}
+                    style={({ pressed }) => ({
+                      minHeight: TouchTarget.minimum,
+                      flex: 1,
+                      paddingHorizontal: Spacing.lg,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: selected ? 2 : 1,
+                      borderColor: selected ? theme.primary : theme.border,
+                      borderRadius: Radius.pill,
+                      backgroundColor: selected
+                        ? theme.backgroundSelected
+                        : pressed
+                          ? theme.backgroundElement
+                          : theme.surface,
+                    })}>
+                    <AppText variant="bodyStrong" color={selected ? 'primary' : 'text'} selectable={false}>
+                      {option.label}
+                    </AppText>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {error ? (
+              <View
+                accessibilityRole="alert"
+                style={{ padding: Spacing.md, borderRadius: Radius.md, backgroundColor: theme.dangerSurface }}>
+                <AppText color="danger">{error}</AppText>
+              </View>
+            ) : null}
+          </View>
+        }
+        ListEmptyComponent={
+          loading ? (
+            <View
+              accessibilityRole="progressbar"
+              accessibilityLabel="알림을 불러오는 중"
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md }}>
+              <ActivityIndicator color={theme.primary} size="large" />
+              <AppText variant="bodyStrong">알림을 불러오고 있어요</AppText>
+            </View>
+          ) : error && items.length === 0 ? (
+            <EmptyState
+              emoji="🔄"
+              title="알림을 불러오지 못했어요"
+              description="인터넷 연결을 확인한 뒤 다시 시도해 주세요."
+              actionLabel="다시 시도"
+              onActionPress={() => void replaceNotifications()}
+            />
+          ) : (
+            <EmptyState
+              emoji="🔔"
+              title={filter === 'unread' ? '새 알림을 모두 확인했어요' : '아직 알림이 없어요'}
+              description={
+                filter === 'unread'
+                  ? '새로운 모임과 승인 소식이 오면 이곳에서 알려드릴게요.'
+                  : '참여한 모임에 새 소식이 생기면 바로 알려드릴게요.'
+              }
+            />
+          )
+        }
+        ListFooterComponent={
+          hasNextPage ? (
+            <SeniorButton
+              label="이전 알림 더 보기"
+              variant="outline"
+              loading={loadingMore}
+              onPress={() => void loadMore()}
+              style={{ marginTop: Spacing.sm }}
+            />
+          ) : null
+        }
+        renderItem={({ item }: ListRenderItemInfo<NotificationItem>) => {
+          const kind = KIND_LABELS[item.kind];
+          const pending = pendingIds.includes(item.id);
+          return (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="모든 알림 읽음 처리"
-              accessibilityState={{ disabled: unreadCount === 0 || markingAll, busy: markingAll }}
-              disabled={unreadCount === 0 || markingAll}
-              onPress={() => void markEverythingRead()}
+              accessibilityLabel={`${item.read ? '읽은 알림' : '새 알림'}, ${kind.label}, ${item.title}, ${item.body}`}
+              accessibilityHint={`${kind.label} 화면으로 이동합니다`}
+              accessibilityState={{ busy: pending }}
+              disabled={pending}
+              onPress={() => void openNotification(item)}
               style={({ pressed }) => ({
                 minHeight: TouchTarget.minimum,
-                paddingHorizontal: Spacing.md,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: Radius.md,
-                backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement,
-                opacity: unreadCount === 0 || markingAll ? 0.55 : 1,
+                padding: Spacing.xl,
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                gap: Spacing.md,
+                borderWidth: item.read ? 1 : 2,
+                borderColor: item.read ? theme.divider : theme.primary,
+                borderRadius: Radius.lg,
+                borderCurve: 'continuous',
+                backgroundColor: item.read
+                  ? pressed
+                    ? theme.backgroundElement
+                    : theme.surface
+                  : pressed
+                    ? theme.backgroundSelected
+                    : theme.infoSurface,
+                boxShadow: Shadows.card,
+                opacity: pending ? 0.65 : 1,
               })}>
-              {markingAll ? (
-                <ActivityIndicator accessibilityLabel="읽음 처리 중" color={theme.primary} />
-              ) : (
-                <AppText variant="bodyStrong" color="primary" selectable={false}>
-                  모두 읽음
-                </AppText>
-              )}
-            </Pressable>
-          </View>
-
-          <View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: Spacing.sm }}>
-            {(
-              [
-                { id: 'all', label: `전체 ${items.length}` },
-                { id: 'unread', label: `안 읽음 ${unreadCount}` },
-              ] as const
-            ).map((option) => {
-              const selected = filter === option.id;
-              return (
-                <Pressable
-                  key={option.id}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected }}
-                  onPress={() => setFilter(option.id)}
-                  style={({ pressed }) => ({
-                    minHeight: TouchTarget.minimum,
-                    flex: 1,
-                    paddingHorizontal: Spacing.lg,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderWidth: selected ? 2 : 1,
-                    borderColor: selected ? theme.primary : theme.border,
-                    borderRadius: Radius.pill,
-                    backgroundColor: selected
-                      ? theme.backgroundSelected
-                      : pressed
-                        ? theme.backgroundElement
-                        : theme.surface,
-                  })}>
-                  <AppText variant="bodyStrong" color={selected ? 'primary' : 'text'} selectable={false}>
-                    {option.label}
-                  </AppText>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {error ? (
-            <View
-              accessibilityRole="alert"
-              style={{ padding: Spacing.md, borderRadius: Radius.md, backgroundColor: theme.dangerSurface }}>
-              <AppText color="danger">{error}</AppText>
-            </View>
-          ) : null}
-        </View>
-      }
-      ListEmptyComponent={
-        loading ? (
-          <View
-            accessibilityRole="progressbar"
-            accessibilityLabel="알림을 불러오는 중"
-            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md }}>
-            <ActivityIndicator color={theme.primary} size="large" />
-            <AppText variant="bodyStrong">알림을 불러오고 있어요</AppText>
-          </View>
-        ) : error && items.length === 0 ? (
-          <EmptyState
-            emoji="🔄"
-            title="알림을 불러오지 못했어요"
-            description="인터넷 연결을 확인한 뒤 다시 시도해 주세요."
-            actionLabel="다시 시도"
-            onActionPress={() => void replaceNotifications()}
-          />
-        ) : (
-          <EmptyState
-            emoji="🔔"
-            title={filter === 'unread' ? '새 알림을 모두 확인했어요' : '아직 알림이 없어요'}
-            description={
-              filter === 'unread'
-                ? '새로운 모임과 승인 소식이 오면 이곳에서 알려드릴게요.'
-                : '참여한 모임에 새 소식이 생기면 바로 알려드릴게요.'
-            }
-          />
-        )
-      }
-      ListFooterComponent={
-        hasNextPage ? (
-          <SeniorButton
-            label="이전 알림 더 보기"
-            variant="outline"
-            loading={loadingMore}
-            onPress={() => void loadMore()}
-            style={{ marginTop: Spacing.sm }}
-          />
-        ) : null
-      }
-      renderItem={({ item }: ListRenderItemInfo<NotificationItem>) => {
-        const kind = KIND_LABELS[item.kind];
-        const pending = pendingIds.includes(item.id);
-        return (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${item.read ? '읽은 알림' : '새 알림'}, ${kind.label}, ${item.title}, ${item.body}`}
-            accessibilityHint={`${kind.label} 화면으로 이동합니다`}
-            accessibilityState={{ busy: pending }}
-            disabled={pending}
-            onPress={() => void openNotification(item)}
-            style={({ pressed }) => ({
-              minHeight: TouchTarget.minimum,
-              padding: Spacing.xl,
-              flexDirection: 'row',
-              alignItems: 'flex-start',
-              gap: Spacing.md,
-              borderWidth: item.read ? 1 : 2,
-              borderColor: item.read ? theme.divider : theme.primary,
-              borderRadius: Radius.lg,
-              borderCurve: 'continuous',
-              backgroundColor: item.read
-                ? pressed
-                  ? theme.backgroundElement
-                  : theme.surface
-                : pressed
-                  ? theme.backgroundSelected
-                  : theme.infoSurface,
-              boxShadow: Shadows.card,
-              opacity: pending ? 0.65 : 1,
-            })}>
-            <View
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-              style={{
-                width: TouchTarget.minimum,
-                height: TouchTarget.minimum,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: Radius.md,
-                backgroundColor: item.read ? theme.backgroundElement : theme.surface,
-              }}>
-              <AppText variant="key" selectable={false}>
-                {kind.emoji}
-              </AppText>
-            </View>
-            <View style={{ flex: 1, gap: Spacing.xs }}>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: Spacing.sm }}>
-                <AppText variant="caption" color={item.read ? 'textMuted' : 'primary'} selectable={false}>
-                  {kind.label}{item.read ? '' : ' · 새 소식'}
-                </AppText>
-                <AppText variant="caption" color="textMuted" selectable={false}>
-                  {formatNotificationTime(item.createdAt)}
+              <View
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                style={{
+                  width: TouchTarget.minimum,
+                  height: TouchTarget.minimum,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: Radius.md,
+                  backgroundColor: item.read ? theme.backgroundElement : theme.surface,
+                }}>
+                <AppText variant="key" selectable={false}>
+                  {kind.emoji}
                 </AppText>
               </View>
-              <AppText variant="bodyStrong" selectable={false}>{item.title}</AppText>
-              <AppText color="textSecondary" selectable={false}>{item.body}</AppText>
-              <AppText variant="caption" color="primary" selectable={false}>
-                {pending ? '읽음 처리 중…' : `${kind.label} 화면 열기 ›`}
-              </AppText>
-            </View>
-          </Pressable>
-        );
-      }}
-    />
+              <View style={{ flex: 1, gap: Spacing.xs }}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: Spacing.sm }}>
+                  <AppText variant="caption" color={item.read ? 'textMuted' : 'primary'} selectable={false}>
+                    {kind.label}{item.read ? '' : ' · 새 소식'}
+                  </AppText>
+                  <AppText variant="caption" color="textMuted" selectable={false}>
+                    {formatNotificationTime(item.createdAt)}
+                  </AppText>
+                </View>
+                <AppText variant="bodyStrong" selectable={false}>{item.title}</AppText>
+                <AppText color="textSecondary" selectable={false}>{item.body}</AppText>
+                <AppText variant="caption" color="primary" selectable={false}>
+                  {pending ? '읽음 처리 중…' : `${kind.label} 화면 열기 ›`}
+                </AppText>
+              </View>
+            </Pressable>
+          );
+        }}
+      />
+    </View>
   );
 }

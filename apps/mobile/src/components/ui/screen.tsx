@@ -59,15 +59,19 @@ export function Screen({
   }
 
   return (
-    <ScrollView
+    <View
       testID={testID}
-      contentInsetAdjustmentBehavior="never"
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-      style={[{ flex: 1, backgroundColor: theme.background }, style]}
-      contentContainerStyle={[innerStyle, { paddingTop: insets.top + topGap }]}
-      {...scrollViewProps}>
-      {children}
-    </ScrollView>
+      style={[{ flex: 1, backgroundColor: theme.background }, style, { paddingTop: insets.top, overflow: 'hidden' }]}>
+      {/* Keep system space outside the viewport; content padding scrolls away. */}
+      <ScrollView
+        contentInsetAdjustmentBehavior="never"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        style={{ flex: 1, overflow: 'hidden' }}
+        contentContainerStyle={[innerStyle, { paddingTop: topGap }]}
+        {...scrollViewProps}>
+        {children}
+      </ScrollView>
+    </View>
   );
 }
