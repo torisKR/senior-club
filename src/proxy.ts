@@ -29,7 +29,7 @@ export function proxy(request: NextRequest) {
   const refreshSession = inspectSessionCookieHeader(cookieHeader);
   if (refreshSession.status === "valid") {
     return NextResponse.redirect(
-      redirectUrl(request, "/api/auth/continue", returnTo),
+      redirectUrl(request, "/auth/continue", returnTo),
     );
   }
 
