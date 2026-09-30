@@ -1,16 +1,16 @@
 # 운영 배포 및 Android 재검사 — 2026-09-30
 
-ADB로 Galaxy M33 / Android 16의 실제 설치 앱을 재검사했다. 앞선 인증 QA에서 카카오 재로그인·프로필 저장을 확인했고, 공통 디자인을 적용한 새 APK에서도 세션과 원본 프로필 복원·큰 글씨 설정 복구를 확인했다. 웹은 Vercel production에 수정 배포 후 Playwright CLI 검사가 통과했다. **전체 출시 검증 완료는 아니다.** Firebase SMS 설정과 origin TLS, 아래 별도 출시 조건은 남아 있다.
+Galaxy M33 / Android 16에서 최신 Android 디자인 QA APK의 로그인 복원·프로필·5개 탭·사진 슬롯과 6개 글자 확대 조합을 검사했다. 기본 글자와 하단 탐색을 조정하고 실기기에서 발견한 확대 아이콘 정렬 문제도 수정했다. 웹은 새 Vercel production에 배포해 Playwright CLI 검사가 통과했다. 전체 출시 검증 완료는 아니며 Firebase SMS 설정·origin TLS·별도 Play 조건이 남아 있다.
 
 ## 실제 배포
 
 - API: 서울 ECS `senior-club-api:25`, running 1, rollout `COMPLETED`, automatic rollback 활성화.
 - Image: `sha256:a7c01a4561a39478742d0298ea8d2143c09cf2b579d0e9a0e321d60d20891314`.
 - API: https://d33totqtaqpyfs.cloudfront.net
-- Web: https://senior.toris.kr, Vercel `dpl_9fK6bmYnVLeaP9PVhbY3HCFSuYcG`.
+- Web: https://senior.toris.kr, Vercel `dpl_FumS2oKgsfdmRXbSCESNJrtRPRet`.
 - QA APK: `apps/mobile/android/app/build/outputs/apk/release/app-release.apk`, 0.1.1 / versionCode 212215980 / target API 36, arm64.
-- APK SHA-256: `778ae626a8a914a2ecbabfecbcd7e45f20789883618bb14f1a23217d72672bb4`, 64,124,707 bytes. 기기에 설치된 base APK 해시가 이 값과 일치했다.
-- APK는 standalone release 모드이며 debuggable=false다. 기존 기기 데이터를 보존하려고 **debug certificate로 서명한 QA 빌드**다. Play upload/signing artifact나 제출 AAB가 아니다. 공식 테스트 광고 ID를 사용했고 기기에서도 테스트 광고 표시를 확인했다.
+- APK SHA-256: `ce40a404b23c7ac0851e17f48bbe1231fb0d8491db10b87738233e93a5f01f3f`, 64,126,255 bytes. 기기에 설치된 base APK 해시가 이 값과 일치했다.
+- APK는 standalone release 모드이며 debuggable=false다. 기존 기기 데이터를 보존하려고 **debug certificate로 서명한 QA 빌드**다. Play upload/signing artifact나 제출 AAB가 아니다. 공식 테스트 광고 ID를 번들에서 확인했다. 최종 APK의 실제 광고 수신은 이번 검사 범위가 아니다.
 
 ## 장애 원인과 수정
 
@@ -22,10 +22,32 @@ ADB로 Galaxy M33 / Android 16의 실제 설치 앱을 재검사했다. 앞선 �
 6. Expo source introspection만으로 APK 권한을 판단하지 않도록 compiled merged manifest gate를 추가하고 CI 회귀와 production Gradle build 이후 gate에 연결했다.
 7. 운영 DB URL이 `sslmode=verify-full`을 사용하도록 시작 시 검사한다. 검증을 약화시키는 옵션, 중복/모호한 TLS query parameters와 `NODE_TLS_REJECT_UNAUTHORIZED=0`을 거절한다. 검증 오류에 DB URL을 노출하지 않는다. 이 변경은 API task 25에 배포했다.
 8. 추가 ADB 검사에서 모임 상세의 요약·본문이 같은 문장으로 중복 표시되고 종료 모임에도 남은 자리를 안내하는 문제를 확인했다. 동일 요약은 생략하고 신청 불가능한 모임은 참여 인원·전체 정원만 표시한다.
+9. 격리된 실제 웹 QA에서 보호 링크의 Next prefetch와 mounted session 조회가 같은 refresh token을 동시에 소비했다. 엄격한 재사용 거절 뒤 continue 응답이 쿠키를 제거해 인증 성공/실패가 섞였다. 브라우저의 session 조회·로그아웃을 공통 요청과 Web Locks로 조정하고, 보호 페이지의 복원은 `/auth/continue`의 실제 mounted component에서 수행하도록 변경했다. legacy `/api/auth/continue`와 미리보기는 토큰 회전·쿠키 변경을 하지 않는다. 이동 경로·onboarding·재시도·외부 주소 및 인증 순환 차단을 검사했다. 실제 UI의 수정 후 판정은 [역할 UI QA](QA_ROLE_UI_20260930.md)를 확인한다.
 
-## ADB 실기기 검사
+## 최신 웹 세션 수정과 재배포
 
-아래 provider 로그인·운영 프로필 저장 검사는 앞선 인증 QA APK `bd35379f…`와 task 24에서 수행한 결과다. 공통 디자인을 포함한 현재 `778ae626…` APK의 별도 재검사는 다음 절에 기록한다.
+웹 소스 `9a376d96f4e8a955fa29ad305c480d2d156d321b`를 고정한 별도 사본에서 production에 배포했다. 원격 Turbopack compile과 READY 상태를 확인했고 실제 canonical 주소에서 Playwright CLI 공개 화면·이동·글자 크기 27개, 익명 인증 경계 15개, legacy prefetch 무회전·안전한 익명 continuation 11개를 모두 통과했다. page/console error와 실패한 resource는 0개다. 실제 웹 provider login/token exchange와 운영 유효 계정의 restore는 이번 live 검사의 범위가 아니다. [새 웹 배포·세션 경계 증거](qa-evidence/20260930/web-session-live.json).
+
+격리된 실제 Nest/Prisma/Next HTTPS 환경에서 회원·리더·관리자 전체 19개와 동일 context 두 tab restore/logout 5개 검사가 통과했다. mounted reader는 모두 인증된 회원을 받았고 access 제거 후 refresh는 한 번만 회전했다. 보호 화면은 새 document navigation으로 실제 SSR에 다시 도달했다. 외부 Kakao identity verifier만 합성 신원으로 대체했다. [실제 역할 UI 보고서](QA_ROLE_UI_20260930.md). 이후 Android 디자인 수정 소스는 이 웹 검증 manifest에 포함되지 않는다.
+
+## 최신 Android 디자인과 실기기 판정
+
+최종 Native source는 `7d435b497de5b7e4fd858245a4e3e16e6c6dad3f`이며 APK SHA-256은 `ce40a404b23c7ac0851e17f48bbe1231fb0d8491db10b87738233e93a5f01f3f`다. Gradle 강제 JS 재번들·release build 중 제품 소스 hash가 유지됐고, 기존 QA certificate와 같은 서명·package/version/target36·compiled manifest 34 permissions/10 exports·production endpoint와 테스트 banner·동일 사진 7개·Material font byte 일치를 확인했다. 기존 데이터를 유지하는 install-r 후 설치 APK hash가 일치했다.
+
+- 기본 caption 13/body 16/title 24와 Regular/SemiBold 역할을 적용했다. 프로필·선택 번호 인증·채팅 입력란도 body 토큰을 사용한다.
+- 하단 탐색 기본 row는 실제 60.09dp였다. 실제 시스템 하단 inset을 한 번만 적용하며 각 탭의 touch 폭은 76.8dp다. 시스템 배율 2.0에서 라벨 줄 수 때문에 icon 줄이 달라지던 문제를 실제 캡처에서 찾고 고쳤다.
+- 기본/큰 글씨와 시스템 배율 1.0/1.3/2.0의 6개 조합에서 5개 icon의 Y 좌표가 모두 같았다. row 높이는 각각 60.09/62.22/65.07/67.91/108.09/115.91dp이며 큰 글씨 선택은 재시작 후 유지됐다. 임시 font scale·앱 큰 글씨·시스템 night mode를 원래 1.0/false/no로 복구했다.
+- 홈 사진의 실제 slot은 약 1.7794, 16:9와 rounding 범위에서 일치했다. 홈/로그인/목록 16:9와 상세 3:2, fallback·세로 원격 이미지·legacy height 충돌은 component 검사도 통과했다. 홈의 정상/최대 확대 캡처를 직접 보고 줄바꿈·사진·아이콘 정렬을 확인했다.
+- 최신 현재 프로필 기준을 private local에 보관하고 여러 cold start 뒤 이름·연락처·지역 일치를 확인했다. 예전 baseline의 연락처만 달랐으므로 예전 값을 복원하지 않았다. 실제 프로필 저장·SMS 요청은 0회다.
+- 최종 8개 core 검사와 6개 확대 조합이 통과했다. 5개 탭 이동에 통신 오류가 없고 마지막 현재 PID의 FATAL EXCEPTION/ReactNativeJS Error/P2010은 모두 0이었다.
+- 앱은 기존 app.json의 `userInterfaceStyle: light`를 유지한다. 시스템 night mode에서 layout이 유지되는 검사이며 앱의 dark palette를 실제 검증한 결과는 아니다. 3버튼 탐색 실기기 384dp이며 다른 폭 360/393/430dp와 gesture inset은 unit 계산 범위다.
+- 마지막 core QA 후 다른 앱이 foreground가 돼 추가 모임 카드·상세 사진 실기기 검사는 입력 전에 중단했다. 해당 화면의 실제 pixel 검수를 완료했다고 주장하지 않는다. QA가 만든 지정 UI dump 파일은 제거했고 개인 캡처는 private local에만 보관했다.
+
+최신 소스의 mobile 전체 348 tests / 45 files, TypeScript와 scoped ESLint, 하단 탐색 12개 회귀가 통과했다. 이 APK는 기존 QA 데이터를 유지하는 debug-certificate QA 빌드다. 최종 Play 제출 artifact나 모든 화면의 시각 승인을 의미하지 않는다. [실기기·확대·이미지 검증 증거](qa-evidence/20260930/native-design-live.json), [디자인 기준과 구현](MOBILE_DESIGN_REVISION_20260930.md).
+
+## 앞선 인증 APK의 ADB 검사
+
+아래 provider 로그인·운영 프로필 저장 검사는 앞선 인증 QA APK `bd35379f…`와 task 24에서 수행한 결과다. 이전 공통 디자인 `778ae626…` APK의 별도 재검사는 다음 절에 기록한다.
 
 | 검사 | 결과 |
 | --- | --- |
@@ -45,13 +67,13 @@ ADB로 Galaxy M33 / Android 16의 실제 설치 앱을 재검사했다. 앞선 �
 
 앞선 인증 QA의 cold activity start WaitTime은 959ms였다. 이는 Android Activity 시작 시간이며 사용자 화면 준비 시간이나 p95 성능 수치가 아니다. 이 실행은 부하 시험이 아니다. task 24 readiness 7회는 모두 200 / database ok, 클라이언트 왕복 중앙값 34ms였다. TLS 설정 검사만 추가한 task 25 readiness 3회도 모두 통과했고 중앙값 36ms였다. task 25의 phone/email/Google 로그인은 403, 비인증 프로필/번호 proof API는 401, 해당 새 task의 ERROR 로그는 0이었다. 실제 provider 로그인은 task 24와 앞선 인증 QA APK에서 검사한 결과이며 task 25에서 다시 수행했다고 주장하지 않는다.
 
-## 공통 디자인·이미지와 새 APK 재검사
+## 이전 공통 디자인·이미지와 APK 재검사
 
 웹과 앱은 `shared/design/foundation.ts`의 색상, 버튼 역할, 카드·터치 치수를 함께 사용한다. 화면 폭과 탐색 방식은 플랫폼 adapter에서 적용한다. 밝은 테마의 주요 버튼 대비는 최소 4.76, 어두운 테마는 최소 6.69이며 어두운 selected 배경의 보조 글자 대비도 4.53 이상으로 수정했다. 이는 코드의 WCAG 대비 계산이며 screenshot 미감 승인이나 실제 스크린리더 사용성 시험을 대신하지 않는다.
 
 웹의 주제 사진 7개를 그대로 앱에 포함했고 SHA-256이 모두 일치했다. 유효한 서버 사진이 우선이며 실패하면 공용 주제 사진으로 한 번 fallback한다. category fallback에는 접근성 설명과 “주제 참고 이미지” caption을 제공한다. 목록의 source/recycling key가 바뀌면 오류 상태를 초기화하고 이전 이미지 callback이 새 항목을 실패시키지 않도록 회귀 검사했다. 사진 파일의 pixels는 수정하지 않았다.
 
-현재 APK는 데이터를 유지하는 `install -r`로 교체했다. force-stop 후 로그인된 홈과 원본 프로필 비교가 통과했고 큰 글씨를 켜고 끈 뒤 원래 설정을 복구했다. 5개 탭과 참고 이미지 caption을 XML로 확인했다. 공통 디자인이 동일한 직전 APK에서 커뮤니티 상세, 예정 0개·지난 모임, 종료 안내와 채팅 빈 상태도 확인했다. 최종 APK의 설명은 1회만 표시되고, 종료 모임에는 전체 정원·종료 안내가 있으며 남은 자리 문구와 신청 컨트롤은 없었다. 마지막에는 기본 글씨의 홈으로 복구했다. 최종 현재 PID의 FATAL EXCEPTION·ReactNativeJS Error·P2010은 각각 0이다. 이 8개 실기기 검사가 통과했다. Activity WaitTime은 1067ms이며 화면 준비 시간이나 부하 성능 수치가 아니다. 현재 APK에서 provider 재로그인이나 SMS 발송은 하지 않았다.
+이전 `778ae626…` APK는 데이터를 유지하는 `install -r`로 교체했다. force-stop 후 로그인된 홈과 원본 프로필 비교가 통과했고 큰 글씨를 켜고 끈 뒤 원래 설정을 복구했다. 5개 탭과 참고 이미지 caption을 XML로 확인했다. 공통 디자인이 동일한 직전 APK에서 커뮤니티 상세, 예정 0개·지난 모임, 종료 안내와 채팅 빈 상태도 확인했다. 최종 APK의 설명은 1회만 표시되고, 종료 모임에는 전체 정원·종료 안내가 있으며 남은 자리 문구와 신청 컨트롤은 없었다. 마지막에는 기본 글씨의 홈으로 복구했다. 최종 현재 PID의 FATAL EXCEPTION·ReactNativeJS Error·P2010은 각각 0이다. 이 8개 실기기 검사가 통과했다. Activity WaitTime은 1067ms이며 화면 준비 시간이나 부하 성능 수치가 아니다. 현재 APK에서 provider 재로그인이나 SMS 발송은 하지 않았다.
 
 [공통 디자인·동일 사진 증거](qa-evidence/20260930/shared-design-assets.json), [새 APK 실기기 증거](qa-evidence/20260930/native-shared-live.json).
 
@@ -60,6 +82,16 @@ ADB로 Galaxy M33 / Android 16의 실제 설치 앱을 재검사했다. 앞선 �
 운영 task 24와 같은 image·secret reference·network로 API 서버를 실행하지 않는 일회성 ECS 검사를 수행했다. 사용자 데이터 대신 현재 연결의 `pg_stat_ssl`만 읽었다. 서버 인증서 검증 결과 `authorized=true`, socket 및 PostgreSQL TLS 1.3, 잘못된 hostname 거절과 신뢰하지 않는 CA 거절을 확인했고 task는 exit 0으로 종료했다. task 25는 같은 DB secret 및 CA bundle을 보존하며 위 시작 검사를 추가했다.
 
 [DB TLS 증거](qa-evidence/20260930/database-tls-live.json), [task 25 smoke 증거](qa-evidence/20260930/api-tls-live.json). 이 검사는 백업 복구·네트워크 private 전환·부하 성능을 증명하지 않는다.
+
+## 운영 DB 공개 접근 해제와 스키마 검사
+
+2026-09-30 16:18 KST에 RDS `PubliclyAccessible=false`, `available`, pending 변경 없음과 API readiness 200을 확인했다. 기존 endpoint·보안그룹·서브넷·DB secret을 유지하고 공개 접근 설정만 변경했다. encrypted, 7일 backup, deletion protection도 유지했다. API task 25에서 새 연결을 열어 VPC 내부 DNS와 socket, TLS 1.3 및 인증서 검증, 잘못된 hostname·신뢰하지 않는 CA 거절을 다시 확인했다. 변경 중·후 readiness 12회는 모두 200/database ok였고, 중앙값 79.1ms는 로컬 네트워크의 비부하 관찰이다. private subnet 이전이나 Multi-AZ 전환은 수행하지 않았다. [공개 접근 해제·새 연결 증거](qa-evidence/20260930/database-private-live.json).
+
+별도의 운영 read-only / repeatable-read transaction에서 마이그레이션 이름·SQL SHA-256·완료 상태 10개와 테이블 35개가 로컬 소스와 일치했다. 무효 제약조건과 인덱스는 각각 0개였다. TLS 검증과 read-only 상태도 통과했다. 비즈니스 row를 읽지 않았으므로 사용자 데이터의 정확성이나 모든 Prisma 의미 차이를 검증한 결과는 아니다. [운영 스키마 메타데이터 증거](qa-evidence/20260930/database-schema-live.json).
+
+동일 VPC에 암호화·비공개 PITR 복구 DB 1개와 전용 보안그룹 2개를 만들고, 고정한 2026-09-30 16:20:11 KST 시점으로 복구했다. API 서버·worker를 시작하지 않는 동일한 one-shot reader로 strict TLS 및 read-only 상태, SQL migration 10개, 테이블 35개, migration/catalog fingerprint와 집계의 운영 baseline 일치를 확인했다. 요청 준비 시작부터 스키마 증거까지 845.3초, 정리 완료까지 1148.0초였다. 16:51 KST에 복구 DB·전용 보안그룹 부재와 새 snapshot/retained backup 0개, 운영 DB available/private 및 7일 backup·deletion protection 보존을 확인했다. 원본 endpoint·secret·보안그룹·route는 이 훈련에서 변경하지 않았다. [실제 PITR 메타데이터 비교·정리 증거](qa-evidence/20260930/database-recovery-live.json), [복구 실행 범위와 런북](RDS_RECOVERY_PLAN.md).
+
+이 훈련은 업무 row 대조, 전체 물리 블록 무결성, 운영 교체·failback·Multi-AZ/cross-region 복구나 snapshot restore를 검증하지 않았다. 위 시간은 한 번의 제한된 훈련 관찰이며 RPO/RTO SLA가 아니다. 비용 목표 $1은 청구 hard cap이 아니고 실제 청구액은 아직 확인하지 않았다.
 
 ## 실제 DB 권한·데이터 검사
 
@@ -71,7 +103,7 @@ Node 24 / PostgreSQL 17.11의 별도 disposable DB에서 migration 10개와 seed
 
 ADB 조작은 fresh UI hierarchy와 현재 foreground package를 확인했다. 다른 앱이 화면을 차지하면 입력을 거절했다. 개인 프로필 원본·원시 logcat·provider UI는 비공개 임시 파일에만 보존하고 이 보고서에는 포함하지 않았다. 기기 알림 권한 등 기존 선호를 변경하지 않았다.
 
-## Playwright CLI 운영 웹 검사
+## 이전 공통 디자인 배포의 Playwright CLI 검사
 
 4개 조건으로 각 5개 공개 페이지를 확인했다: Seoul 1440px 기본 글씨, LA 390px 큰 글씨+가짜 로컬 cache, UTC 360px 큰 글씨+날짜 경계, Seoul 390px 저장소 접근 차단. `/`, `/events`, `/clubs`, `/login?error=...`, `/privacy`와 client 이동·뒤로가기 및 font toggle을 검사했다.
 
@@ -82,7 +114,7 @@ ADB 조작은 fresh UI hierarchy와 현재 foreground package를 확인했다. �
 - 원격 Next.js 16.3.4 Turbopack build와 실제 alias에서 검증했다. 로컬 webpack 결과로 운영 성공을 대신하지 않았다.
 - [운영 웹 증거](qa-evidence/20260930/web-live.json), [API smoke 증거](qa-evidence/20260930/api-live.json).
 
-현재 배포의 첫 화면 흐름 검사에서는 `client events → home`에서 404 console error 2개가 나타났다. 리소스 경로를 수집하도록 보강한 재실행은 27개 검사, page/console error 0, HTTP 4xx/5xx 리소스 0으로 통과했다. 최초 오류의 리소스 경로는 수집하지 못했고 원인은 확정하지 않았으므로 특정 수정으로 해결했다고 보고하지 않는다.
+이전 공통 디자인 배포의 첫 화면 흐름 검사에서는 `client events → home`에서 404 console error 2개가 나타났다. 리소스 경로를 수집하도록 보강한 재실행은 27개 검사, page/console error 0, HTTP 4xx/5xx 리소스 0으로 통과했다. 최초 오류의 리소스 경로는 수집하지 못했고 원인은 확정하지 않았으므로 특정 수정으로 해결했다고 보고하지 않는다.
 
 별도 익명 인증 경계 15개가 통과했다. 필수 동의 누락/중복 거절, canonical Kakao 진입, 안전한 returnTo, host-only HttpOnly/Secure/SameSite=Lax intent cookie, state 불일치·취소, 기존 로그인 수단 410, 비인증 프로필 PATCH 401, 외부 Origin 403, non-JSON 415와 익명 logout cookie 삭제를 확인했다. provider 로그인·token exchange·실제 계정 쓰기·SMS 발송은 없다. [운영 인증 경계 증거](qa-evidence/20260930/web-auth-boundary-live.json).
 
@@ -94,27 +126,30 @@ ADB 조작은 fresh UI hierarchy와 현재 foreground package를 확인했다. �
 
 | 범위 | 통과 결과 |
 | --- | --- |
-| 웹 최종 source | 484 tests / TypeScript / ESLint / local production build |
+| 웹 인증 수정 source `9a376d96…` | 529 tests / TypeScript / root ESLint / local production webpack build. 로컬 Turbopack은 포트 생성 제한으로 미검증 |
 | API 최종 source | 381 passed, 24 skipped / TypeScript; TLS env 회귀 90개. runtime TLS source build와 배포 통과 |
 | 실제 local PostgreSQL auth | migration 10개, auth regression 12개 |
 | 추가 실제 local DB 역할/후기/신고 | auth/events 9 + reviews 1 + safety 2 = 12 passed, 0 skipped |
 | DB 실행 안전성 guard | 4 passed; root ESLint와 CI YAML/전용 DB 계약 검사 통과 |
-| 모바일 공통 디자인 통합 source | 330 tests / TypeScript / ESLint; 이후 상세 표시 2개 수정의 TypeScript·scoped ESLint·native rebuild 통과 |
-| 새 compiled manifest 회귀 | 33 tests |
+| 이전 모바일 공통 디자인 통합 source | 330 tests / TypeScript / ESLint; 이후 상세 표시 2개 수정의 TypeScript·scoped ESLint·native rebuild 통과 |
+| 최종 Android 디자인 source `7d435b4…` | 348 tests / 45 files / TypeScript / scoped ESLint / 하단 탐색 회귀 12; 실제 APK 증거 참조 |
+| 새 compiled manifest 회귀 | 35 tests; compiled AAB의 정확한 numeric enum도 검사 |
 | compiled release manifest | allowlist 권한 34개, 정확한 exported component 10개 |
-| Play production workflow 계약 | 5 tests |
+| Play production workflow 계약 | 7 tests / 세 workflow actionlint; exact screenshot 발급·수신 Python 계약 19 tests. hosted 실행 미관측 |
 | 최종 root ESLint / diff whitespace | 통과 |
 | 최종 native APK | Gradle release build / apksigner / 설치 hash 일치 |
 
 manifest export 10개는 intent가 제한된 activity 4개와 권한으로 보호된 SDK component 6개다. Firebase reCAPTCHA/IDP callback을 임의 제거하지 않는다. camera/contacts/location/storage/SMS/audio 권한, unknown export, debug/backup/cleartext, 약화된 SDK protection을 거절하는 회귀가 포함된다. 이것은 최종 Play AAB 또는 모든 SDK 동작의 안전성을 포괄적으로 증명하지 않는다.
+
+이후 Android 디자인 수정 전의 historical 후보로서 mobile 제품 소스 `f513abe6569f479a5e014ede29f4135e4650353e`에서 기존 upload certificate로 서명한 로컬 AAB 후보를 생성했다. versionCode 212215980 / 0.1.1, 4개 ABI, SHA-256 `99f577e1e70c38806c86c1f4b1273891827243dc24937fc011ac0f937dd9598b`다. pinned bundletool·모든 entry 서명·certificate·실제 AAB manifest·공용 사진 7개 byte 일치·production endpoint/ad 설정을 확인했다. SDK의 test ID 상수는 bundle 안에 있으며 실제 광고 제공은 검사하지 않았다. 기존 QA APK와 기기 데이터를 보존했고, 후보의 기기 설치·provider 로그인·최신 Play versionCode 대조·최종 screenshot 검토·Play 업로드는 아직 없다. [로컬 서명 후보 증거](qa-evidence/20260930/android-signed-candidate.json), [출시 인수 문서](PLAY_UPLOAD_HANDOFF.md).
 
 ## 남은 운영 설정과 별도 출시 조건
 
 - Firebase `clubsenior-app`: actual QA SHA-1/SHA-256 등록 및 native rebuild 완료. Auth config 초기화는 `BILLING_NOT_ENABLED`로 거절됨. 사용할 결제 계정, Phone provider/KR region policy와 서버 Admin ADC가 필요함. 실제 SMS/번호 linking, Play signing SHA는 미검증.
 - 웹 OAuth callback/HttpOnly cookie/로그아웃의 실제 계정 E2E는 별도다. Android Kakao 성공으로 이를 대체하지 않음.
 - CloudFront→ALB는 HTTP. direct origin 403과 CloudFront prefix ingress는 적용했으나 origin DNS/ACM을 통한 HTTPS 전환은 남아 있음. Cloudflare DNS 로그인/권한이 필요하며 서울 ACM 인증서는 `PENDING_VALIDATION`. [정확한 DNS 레코드와 전환 순서](ORIGIN_TLS_HANDOFF.md).
-- RDS encrypted/backup/deletion protection 및 실제 strict DB certificate verification 확인. public endpoint는 켜져 있으며 SG는 전체 인터넷에 개방되지 않음. private 전환과 backup restore 훈련은 남아 있음.
+- RDS 공개 접근 해제, encrypted/backup/deletion protection 및 변경 후 strict DB certificate verification 확인. 임시 PITR 복구 DB의 migration/catalog 비교와 리소스 정리까지 통과. 기존 서브넷 구성과 single-AZ는 유지하며 전체 업무 데이터 복구·가용성 훈련은 별도 범위임.
 - 이메일/SMS outbox/FCM 채널은 disabled. 회원/리더/관리자 신청·승인·취소와 후기/신고는 위 local DB 범위를 통과했다. 외부 알림 수신, 실제 Plus 구매/복원, 역할별 운영 웹/앱 UI에서의 신청·취소/UGC/채팅/신고/관리자 E2E, 최종 서명 AAB/Play screenshot provenance와 Play 공개는 이번 재검사에서 완료하지 않음.
-- 화면 구조·접근성 상태는 XML/DOM으로 검사했다. 이 환경에서 screenshot pixels의 시각 검토는 수행하지 못했으므로 이미지 미감의 최종 승인으로 보고하지 않는다.
+- 화면 구조·접근성 상태는 XML/DOM으로 검사했다. 최신 Android 홈의 정상·확대 캡처는 직접 시각 검토했다. 전체 화면/웹/카드·상세 사진/스토어 screenshot의 미감 승인을 포괄하는 결과는 아니다.
 
 [운영 런북](DEPLOYMENT.md), [선택형 번호 인증 설정](../apps/mobile/src/phone-verification/NATIVE_SETUP.md).

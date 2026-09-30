@@ -13,12 +13,12 @@ Android / Vercel BFF → CloudFront → ALB → ECS API → RDS PostgreSQL
 | --- | --- |
 | 웹 canonical | https://senior.toris.kr |
 | 웹 보조 alias | https://clubsenior.vercel.app |
-| Vercel 배포 | dpl_9fK6bmYnVLeaP9PVhbY3HCFSuYcG |
+| Vercel 배포 | dpl_FumS2oKgsfdmRXbSCESNJrtRPRet |
 | API 공개 origin | https://d33totqtaqpyfs.cloudfront.net |
 | ECS cluster / service | senior-club / senior-club-api |
 | ECS task | senior-club-api:25, running 1, deployment COMPLETED |
 | API image digest | sha256:a7c01a4561a39478742d0298ea8d2143c09cf2b579d0e9a0e321d60d20891314 |
-| RDS | senior-club-db, PostgreSQL 18.3, encrypted, 7일 backup, deletion protection |
+| RDS | senior-club-db, PostgreSQL 18.3, 공개 접근 해제, encrypted, 7일 backup, deletion protection |
 | Firebase project | clubsenior-app |
 
 API health 경로는 `/healthz`, DB readiness는 `/readyz`다. `/v1/readyz`를 사용하지 않는다. 웹 BFF의 health/readiness는 `/api/healthz`, `/api/readyz`다. 실제 로그인과 QA 결과는 `QA_PRODUCTION_20260930.md`에 기록한다.
@@ -55,7 +55,7 @@ Node 24.16.0 / pnpm 9.14.2 및 루트 workspace lockfile을 사용한다. API ty
 
 `.github/workflows/deploy-main.yml`의 API job은 CI 성공 후 이 경로를 사용한다. 이 workflow의 Sites job은 별도 artifact 생성이며 Vercel live 배포를 대신하지 않는다. 현재 Vercel 웹 배포는 Vercel CLI로 수행했다.
 
-Prisma production migration은 `migrate deploy`를 사용한다. `db push`나 seed로 운영 모임을 만들지 않는다. 빈 local PostgreSQL 17에 10개 migration과 기존 auth DB 회귀 12개를 검증했다. 추가로 전용 DB에서 카카오·프로필·역할·후기·신고 12개를 실제 실행했으며 상세 범위는 QA 보고서를 확인한다. 운영 backup 복구 훈련이나 실제 provider·기기의 모든 역할 E2E를 증명하지 않는다.
+Prisma production migration은 `migrate deploy`를 사용한다. `db push`나 seed로 운영 모임을 만들지 않는다. 빈 local PostgreSQL 17에 10개 migration과 기존 auth DB 회귀 12개를 검증했다. 추가로 전용 DB에서 카카오·프로필·역할·후기·신고 12개를 실제 실행했으며 상세 범위는 QA 보고서를 확인한다. 별도 실제 운영 read-only 스키마 검사와 PITR 복구본의 메타데이터 비교·정리도 통과했다. 업무 row 복구와 실제 provider·기기의 모든 역할 E2E는 별도 검증이다.
 
 ## 안전한 실제 DB QA 실행
 
@@ -80,6 +80,8 @@ Vercel encrypted production environment를 유지한 채 프로젝트 루트에�
 
 배포 후 실제 canonical 주소를 `playwright-cli`로 검사한다. `/index`로 prerender되는 home pathname을 `/`로 정규화하는 회귀가 이번 배포에 포함되어 있다. 360/390/1440px, 큰 글씨, 시간대·날짜 경계, localStorage 차단, 클라이언트 이동·뒤로가기, 로그인 오류·동의, 정책 페이지를 검사한다. 로컬 webpack build 통과만으로 원격 Turbopack/live 결과를 대신하지 않는다.
 
+최신 웹 `9a376d96…`는 고정 source 사본에서 Vercel production으로 배포했고 원격 Turbopack compile/READY 및 실제 alias의 공개 27개·인증 경계 15개·안전한 continuation 11개 검사가 통과했다. 격리된 실제 HTTPS/DB 역할 UI 19개와 두 tab restore/logout 5개도 통과했다. [검증 범위와 증거](QA_PRODUCTION_20260930.md).
+
 웹 OAuth는 승인된 실제 계정으로 callback·cookie·로그아웃까지 추가 검증해야 한다. Android Kakao 성공만으로 웹 BFF 인증 성공을 보고하지 않는다.
 
 공통 색상·버튼 역할·터치 높이는 `shared/design/foundation.ts`에서 관리하고 웹 CSS adapter와 네이티브 theme이 함께 사용한다. 웹은 native OTF와 같은 Pretendard 1.3.9의 공식 variable subset을 자체 호스팅한다. 버전 경로의 font 파일은 immutable cache를 사용하며 모든 subset을 preload하지 않는다. 웹·앱의 주제 사진 7개는 byte 단위로 동일하고 실제 활동 사진이 없는 경우 참고 이미지라고 표시한다. 사진 `sizes`는 실제 container 폭을 반영한다. 최초 font 전송량 증가와 측정 한계는 QA 보고서에 함께 기록한다.
@@ -89,6 +91,8 @@ Vercel encrypted production environment를 유지한 채 프로젝트 루트에�
 ## Android 배포와 QA
 
 ADB 재검사 기기: Galaxy M33, Android 16. 실제 운영 API를 사용하는 standalone release-mode QA APK를 설치했다. QA APK는 기존 기기의 데이터를 보존하기 위해 debug certificate로 서명했다. Play upload/signing artifact나 production AAB로 취급하지 않는다.
+
+최신 Android 디자인 소스 `7d435b4…`의 실제 설치 QA APK는 `ce40a404b23c7ac0851e17f48bbe1231fb0d8491db10b87738233e93a5f01f3f`다. 기본 글자·하단 탐색·사진 slot과 6개 확대 조합을 실기기에서 검사했고 큰 글씨/시스템 설정을 복구했다. [최신 실기기 증거와 범위](QA_PRODUCTION_20260930.md).
 
 릴리스는 `apps/mobile/scripts/release-android-preflight.mjs`와 최종 스크린샷 provenance gate를 통과한 후 Android App Bundle의 package/versionCode/target36, upload 및 Play signing, **병합 manifest**를 검사한다. Expo introspection은 SDK manifest merge 결과까지 검사하지 않는다. 미서명/QA APK를 스토어에 제출하지 않는다.
 
@@ -110,6 +114,8 @@ CloudFront가 생성한 secret origin header를 ALB forward 조건으로 검사�
 
 CloudFront→ALB는 아직 HTTP다. 공개 NS 조회로 `toris.kr`의 DNS 관리 서비스가 Cloudflare임을 확인했다. origin 전용 DNS 레코드와 서울 리전 ACM certificate 요청은 준비했고 `PENDING_VALIDATION`이다. 현재 CLI 인증은 DNS API에서 403을 받으므로 Cloudflare 계정 로그인/권한이 필요하다. [DNS 레코드와 HTTPS 전환 순서](ORIGIN_TLS_HANDOFF.md)를 사용한다. TLS 완료로 보고하지 않는다.
 
-RDS public endpoint가 켜져 있으나 SG는 인터넷 전체에 개방되어 있지 않다. 운영 DB의 일회성 read-only ECS 검사에서 TLS 1.3, 인증서 검증 authorized=true, 잘못된 hostname 및 신뢰하지 않는 CA 거절을 실제 확인했다. task 25는 sslmode=verify-full과 모호하지 않은 TLS URL을 시작 시 요구하며 검증을 전역 해제하는 설정도 거절한다. [실제 DB TLS 증거](qa-evidence/20260930/database-tls-live.json)를 확인한다. private endpoint 전환·백업 복구 훈련·단일 인스턴스의 가용성 검토는 추가 작업이다.
+RDS의 공개 접근을 해제했다. 기존 endpoint·보안그룹·서브넷과 암호화·7일 backup·deletion protection을 유지했고, 변경 중·후 readiness 12회 및 task 25의 새 private 연결에서 TLS 1.3·인증서 검증 authorized=true·잘못된 hostname/신뢰하지 않는 CA 거절을 확인했다. task 25는 sslmode=verify-full과 모호하지 않은 TLS URL을 시작 시 요구하며 검증을 전역 해제하는 설정도 거절한다. [공개 접근 해제 및 실제 연결 증거](qa-evidence/20260930/database-private-live.json)를 확인한다. 운영 read-only 검사에서 SQL migration 10개·테이블 35개 일치와 무효 제약조건/인덱스 0개도 확인했다. [스키마 메타데이터 증거](qa-evidence/20260930/database-schema-live.json). private subnet 이전이나 Multi-AZ 전환을 완료했다고 보고하지 않는다. PITR 복구 검증 범위와 단일 인스턴스 가용성 검토는 별도로 확인한다.
+
+2026-09-30 실제 PITR 훈련은 복구 DB의 strict TLS/read-only 연결, SQL migration·카탈로그 해시의 운영 baseline 일치와 임시 DB/SG/backup 잔존 0개까지 통과했다. 요청 준비부터 스키마 증거까지 845.3초, 정리 완료까지 1148.0초다. 복구 DB에서 서버·worker를 시작하거나 업무 row를 읽지 않았다. 운영 전환·물리 블록 전체 검증·snapshot restore·RPO/RTO 보장을 포함하지 않는다. [실제 복구 증거](qa-evidence/20260930/database-recovery-live.json), [실행 범위와 후속 복구 런북](RDS_RECOVERY_PLAN.md).
 
 readiness/5xx/p95/DB pool/outbox failure/계정 삭제 worker를 모니터링한다. 구조화 로그·QA 보고서에 사용자 이름·연락처·token·origin secret·Admin credential을 기록하지 않는다. 최종 출시 전에는 실제 역할별 UGC/신청·취소/채팅·차단·관리자 E2E와 웹 OAuth, SMS, 푸시·결제를 검증한다.

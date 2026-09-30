@@ -1,0 +1,1159 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-30T10:09:30.519250+00:00",
+  "sourceCommit": "7d435b497de5b7e4fd858245a4e3e16e6c6dad3f",
+  "sourceFiles": 237,
+  "sourceSha256": "e6f96eac105f5b7ceccfecc7a3fabc1b71b7d9cd9cd3677eb7a32f4e1d5ab1ba",
+  "sourceHashAlgorithm": "SHA256 of JSON sorted relative-path-to-file-SHA256 map using separators comma/colon",
+  "artifact": {
+    "stage": "native-build-complete",
+    "sha256": "ce40a404b23c7ac0851e17f48bbe1231fb0d8491db10b87738233e93a5f01f3f",
+    "bytes": 64126255,
+    "beforeSha256": "ad5fb01caf6b21b2f7d6fdc5bff6d9129514fc5453865c6127a010ff64526df4",
+    "qaDebugSigning": true,
+    "testAds": true,
+    "sourceSha256": "e6f96eac105f5b7ceccfecc7a3fabc1b71b7d9cd9cd3677eb7a32f4e1d5ab1ba",
+    "sourceUnchanged": true,
+    "log": "/tmp/senior-android-mobile-revision-build.log"
+  },
+  "apkValidation": {
+    "artifactSha256": "ce40a404b23c7ac0851e17f48bbe1231fb0d8491db10b87738233e93a5f01f3f",
+    "signatureVerified": true,
+    "certificateSha256": "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c",
+    "package": "com.toris.seniorclub",
+    "versionCode": 212215980,
+    "targetSdk": 36,
+    "samePhotoFiles": 7,
+    "photoBytesMatch": true,
+    "materialSymbolsFontByteMatch": true,
+    "apiEndpoint": true,
+    "webEndpoint": true,
+    "testBanner": true
+  },
+  "nativeQa": {
+    "observedAt": "2026-09-30T10:03:46.296017+00:00",
+    "device": "Galaxy M33 / Android 16",
+    "apkSha256": "ce40a404b23c7ac0851e17f48bbe1231fb0d8491db10b87738233e93a5f01f3f",
+    "qaDebugSigned": true,
+    "sourceSha256": "e6f96eac105f5b7ceccfecc7a3fabc1b71b7d9cd9cd3677eb7a32f4e1d5ab1ba",
+    "productionEndpoints": true,
+    "testAds": true,
+    "realAccountWrites": 0,
+    "actualSmsSent": 0,
+    "providerLoginRetested": false,
+    "visualAestheticReviewPerformed": true,
+    "checks": {
+      "start": {
+        "targetForeground": true,
+        "communicationErrorVisible": false,
+        "allFiveTabs": true,
+        "tabGeometry": [
+          {
+            "label": "홈 탭",
+            "bounds": [
+              0,
+              2104,
+              216,
+              2273
+            ],
+            "selected": true,
+            "widthDp": 76.8,
+            "heightDp": 60.09
+          },
+          {
+            "label": "커뮤니티 탭",
+            "bounds": [
+              216,
+              2104,
+              432,
+              2273
+            ],
+            "selected": false,
+            "widthDp": 76.8,
+            "heightDp": 60.09
+          },
+          {
+            "label": "모임 탭",
+            "bounds": [
+              432,
+              2104,
+              648,
+              2273
+            ],
+            "selected": false,
+            "widthDp": 76.8,
+            "heightDp": 60.09
+          },
+          {
+            "label": "채팅 탭",
+            "bounds": [
+              648,
+              2104,
+              864,
+              2273
+            ],
+            "selected": false,
+            "widthDp": 76.8,
+            "heightDp": 60.09
+          },
+          {
+            "label": "내 정보 탭",
+            "bounds": [
+              864,
+              2104,
+              1080,
+              2273
+            ],
+            "selected": false,
+            "widthDp": 76.8,
+            "heightDp": 60.09
+          }
+        ],
+        "minimumTouchTarget": true,
+        "iconVerticalBounds": [
+          [
+            2127,
+            2194
+          ],
+          [
+            2127,
+            2194
+          ],
+          [
+            2127,
+            2194
+          ],
+          [
+            2127,
+            2194
+          ],
+          [
+            2127,
+            2194
+          ]
+        ],
+        "iconsOnSameRow": true,
+        "fontScale": 1.0,
+        "homeSelected": true,
+        "heroRatio": 1.7794,
+        "heroRatio16to9": true,
+        "passed": true
+      },
+      "geometry": {
+        "targetForeground": true,
+        "communicationErrorVisible": false,
+        "allFiveTabs": true,
+        "tabGeometry": [
+          {
+            "label": "홈 탭",
+            "bounds": [
+              0,
+              2104,
+              216,
+              2273
+            ],
+            "selected": true,
+            "widthDp": 76.8,
+            "heightDp": 60.09
+          },
+          {
+            "label": "커뮤니티 탭",
+            "bounds": [
+              216,
+              2104,
+              432,
+              2273
+            ],
+            "selected": false,
+            "widthDp": 76.8,
+            "heightDp": 60.09
+          },
+          {
+            "label": "모임 탭",
+            "bounds": [
+              432,
+              2104,
+              648,
+              2273
+            ],
+            "selected": false,
+            "widthDp": 76.8,
+            "heightDp": 60.09
+          },
+          {
+            "label": "채팅 탭",
+            "bounds": [
+              648,
+              2104,
+              864,
+              2273
+            ],
+            "selected": false,
+            "widthDp": 76.8,
+            "heightDp": 60.09
+          },
+          {
+            "label": "내 정보 탭",
+            "bounds": [
+              864,
+              2104,
+              1080,
+              2273
+            ],
+            "selected": false,
+            "widthDp": 76.8,
+            "heightDp": 60.09
+          }
+        ],
+        "minimumTouchTarget": true,
+        "iconVerticalBounds": [
+          [
+            2127,
+            2194
+          ],
+          [
+            2127,
+            2194
+          ],
+          [
+            2127,
+            2194
+          ],
+          [
+            2127,
+            2194
+          ],
+          [
+            2127,
+            2194
+          ]
+        ],
+        "iconsOnSameRow": true,
+        "fontScale": 1.0,
+        "homeSelected": true,
+        "heroRatio": 1.7794,
+        "heroRatio16to9": true,
+        "passed": true
+      },
+      "profile": {
+        "targetForeground": true,
+        "communicationErrorVisible": false,
+        "profileFieldsVisible": true,
+        "currentProfileMatchesAcrossRestart": true,
+        "passed": true
+      },
+      "community": {
+        "targetForeground": true,
+        "communicationErrorVisible": false,
+        "selectedTab": true,
+        "passed": true
+      },
+      "events": {
+        "targetForeground": true,
+        "communicationErrorVisible": false,
+        "selectedTab": true,
+        "passed": true
+      },
+      "chat": {
+        "targetForeground": true,
+        "communicationErrorVisible": false,
+        "selectedTab": true,
+        "passed": true
+      },
+      "home": {
+        "targetForeground": true,
+        "communicationErrorVisible": false,
+        "allFiveTabs": true,
+        "tabGeometry": [
+          {
+            "label": "홈 탭",
+            "bounds": [
+              0,
+              2104,
+              216,
+              2273
+            ],
+            "selected": true,
+            "widthDp": 76.8,
+            "heightDp": 60.09
+          },
+          {
+            "label": "커뮤니티 탭",
+            "bounds": [
+              216,
+              2104,
+              432,
+              2273
+            ],
+            "selected": false,
+            "widthDp": 76.8,
+            "heightDp": 60.09
+          },
+          {
+            "label": "모임 탭",
+            "bounds": [
+              432,
+              2104,
+              648,
+              2273
+            ],
+            "selected": false,
+            "widthDp": 76.8,
+            "heightDp": 60.09
+          },
+          {
+            "label": "채팅 탭",
+            "bounds": [
+              648,
+              2104,
+              864,
+              2273
+            ],
+            "selected": false,
+            "widthDp": 76.8,
+            "heightDp": 60.09
+          },
+          {
+            "label": "내 정보 탭",
+            "bounds": [
+              864,
+              2104,
+              1080,
+              2273
+            ],
+            "selected": false,
+            "widthDp": 76.8,
+            "heightDp": 60.09
+          }
+        ],
+        "minimumTouchTarget": true,
+        "iconVerticalBounds": [
+          [
+            2127,
+            2194
+          ],
+          [
+            2127,
+            2194
+          ],
+          [
+            2127,
+            2194
+          ],
+          [
+            2127,
+            2194
+          ],
+          [
+            2127,
+            2194
+          ]
+        ],
+        "iconsOnSameRow": true,
+        "fontScale": 1.0,
+        "homeSelected": true,
+        "heroRatio": 1.7794,
+        "heroRatio16to9": true,
+        "passed": true
+      },
+      "logs": {
+        "targetForeground": true,
+        "communicationErrorVisible": false,
+        "fatalExceptionCount": 0,
+        "reactNativeJsErrorCount": 0,
+        "p2010Count": 0,
+        "passed": true
+      }
+    },
+    "activityMilliseconds": {
+      "TotalTime": 715,
+      "WaitTime": 726
+    },
+    "passed": true
+  },
+  "fontScaleCases": [
+    {
+      "check": "geometry",
+      "targetForeground": true,
+      "communicationErrorVisible": false,
+      "allFiveTabs": true,
+      "tabGeometry": [
+        {
+          "label": "홈 탭",
+          "bounds": [
+            0,
+            2104,
+            216,
+            2273
+          ],
+          "selected": true,
+          "widthDp": 76.8,
+          "heightDp": 60.09
+        },
+        {
+          "label": "커뮤니티 탭",
+          "bounds": [
+            216,
+            2104,
+            432,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 60.09
+        },
+        {
+          "label": "모임 탭",
+          "bounds": [
+            432,
+            2104,
+            648,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 60.09
+        },
+        {
+          "label": "채팅 탭",
+          "bounds": [
+            648,
+            2104,
+            864,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 60.09
+        },
+        {
+          "label": "내 정보 탭",
+          "bounds": [
+            864,
+            2104,
+            1080,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 60.09
+        }
+      ],
+      "minimumTouchTarget": true,
+      "iconVerticalBounds": [
+        [
+          2127,
+          2194
+        ],
+        [
+          2127,
+          2194
+        ],
+        [
+          2127,
+          2194
+        ],
+        [
+          2127,
+          2194
+        ],
+        [
+          2127,
+          2194
+        ]
+      ],
+      "iconsOnSameRow": true,
+      "fontScale": 1.0,
+      "homeSelected": true,
+      "heroRatio": 1.7794,
+      "heroRatio16to9": true,
+      "passed": true,
+      "requestedFontScale": 1.0,
+      "largeTextEnabled": false,
+      "screenshot": "/tmp/senior-native-design-font-1.0-normal.png"
+    },
+    {
+      "check": "geometry",
+      "targetForeground": true,
+      "communicationErrorVisible": false,
+      "allFiveTabs": true,
+      "tabGeometry": [
+        {
+          "label": "홈 탭",
+          "bounds": [
+            0,
+            2098,
+            216,
+            2273
+          ],
+          "selected": true,
+          "widthDp": 76.8,
+          "heightDp": 62.22
+        },
+        {
+          "label": "커뮤니티 탭",
+          "bounds": [
+            216,
+            2098,
+            432,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 62.22
+        },
+        {
+          "label": "모임 탭",
+          "bounds": [
+            432,
+            2098,
+            648,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 62.22
+        },
+        {
+          "label": "채팅 탭",
+          "bounds": [
+            648,
+            2098,
+            864,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 62.22
+        },
+        {
+          "label": "내 정보 탭",
+          "bounds": [
+            864,
+            2098,
+            1080,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 62.22
+        }
+      ],
+      "minimumTouchTarget": true,
+      "iconVerticalBounds": [
+        [
+          2121,
+          2188
+        ],
+        [
+          2121,
+          2188
+        ],
+        [
+          2121,
+          2188
+        ],
+        [
+          2121,
+          2188
+        ],
+        [
+          2121,
+          2188
+        ]
+      ],
+      "iconsOnSameRow": true,
+      "fontScale": 1.0,
+      "homeSelected": true,
+      "heroRatio": 1.7794,
+      "heroRatio16to9": true,
+      "passed": true,
+      "requestedFontScale": 1.0,
+      "largeTextEnabled": true,
+      "screenshot": "/tmp/senior-native-design-font-1.0-large.png"
+    },
+    {
+      "check": "geometry",
+      "targetForeground": true,
+      "communicationErrorVisible": false,
+      "allFiveTabs": true,
+      "tabGeometry": [
+        {
+          "label": "홈 탭",
+          "bounds": [
+            0,
+            2090,
+            216,
+            2273
+          ],
+          "selected": true,
+          "widthDp": 76.8,
+          "heightDp": 65.07
+        },
+        {
+          "label": "커뮤니티 탭",
+          "bounds": [
+            216,
+            2090,
+            432,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 65.07
+        },
+        {
+          "label": "모임 탭",
+          "bounds": [
+            432,
+            2090,
+            648,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 65.07
+        },
+        {
+          "label": "채팅 탭",
+          "bounds": [
+            648,
+            2090,
+            864,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 65.07
+        },
+        {
+          "label": "내 정보 탭",
+          "bounds": [
+            864,
+            2090,
+            1080,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 65.07
+        }
+      ],
+      "minimumTouchTarget": true,
+      "iconVerticalBounds": [
+        [
+          2113,
+          2180
+        ],
+        [
+          2113,
+          2180
+        ],
+        [
+          2113,
+          2180
+        ],
+        [
+          2113,
+          2180
+        ],
+        [
+          2113,
+          2180
+        ]
+      ],
+      "iconsOnSameRow": true,
+      "fontScale": 1.3,
+      "homeSelected": true,
+      "heroRatio": 1.7794,
+      "heroRatio16to9": true,
+      "passed": true,
+      "requestedFontScale": 1.3,
+      "largeTextEnabled": false
+    },
+    {
+      "check": "geometry",
+      "targetForeground": true,
+      "communicationErrorVisible": false,
+      "allFiveTabs": true,
+      "tabGeometry": [
+        {
+          "label": "홈 탭",
+          "bounds": [
+            0,
+            2082,
+            216,
+            2273
+          ],
+          "selected": true,
+          "widthDp": 76.8,
+          "heightDp": 67.91
+        },
+        {
+          "label": "커뮤니티 탭",
+          "bounds": [
+            216,
+            2082,
+            432,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 67.91
+        },
+        {
+          "label": "모임 탭",
+          "bounds": [
+            432,
+            2082,
+            648,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 67.91
+        },
+        {
+          "label": "채팅 탭",
+          "bounds": [
+            648,
+            2082,
+            864,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 67.91
+        },
+        {
+          "label": "내 정보 탭",
+          "bounds": [
+            864,
+            2082,
+            1080,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 67.91
+        }
+      ],
+      "minimumTouchTarget": true,
+      "iconVerticalBounds": [
+        [
+          2105,
+          2173
+        ],
+        [
+          2105,
+          2173
+        ],
+        [
+          2105,
+          2173
+        ],
+        [
+          2105,
+          2173
+        ],
+        [
+          2105,
+          2173
+        ]
+      ],
+      "iconsOnSameRow": true,
+      "fontScale": 1.3,
+      "homeSelected": true,
+      "heroRatio": 1.7794,
+      "heroRatio16to9": true,
+      "passed": true,
+      "requestedFontScale": 1.3,
+      "largeTextEnabled": true
+    },
+    {
+      "check": "geometry",
+      "targetForeground": true,
+      "communicationErrorVisible": false,
+      "allFiveTabs": true,
+      "tabGeometry": [
+        {
+          "label": "홈 탭",
+          "bounds": [
+            0,
+            1969,
+            216,
+            2273
+          ],
+          "selected": true,
+          "widthDp": 76.8,
+          "heightDp": 108.09
+        },
+        {
+          "label": "커뮤니티 탭",
+          "bounds": [
+            216,
+            1969,
+            432,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 108.09
+        },
+        {
+          "label": "모임 탭",
+          "bounds": [
+            432,
+            1969,
+            648,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 108.09
+        },
+        {
+          "label": "채팅 탭",
+          "bounds": [
+            648,
+            1969,
+            864,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 108.09
+        },
+        {
+          "label": "내 정보 탭",
+          "bounds": [
+            864,
+            1969,
+            1080,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 108.09
+        }
+      ],
+      "minimumTouchTarget": true,
+      "iconVerticalBounds": [
+        [
+          1992,
+          2059
+        ],
+        [
+          1992,
+          2059
+        ],
+        [
+          1992,
+          2059
+        ],
+        [
+          1992,
+          2059
+        ],
+        [
+          1992,
+          2059
+        ]
+      ],
+      "iconsOnSameRow": true,
+      "fontScale": 2.0,
+      "homeSelected": true,
+      "heroRatio": 1.7794,
+      "heroRatio16to9": true,
+      "passed": true,
+      "requestedFontScale": 2.0,
+      "largeTextEnabled": false
+    },
+    {
+      "check": "geometry",
+      "targetForeground": true,
+      "communicationErrorVisible": false,
+      "allFiveTabs": true,
+      "tabGeometry": [
+        {
+          "label": "홈 탭",
+          "bounds": [
+            0,
+            1947,
+            216,
+            2273
+          ],
+          "selected": true,
+          "widthDp": 76.8,
+          "heightDp": 115.91
+        },
+        {
+          "label": "커뮤니티 탭",
+          "bounds": [
+            216,
+            1947,
+            432,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 115.91
+        },
+        {
+          "label": "모임 탭",
+          "bounds": [
+            432,
+            1947,
+            648,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 115.91
+        },
+        {
+          "label": "채팅 탭",
+          "bounds": [
+            648,
+            1947,
+            864,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 115.91
+        },
+        {
+          "label": "내 정보 탭",
+          "bounds": [
+            864,
+            1947,
+            1080,
+            2273
+          ],
+          "selected": false,
+          "widthDp": 76.8,
+          "heightDp": 115.91
+        }
+      ],
+      "minimumTouchTarget": true,
+      "iconVerticalBounds": [
+        [
+          1970,
+          2038
+        ],
+        [
+          1970,
+          2038
+        ],
+        [
+          1970,
+          2038
+        ],
+        [
+          1970,
+          2038
+        ],
+        [
+          1970,
+          2038
+        ]
+      ],
+      "iconsOnSameRow": true,
+      "fontScale": 2.0,
+      "homeSelected": true,
+      "heroRatio": 1.7794,
+      "heroRatio16to9": true,
+      "passed": true,
+      "requestedFontScale": 2.0,
+      "largeTextEnabled": true,
+      "screenshot": "/tmp/senior-native-design-font-2.0-large.png"
+    }
+  ],
+  "systemNightModeLayout": {
+    "check": "geometry",
+    "targetForeground": true,
+    "communicationErrorVisible": false,
+    "allFiveTabs": true,
+    "tabGeometry": [
+      {
+        "label": "홈 탭",
+        "bounds": [
+          0,
+          2104,
+          216,
+          2273
+        ],
+        "selected": true,
+        "widthDp": 76.8,
+        "heightDp": 60.09
+      },
+      {
+        "label": "커뮤니티 탭",
+        "bounds": [
+          216,
+          2104,
+          432,
+          2273
+        ],
+        "selected": false,
+        "widthDp": 76.8,
+        "heightDp": 60.09
+      },
+      {
+        "label": "모임 탭",
+        "bounds": [
+          432,
+          2104,
+          648,
+          2273
+        ],
+        "selected": false,
+        "widthDp": 76.8,
+        "heightDp": 60.09
+      },
+      {
+        "label": "채팅 탭",
+        "bounds": [
+          648,
+          2104,
+          864,
+          2273
+        ],
+        "selected": false,
+        "widthDp": 76.8,
+        "heightDp": 60.09
+      },
+      {
+        "label": "내 정보 탭",
+        "bounds": [
+          864,
+          2104,
+          1080,
+          2273
+        ],
+        "selected": false,
+        "widthDp": 76.8,
+        "heightDp": 60.09
+      }
+    ],
+    "minimumTouchTarget": true,
+    "iconVerticalBounds": [
+      [
+        2127,
+        2194
+      ],
+      [
+        2127,
+        2194
+      ],
+      [
+        2127,
+        2194
+      ],
+      [
+        2127,
+        2194
+      ],
+      [
+        2127,
+        2194
+      ]
+    ],
+    "iconsOnSameRow": true,
+    "fontScale": 1.0,
+    "homeSelected": true,
+    "heroRatio": 1.7794,
+    "heroRatio16to9": true,
+    "passed": true
+  },
+  "themeScope": {
+    "configuredUserInterfaceStyle": "light",
+    "systemNightModeEnabled": true,
+    "appDarkPaletteVerified": false,
+    "layoutUnderSystemNightModePassed": true
+  },
+  "settingsRestored": {
+    "fontScale": "1.0",
+    "largeText": false,
+    "nightMode": "no",
+    "passed": true
+  },
+  "visualReview": {
+    "scopes": [
+      "actual APK home light normal text",
+      "actual APK home large text plus system scale 2",
+      "actual APK light home under system night mode"
+    ],
+    "privateCaptures": [
+      {
+        "privateFile": "/tmp/senior-native-design-font-1.0-normal.png",
+        "sha256": "facd986565e1d3f8eb16dd48bffe79613398312c7b636585c1ff861e0c08f631",
+        "pixelsReviewed": true,
+        "publicUpload": false
+      },
+      {
+        "privateFile": "/tmp/senior-native-design-font-2.0-large.png",
+        "sha256": "e8dd716ad9bc29ecec323f17f93cf4dec7875915caeef1e5f252c1c8b343f251",
+        "pixelsReviewed": true,
+        "publicUpload": false
+      },
+      {
+        "privateFile": "/tmp/senior-native-design-dark-home.png",
+        "sha256": "97dc638c07197a29e7e33e29a19ff851a6dcb15a2f2f4b5c2892220728be2272",
+        "pixelsReviewed": true,
+        "publicUpload": false
+      }
+    ],
+    "entireProductAestheticApproval": false
+  },
+  "diagnostics": [
+    {
+      "kind": "historical profile baseline differs",
+      "field": "optional phone only",
+      "profileWrites": 0,
+      "resolution": "Latest visible profile recorded privately and matched across later cold starts; old value not restored"
+    },
+    {
+      "kind": "font scale 2 setup search",
+      "resolution": "Smaller bounded scroll steps found the existing switch; assertions retained; final six cases passed"
+    },
+    {
+      "kind": "wrapped navigation labels shifted icon row",
+      "resolution": "Aligned fixed graphic rows and balanced community label; final all six cases have five equal icon Y coordinates"
+    },
+    {
+      "kind": "additional event photo UI QA interrupted",
+      "reason": "Another app became foreground after completed final tab/log checks",
+      "interactionPerformed": false
+    }
+  ],
+  "codeValidation": {
+    "tests": 348,
+    "testFiles": 45,
+    "finalSourceUnitTestsPassed": true,
+    "typecheck": "PASS",
+    "eslint": "PASS",
+    "navigationTests": 12,
+    "compiledManifestPermissions": 34,
+    "compiledManifestExports": 10
+  },
+  "limits": {
+    "deviceDpWidth": 384,
+    "realDeviceNavigationMode": "three-button",
+    "otherWidths": "360/393/430 tested by geometry unit tests",
+    "gestureNavigationRuntimeVerified": false,
+    "actualCardAndDetailPhotoRuntimeVerified": false,
+    "photoComponentAspectFallbackPortraitTestsPassed": true,
+    "providerLoginRetestedOnThisApk": false,
+    "actualSmsSent": 0,
+    "realProfileWrites": 0,
+    "playReleaseArtifact": false
+  },
+  "cleanup": {
+    "ownedRemoteUiDumpsRemoved": true,
+    "nonTargetLocalUiDumpRemoved": true,
+    "systemSettingsRestored": true,
+    "foregroundAfterFinalChecks": "another app; no further UI input"
+  }
+}
