@@ -4,7 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  replace: vi.fn(), read: vi.fn(), current: vi.fn(), clearCache: vi.fn(),
+  replace: vi.fn(), navigate: vi.fn(), read: vi.fn(), current: vi.fn(), clearCache: vi.fn(),
 }));
 const router = { replace: mocks.replace };
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
@@ -12,6 +12,7 @@ vi.mock("@/lib/auth/browser-session", () => ({
   readBrowserSession: mocks.read, browserSessionStillCurrent: mocks.current,
 }));
 vi.mock("@/lib/profile-cache", () => ({ clearServerProfileCache: mocks.clearCache }));
+vi.mock("@/lib/auth/browser-navigation", () => ({ navigateAfterSessionRestore: mocks.navigate }));
 
 import { SessionContinuation } from "./session-continuation";
 
@@ -45,14 +46,14 @@ describe("mounted session continuation", () => {
   it("restores the original intent through the coordinated browser request", async () => {
     await mount();
     expect(mocks.read).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) });
-    expect(mocks.replace).toHaveBeenCalledWith("/me?tab=profile#contact");
+    expect(mocks.navigate).toHaveBeenCalledWith("/me?tab=profile#contact");
     expect(mocks.clearCache).not.toHaveBeenCalled();
   });
 
   it("preserves onboarding for an incomplete member", async () => {
     mocks.read.mockResolvedValue(session({ id: "member", onboardingCompletedAt: null }));
     await mount("/events/event-1?intent=apply");
-    expect(mocks.replace).toHaveBeenCalledWith("/onboarding?returnTo=%2Fevents%2Fevent-1%3Fintent%3Dapply");
+    expect(mocks.navigate).toHaveBeenCalledWith("/onboarding?returnTo=%2Fevents%2Fevent-1%3Fintent%3Dapply");
   });
 
   it("clears the optional mirror and returns an anonymous reader to Kakao login", async () => {
@@ -67,10 +68,11 @@ describe("mounted session continuation", () => {
     await mount();
     expect(container.querySelector('[role="alert"]')?.textContent).toContain("다시 시도");
     expect(mocks.replace).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
     const button = container.querySelector("button")!;
     await act(async () => button.click());
     expect(mocks.read).toHaveBeenCalledTimes(2);
-    expect(mocks.replace).toHaveBeenCalledWith("/me?tab=profile#contact");
+    expect(mocks.navigate).toHaveBeenCalledWith("/me?tab=profile#contact");
   });
 
   it.each([
@@ -81,21 +83,24 @@ describe("mounted session continuation", () => {
     await mount();
     expect(container.querySelector('[role="alert"]')).not.toBeNull();
     expect(mocks.replace).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
   it("ignores a session invalidated by logout", async () => {
     mocks.current.mockReturnValue(false);
     await mount();
     expect(mocks.replace).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
     expect(mocks.clearCache).not.toHaveBeenCalled();
   });
 
   it("cannot navigate to a nested authentication loop or another origin", async () => {
     await mount("https://evil.example/me");
-    expect(mocks.replace).toHaveBeenCalledWith("/");
-    mocks.replace.mockClear();
+    expect(mocks.navigate).toHaveBeenCalledWith("/");
+    mocks.navigate.mockClear();
     await mount("/onboarding?returnTo=%2Fauth%2Fcontinue");
-    expect(mocks.replace).toHaveBeenCalledWith("/");
+    // The navigation helper sanitizes post-onboarding intent before full SSR.
+    expect(mocks.navigate).toHaveBeenCalledWith("/auth/continue");
   });
 
   it("aborts only its own observer on unmount and does not navigate later", async () => {
@@ -110,5 +115,6 @@ describe("mounted session continuation", () => {
     expect(signal.aborted).toBe(true);
     await act(async () => resolve(session()));
     expect(mocks.replace).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 });

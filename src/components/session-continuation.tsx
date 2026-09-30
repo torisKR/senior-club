@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { browserSessionStillCurrent, readBrowserSession } from "@/lib/auth/browser-session";
+import { navigateAfterSessionRestore } from "@/lib/auth/browser-navigation";
 import { continuationDestination } from "@/lib/auth/continue-destination";
 import { postLoginRoute } from "@/lib/auth/post-login-route";
 import { clearServerProfileCache } from "@/lib/profile-cache";
@@ -32,7 +33,7 @@ export function SessionContinuation({ returnTo }: { returnTo: string }) {
         return;
       }
       if (typeof session.user?.id !== "string" || !session.user.id) throw new Error("Invalid session");
-      router.replace(continuationDestination(postLoginRoute(destination, session.user.onboardingCompletedAt)));
+      navigateAfterSessionRestore(postLoginRoute(destination, session.user.onboardingCompletedAt));
     }).catch(() => {
       if (!controller.signal.aborted) setError(true);
     });
