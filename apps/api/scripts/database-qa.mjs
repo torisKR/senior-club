@@ -13,6 +13,7 @@ export const DATABASE_QA_SUITES = [
   "src/auth/auth-events.e2e.spec.ts",
   "src/reviews/reviews.database.spec.ts",
   "src/safety/safety.database.spec.ts",
+  "src/account/account-deletion.database.spec.ts",
 ];
 
 // An enabled run must fail before constructing a client if its target is unsafe.
@@ -81,9 +82,9 @@ export function databaseQaEnvironment(env = process.env) {
 export function validateDatabaseQaReport(report) {
   const suites = report.testResults;
   if (!Array.isArray(suites) || suites.length !== DATABASE_QA_SUITES.length ||
-      !report.success || report.numFailedTests || report.numFailedTestSuites ||
-      report.numPendingTests || report.numTodoTests) {
-    throw new Error("DB QA failed, skipped tests, or did not execute all three suites");
+      report.success !== true || report.numFailedTests || report.numFailedTestSuites ||
+      report.numPendingTests || report.numPendingTestSuites || report.numTodoTests) {
+    throw new Error(`DB QA failed, skipped tests, or did not execute all ${DATABASE_QA_SUITES.length} suites`);
   }
   const counts = {};
   for (const suite of DATABASE_QA_SUITES) {
