@@ -1,100 +1,25 @@
 import { Tabs } from 'expo-router';
-import { Image, type ColorValue } from 'react-native';
 
 import { RequireAuth } from '@/components/auth/require-auth';
+import { BottomNavigation } from '@/components/navigation/bottom-navigation';
+import { BottomDestinations } from '@/components/navigation/bottom-navigation-layout';
 import { useTheme } from '@/hooks/use-theme';
-import { BottomTabInset, FontWeights } from '@/constants/theme';
-
-const tabIcons = {
-  home: require('@/assets/images/tab-icons-v2/home.png'),
-  clubs: require('@/assets/images/tab-icons-v2/clubs.png'),
-  events: require('@/assets/images/tab-icons-v2/events.png'),
-  chat: require('@/assets/images/tab-icons-v2/chat.png'),
-  me: require('@/assets/images/tab-icons-v2/profile.png'),
-} as const;
-
-function tabIcon(source: number) {
-  function RenderTabIcon({ color, size }: { color: ColorValue; size: number }) {
-    return (
-      <Image
-        accessibilityIgnoresInvertColors
-        source={source}
-        style={{ width: size, height: size, tintColor: color }}
-      />
-    );
-  }
-
-  return RenderTabIcon;
-}
 
 export default function TabsLayout() {
   const theme = useTheme();
-
   return (
     <RequireAuth>
       <Tabs
         backBehavior="history"
-        screenOptions={{
-          headerShown: false,
-          tabBarActiveBackgroundColor: theme.backgroundSelected,
-          tabBarActiveTintColor: theme.primary,
-          tabBarInactiveTintColor: theme.textSecondary,
-          tabBarHideOnKeyboard: true,
-          tabBarLabelStyle: { fontSize: 16, fontFamily: FontWeights.strong },
-          tabBarStyle: {
-            minHeight: 68 + BottomTabInset,
-            paddingTop: 6,
-            paddingBottom: BottomTabInset,
-            borderTopColor: theme.divider,
-            backgroundColor: theme.surface,
-          },
-          sceneStyle: { backgroundColor: theme.background },
-        }}>
-        <Tabs.Screen
-          name="home"
-          options={{
-            title: '홈',
-            tabBarAccessibilityLabel: '홈 탭',
-            tabBarButtonTestID: 'tab-home',
-            tabBarIcon: tabIcon(tabIcons.home),
-          }}
-        />
-        <Tabs.Screen
-          name="clubs"
-          options={{
-            title: '커뮤니티',
-            tabBarAccessibilityLabel: '커뮤니티 탭',
-            tabBarButtonTestID: 'tab-clubs',
-            tabBarIcon: tabIcon(tabIcons.clubs),
-          }}
-        />
-        <Tabs.Screen
-          name="events"
-          options={{
-            title: '모임',
-            tabBarAccessibilityLabel: '모임 탭',
-            tabBarButtonTestID: 'tab-events',
-            tabBarIcon: tabIcon(tabIcons.events),
-          }}
-        />
-        <Tabs.Screen
-          name="chat"
-          options={{
-            title: '채팅',
-            tabBarAccessibilityLabel: '채팅 탭',
-            tabBarButtonTestID: 'tab-chat',
-            tabBarIcon: tabIcon(tabIcons.chat),
-          }}
-        />
-        <Tabs.Screen
-          name="me"
-          options={{
-            title: '내 정보',
-            tabBarAccessibilityLabel: '내 정보 탭',
-            tabBarButtonTestID: 'tab-me',
-            tabBarIcon: tabIcon(tabIcons.me),
-          }}
-        />
+        tabBar={(props) => <BottomNavigation {...props} />}
+        screenOptions={{ headerShown: false, tabBarHideOnKeyboard: true, sceneStyle: { backgroundColor: theme.background } }}>
+        {BottomDestinations.map((destination) => (
+          <Tabs.Screen key={destination.name} name={destination.name} options={{
+            title: destination.label,
+            tabBarAccessibilityLabel: `${destination.label} 탭`,
+            tabBarButtonTestID: `tab-${destination.name}`,
+          }} />
+        ))}
       </Tabs>
     </RequireAuth>
   );

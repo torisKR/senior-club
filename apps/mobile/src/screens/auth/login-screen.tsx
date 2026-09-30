@@ -2,23 +2,24 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  ImageBackground,
   KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { kakaoErrorMessage } from '@/auth/kakao-error-message';
-import { Layout, Radius, Spacing, TouchTarget, FontWeights } from '@/constants/theme';
+import { Layout, Radius, Spacing, TouchTarget } from '@/constants/theme';
 import { getPublicWebPageUrl } from '@/config/public-web-links';
-import { fallbackActivityImage } from '@/data/image-assets';
+import { AppText } from '@/components/ui/app-text';
+import { AppIcon } from '@/components/ui/app-icon';
+import { CoverImage, CoverImageRatios } from '@/components/ui/cover-image';
+import { selectCoverImage } from '@/data/image-assets';
 import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -95,7 +96,7 @@ export function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top', 'left', 'right', 'bottom']}>
       <KeyboardAvoidingView
         style={styles.fill}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -115,36 +116,28 @@ export function LoginScreen() {
                 accessibilityLabel="시니어클럽 로고"
               />
               <View style={styles.brandCopy}>
-                <Text style={[styles.brandName, { color: theme.text }]}>시니어클럽</Text>
-                <Text style={[styles.brandTagline, { color: theme.textSecondary }]}>함께하는 목적이, 오래가는 관계로</Text>
+                <AppText variant="sectionTitle" style={[styles.brandName, { color: theme.text }]}>시니어클럽</AppText>
+                <AppText variant="caption" style={{ color: theme.textSecondary }}>함께하는 목적이, 오래가는 관계로</AppText>
               </View>
             </View>
 
-            <ImageBackground
-              source={fallbackActivityImage}
+            <CoverImage
+              image={selectCoverImage(undefined, 'hiking')}
+              recyclingKey="login-hero"
+              accessibilityLabel="시니어클럽 활동 소개 이미지"
+              aspectRatio={CoverImageRatios.hero}
               style={styles.hero}
-              imageStyle={styles.heroImage}
-              accessibilityIgnoresInvertColors
-            >
-              <View style={styles.heroScrim} />
-              <View style={styles.heroCopy}>
-                <Text style={styles.heroEyebrow}>오늘, 새로운 사람과</Text>
-                <Text style={styles.heroTitle}>좋아하는 일을 함께 시작해 보세요</Text>
-              </View>
-            </ImageBackground>
+            />
 
             <View style={styles.intro}>
-              <View style={[styles.demoBadge, { backgroundColor: theme.infoSurface }]}>
-                <Text style={[styles.demoBadgeText, { color: theme.info }]}>간편하고 안전한 카카오 로그인</Text>
-              </View>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>로그인하고 계속하기</Text>
-              <Text style={[styles.description, { color: theme.textSecondary }]}>
-                복잡한 절차 없이 카카오 계정으로 안전하고 간편하게 바로 시작할 수 있어요.
-              </Text>
+              <AppText variant="title" style={[styles.sectionTitle, { color: theme.text }]}>로그인하고 계속하기</AppText>
+              <AppText variant="body" style={{ color: theme.textSecondary }}>
+                카카오 계정으로 로그인하고, 좋아하는 일을 함께 시작해요.
+              </AppText>
               {intent === 'apply' ? (
-                <Text style={[styles.intentDescription, { color: theme.primary }]}>
+                <AppText variant="bodyStrong" style={{ color: theme.primary }}>
                   로그인 후 보던 모임으로 돌아가 신청을 이어갈 수 있어요.
-                </Text>
+                </AppText>
               ) : null}
             </View>
 
@@ -174,9 +167,9 @@ export function LoginScreen() {
                 style={[styles.notice, { backgroundColor: theme.warningSurface, borderColor: theme.warning }]}
                 accessibilityLiveRegion="polite"
               >
-                <Text style={[styles.noticeText, { color: theme.warning }]}>
+                <AppText variant="body" style={{ color: theme.warning }}>
                   {displayedNotice}
-                </Text>
+                </AppText>
               </View>
             ) : null}
 
@@ -193,24 +186,22 @@ export function LoginScreen() {
               {isSubmitting ? (
                 <ActivityIndicator color="#191919" size="small" />
               ) : (
-                <Text style={styles.kakaoSymbol} accessibilityElementsHidden>
-                  K
-                </Text>
+                <AppIcon name="chat" color="#191919" />
               )}
-              <Text style={styles.kakaoButtonText}>
+              <AppText variant="button" selectable={false} style={styles.kakaoButtonText}>
                 {isSubmitting ? '카카오 로그인을 확인하고 있어요…' : '카카오로 간편하게 시작하기'}
-              </Text>
+              </AppText>
             </Pressable>
 
             <View style={[styles.productionNotice, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-              <Text style={[styles.productionNoticeTitle, { color: theme.text }]}>내 정보 설정 안내</Text>
-              <Text style={[styles.productionNoticeBody, { color: theme.textSecondary }]}>
-                이름, 별명, 휴대폰 번호, 활동 지역은 로그인 후 [내 정보] 화면에서 본인이 언제든지 편리하게 설정하고 수정할 수 있습니다.
-              </Text>
+              <AppText variant="bodyStrong" style={{ color: theme.text }}>내 정보 설정 안내</AppText>
+              <AppText variant="caption" style={{ color: theme.textSecondary }}>
+                이름, 별명, 휴대폰 번호와 활동 지역은 내 정보에서 직접 설정할 수 있어요.
+              </AppText>
             </View>
 
             <View style={styles.legalBlock}>
-              <Text style={[styles.legal, { color: theme.textMuted }]}>로그인하기 전에 아래 내용을 확인해 주세요.</Text>
+              <AppText variant="caption" style={[styles.legal, { color: theme.textMuted }]}>로그인하기 전에 아래 내용을 확인해 주세요.</AppText>
               <View style={styles.legalLinks}>
                 <Pressable
                   onPress={() => Linking.openURL(getPublicWebPageUrl('terms'))}
@@ -219,11 +210,11 @@ export function LoginScreen() {
                   accessibilityRole="link"
                   accessibilityLabel="서비스 이용약관 열기"
                 >
-                  <Text style={[styles.legalLink, { color: theme.primary }]}>서비스 이용약관</Text>
+                  <AppText variant="caption" style={[styles.legalLink, { color: theme.primary }]}>서비스 이용약관</AppText>
                 </Pressable>
-                <Text style={[styles.legalDivider, { color: theme.textMuted }]} accessibilityElementsHidden>
+                <AppText variant="caption" style={{ color: theme.textMuted }} accessibilityElementsHidden>
                   ·
-                </Text>
+                </AppText>
                 <Pressable
                   onPress={() => Linking.openURL(getPublicWebPageUrl('privacy'))}
                   hitSlop={8}
@@ -231,7 +222,7 @@ export function LoginScreen() {
                   accessibilityRole="link"
                   accessibilityLabel="개인정보 처리방침 열기"
                 >
-                  <Text style={[styles.legalLink, { color: theme.primary }]}>개인정보 처리방침</Text>
+                  <AppText variant="caption" style={[styles.legalLink, { color: theme.primary }]}>개인정보 처리방침</AppText>
                 </Pressable>
               </View>
             </View>
@@ -273,9 +264,9 @@ function ConsentCheckbox({
           styles.checkBox,
           { borderColor: checked ? theme.primary : theme.border, backgroundColor: checked ? theme.primary : 'transparent' },
         ]}>
-        {checked ? <Text style={styles.checkMark}>✓</Text> : null}
+        {checked ? <AppIcon name="check" color="#FFFFFF" size={18} /> : null}
       </View>
-      <Text style={[styles.consentLabel, { color: theme.text }]}>{label}</Text>
+      <AppText variant="body" selectable={false} style={[styles.consentLabel, { color: theme.text }]}>{label}</AppText>
     </Pressable>
   );
 }
@@ -283,13 +274,13 @@ function ConsentCheckbox({
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   safeArea: { flex: 1 },
-  scrollContent: { flexGrow: 1, paddingBottom: 36 },
+  scrollContent: { flexGrow: 1, paddingBottom: Spacing.xxl },
   content: {
     width: '100%',
     maxWidth: Layout.maxContentWidth,
     alignSelf: 'center',
     paddingHorizontal: Layout.screenPadding,
-    gap: Spacing.xl,
+    gap: Spacing.lg,
   },
   brandRow: {
     minHeight: TouchTarget.minimum,
@@ -298,42 +289,12 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     paddingTop: Spacing.sm,
   },
-  brandMark: { width: 54, height: 54, borderRadius: 17 },
-  brandCopy: { flex: 1, gap: 2 },
-  brandName: { fontSize: 23, lineHeight: 29, fontFamily: FontWeights.strong, letterSpacing: -0.4 },
-  brandTagline: { fontSize: 16, lineHeight: 23, fontFamily: FontWeights.emphasis },
-  hero: {
-    height: 250,
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
-    borderRadius: Radius.xl,
-  },
-  heroImage: { borderRadius: Radius.xl },
-  heroScrim: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(8, 39, 32, 0.43)',
-  },
-  heroCopy: { padding: Spacing.xl, gap: Spacing.sm },
-  heroEyebrow: { color: '#FFFFFF', fontSize: 17, lineHeight: 25, fontFamily: FontWeights.emphasis },
-  heroTitle: {
-    color: '#FFFFFF',
-    fontSize: 30,
-    lineHeight: 40,
-    fontFamily: FontWeights.strong,
-    letterSpacing: -0.8,
-  },
+  brandMark: { width: 44, height: 44, borderRadius: 14, flexShrink: 0 },
+  brandCopy: { flex: 1, minWidth: 0, gap: 2 },
+  brandName: { letterSpacing: -0.4 },
+  hero: { borderRadius: Radius.lg },
   intro: { gap: Spacing.sm },
-  demoBadge: {
-    alignSelf: 'flex-start',
-    minHeight: 32,
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.md,
-    borderRadius: Radius.pill,
-  },
-  demoBadgeText: { fontSize: 16, lineHeight: 22, fontFamily: FontWeights.strong },
-  sectionTitle: { fontSize: 26, lineHeight: 35, fontFamily: FontWeights.strong, letterSpacing: -0.5 },
-  description: { fontSize: 18, lineHeight: 28, fontFamily: FontWeights.emphasis },
-  intentDescription: { fontSize: 17, lineHeight: 26, fontFamily: FontWeights.strong },
+  sectionTitle: { letterSpacing: -0.5 },
   consentList: { gap: Spacing.sm },
   consentRow: {
     minHeight: TouchTarget.minimum,
@@ -346,19 +307,19 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
   },
   checkBox: {
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
+    flexShrink: 0,
     borderWidth: 2,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkMark: { color: '#FFFFFF', fontSize: 18, lineHeight: 22, fontFamily: FontWeights.strong },
-  consentLabel: { flex: 1, fontSize: 17, lineHeight: 25, fontFamily: FontWeights.emphasis },
+  consentLabel: { flex: 1, minWidth: 0 },
   notice: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.lg },
-  noticeText: { fontSize: 17, lineHeight: 26, fontFamily: FontWeights.emphasis },
   kakaoButton: {
-    minHeight: 64,
+    minHeight: TouchTarget.minimum,
+    paddingVertical: Spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -368,25 +329,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEE500',
     marginTop: Spacing.sm,
   },
-  kakaoSymbol: {
-    color: '#191919',
-    fontSize: 22,
-    lineHeight: 28,
-    fontFamily: FontWeights.strong,
-  },
-  kakaoButtonText: {
-    color: '#191919',
-    fontSize: 20,
-    lineHeight: 28,
-    fontFamily: FontWeights.strong,
-  },
+  kakaoButtonText: { color: '#191919', flexShrink: 1, textAlign: 'center' },
   productionNotice: { borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.lg, gap: Spacing.xs },
-  productionNoticeTitle: { fontSize: 17, lineHeight: 25, fontFamily: FontWeights.strong },
-  productionNoticeBody: { fontSize: 16, lineHeight: 25, fontFamily: FontWeights.emphasis },
   legalBlock: { alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.md, marginTop: Spacing.md },
-  legal: { fontSize: 15, lineHeight: 23, textAlign: 'center' },
-  legalLinks: { minHeight: TouchTarget.compact, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
+  legal: { textAlign: 'center' },
+  legalLinks: { minHeight: TouchTarget.compact, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
   legalLinkPressable: { minHeight: TouchTarget.compact, justifyContent: 'center' },
-  legalLink: { fontSize: 16, lineHeight: 24, fontFamily: FontWeights.strong, textDecorationLine: 'underline' },
-  legalDivider: { fontSize: 18, lineHeight: 24, fontFamily: FontWeights.emphasis },
+  legalLink: { textDecorationLine: 'underline' },
 });

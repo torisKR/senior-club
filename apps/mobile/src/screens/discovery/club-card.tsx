@@ -2,8 +2,8 @@ import { View } from 'react-native';
 
 import type { PublicClub } from '@/api/clubs-api';
 import { AppText, Card } from '@/components/ui';
-import { CoverImage } from '@/components/ui/cover-image';
-import { Radius, Spacing } from '@/constants/theme';
+import { CoverImage, CoverImageRatios } from '@/components/ui/cover-image';
+import { Layout, Radius, Spacing } from '@/constants/theme';
 import { getClubCoverImage } from '@/data/image-assets';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -29,10 +29,10 @@ export function ClubCard({ club, recommended, onPress }: ClubCardProps) {
         accessibilityLabel={`${club.title} 커뮤니티 대표 이미지`}
         recyclingKey={club.id}
         transition={180}
-        style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor: theme.backgroundElement }}
+        aspectRatio={CoverImageRatios.card}
       />
 
-      <View style={{ flex: 1, padding: Spacing.xl, gap: Spacing.md }}>
+      <View style={{ flex: 1, padding: Layout.cardPadding, gap: Spacing.md }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.sm }}>
           <View
             style={{

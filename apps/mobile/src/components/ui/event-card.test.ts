@@ -22,7 +22,7 @@ vi.mock('@/data/image-assets', () => ({
     return coverMocks.selection;
   },
 }));
-vi.mock('./cover-image', () => ({ CoverImage: 'CoverImage' }));
+vi.mock('./cover-image', () => ({ CoverImage: 'CoverImage', CoverImageRatios: { card: 16 / 9 } }));
 vi.mock('./app-text', () => ({ AppText: 'AppText' }));
 vi.mock('./card', () => ({ Card: 'Card' }));
 vi.mock('./seat-meter', () => ({ SeatMeter: 'SeatMeter' }));
@@ -72,7 +72,7 @@ describe('EventCard lifecycle', () => {
       image: coverMocks.selection,
       recyclingKey: event.id,
       accessibilityLabel: `${event.title} 모임 대표 이미지`,
-      style: { width: '100%', aspectRatio: 16 / 9 },
+      aspectRatio: 16 / 9,
     });
     coverMocks.select.mockClear();
     const compact = EventCard({ event: withPhoto, compact: true });

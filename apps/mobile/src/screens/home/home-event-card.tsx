@@ -1,8 +1,8 @@
 import { View } from 'react-native';
 
 import { AppText, Card } from '@/components/ui';
-import { CoverImage } from '@/components/ui/cover-image';
-import { Radius, Spacing } from '@/constants/theme';
+import { CoverImage, CoverImageRatios } from '@/components/ui/cover-image';
+import { Layout, Radius, Spacing } from '@/constants/theme';
 import { getEventCoverImage } from '@/data/image-assets';
 import { useTheme } from '@/hooks/use-theme';
 import type { Event, ParticipationStatus } from '@/types';
@@ -46,9 +46,9 @@ export function HomeEventCard({ event, participationStatus, onPress }: HomeEvent
         accessibilityLabel={`${event.title} 모임 대표 이미지`}
         recyclingKey={event.id}
         transition={160}
-        style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor: theme.backgroundElement }}
+        aspectRatio={CoverImageRatios.card}
       />
-      <View style={{ minWidth: 0, gap: Spacing.md, padding: Spacing.xl }}>
+      <View style={{ minWidth: 0, gap: Spacing.md, padding: Layout.cardPadding }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }}>
           <View
             style={{

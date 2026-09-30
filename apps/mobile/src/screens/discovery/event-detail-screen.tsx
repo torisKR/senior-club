@@ -7,8 +7,8 @@ import { eventsApi } from '@/api/events-api';
 import { ApiError } from '@/api/api-error';
 import { persistPendingAuthNavigation } from '@/auth/pending-auth-navigation';
 import { AppText, Card, EmptyState, Screen, SeniorButton } from '@/components/ui';
-import { CoverImage } from '@/components/ui/cover-image';
-import { Radius, Spacing } from '@/constants/theme';
+import { CoverImage, CoverImageRatios } from '@/components/ui/cover-image';
+import { Layout, Radius, Spacing } from '@/constants/theme';
 import { getEventCoverImage } from '@/data/image-assets';
 import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
@@ -68,7 +68,7 @@ function ParticipationBanner({ status }: { status: ParticipationStatus }) {
       accessibilityRole="summary"
       accessibilityLabel={`${participationLabels[status]}. ${participationDescriptions[status]}`}
       style={{
-        padding: Spacing.xl,
+        padding: Layout.cardPadding,
         gap: Spacing.sm,
         borderWidth: 2,
         borderColor: isPending ? theme.warning : theme.success,
@@ -362,10 +362,10 @@ export function EventDetailScreen({ eventId, intent }: EventDetailScreenProps) {
             accessibilityLabel={`${event.title} 모임 대표 이미지`}
             recyclingKey={event.id}
             transition={180}
-            style={{ width: '100%', aspectRatio: isTablet ? 2.4 : 4 / 3, backgroundColor: theme.backgroundElement }}
+            aspectRatio={CoverImageRatios.detail}
           />
 
-          <View style={{ padding: Spacing.xxl, gap: Spacing.lg }}>
+          <View style={{ padding: Layout.cardPadding, gap: Spacing.lg }}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }}>
               <View
                 style={{
@@ -430,7 +430,7 @@ export function EventDetailScreen({ eventId, intent }: EventDetailScreenProps) {
             accessibilityRole="summary"
             accessibilityLiveRegion="polite"
             style={{
-              padding: Spacing.xl,
+              padding: Layout.cardPadding,
               gap: Spacing.sm,
               borderWidth: 1,
               borderColor: theme.border,

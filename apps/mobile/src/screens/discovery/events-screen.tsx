@@ -12,7 +12,7 @@ import {
 import { HomeBannerAd } from '@/ads/HomeBannerAd';
 import { mergeEventPages } from '@/api/events-api';
 import { AppText, EmptyState, EventCard, SeniorButton } from '@/components/ui';
-import { Layout, Radius, Spacing, TouchTarget } from '@/constants/theme';
+import { FontWeights, Layout, Radius, Spacing, TouchTarget } from '@/constants/theme';
 import { useAppState } from '@/hooks/use-app-state';
 import { useEffectiveSafeAreaInsets } from '@/hooks/use-effective-safe-area-insets';
 import { useTheme } from '@/hooks/use-theme';
@@ -198,7 +198,7 @@ export function EventsScreen() {
           alignSelf: 'center',
           paddingHorizontal: width < 360 ? Spacing.lg : Layout.screenPadding,
           paddingTop: insets.top + Spacing.lg,
-          paddingBottom: 120,
+          paddingBottom: Spacing.xxxl,
           gap: Spacing.lg,
         }}
         columnWrapperStyle={columns > 1 ? { gap: Spacing.lg, alignItems: 'flex-start' } : undefined}
@@ -232,8 +232,9 @@ export function EventsScreen() {
                   borderRadius: Radius.md,
                   backgroundColor: theme.surface,
                   color: theme.text,
-                  fontSize: largeTextEnabled ? 20 : 18,
-                  lineHeight: largeTextEnabled ? 30 : 26,
+                  fontFamily: FontWeights.body,
+                  fontSize: largeTextEnabled ? 18 : 16,
+                  lineHeight: largeTextEnabled ? 28 : 24,
                   paddingHorizontal: Spacing.lg,
                   paddingVertical: Spacing.md,
                 }}

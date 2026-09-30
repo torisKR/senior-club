@@ -1,12 +1,15 @@
 import { Platform } from 'react-native';
 
-import { Layout, LightColors, Radius, Spacing, Typography } from '../../../../shared/design/foundation';
+import { Layout as SharedLayout, LightColors, Radius, Spacing, Typography } from '../../../../shared/design/foundation';
 
 export {
-  CardDimensions, ControlDimensions, getButtonAppearance, Layout, Radius,
+  CardDimensions, ControlDimensions, getButtonAppearance, Radius,
   Shadows, Spacing, TouchTarget,
 } from '../../../../shared/design/foundation';
 export type { ButtonVariant } from '../../../../shared/design/foundation';
+
+/** Native density adapts the shared roles without changing the web foundation. */
+export const Layout = { ...SharedLayout, screenPadding: 16, cardPadding: 16, sectionGap: 24 } as const;
 
 /** Legacy public names; the light palette comes from the web forest source. */
 export const BrandColors = {
@@ -94,43 +97,42 @@ export const Fonts = Platform.select({
 
 export const FontSizes = {
   standard: {
-    caption: 16,
-    body: 18,
-    key: 20,
-    sectionTitle: 22,
-    title: 28,
-    display: 34,
+    caption: 13,
+    body: 16,
+    key: 17,
+    sectionTitle: 20,
+    title: 24,
+    display: 28,
   },
   large: {
-    caption: 18,
-    body: 20,
-    key: 22,
-    sectionTitle: 25,
-    title: 32,
-    display: 38,
+    caption: 15,
+    body: 18,
+    key: 19,
+    sectionTitle: 22,
+    title: 27,
+    display: 31,
   },
 } as const;
 
 export const LineHeights = {
   standard: {
-    caption: 23,
-    body: 28,
-    key: 30,
-    sectionTitle: 31,
-    title: 38,
-    display: 44,
+    caption: 19,
+    body: 24,
+    key: 24,
+    sectionTitle: 28,
+    title: 32,
+    display: 36,
   },
   large: {
-    caption: 27,
-    body: 31,
-    key: 33,
-    sectionTitle: 35,
-    title: 42,
-    display: 48,
+    caption: 22,
+    body: 28,
+    key: 28,
+    sectionTitle: 31,
+    title: 36,
+    display: 40,
   },
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = Layout.maxContentWidth;
 
 /** Lowercase aliases keep screen code concise without weakening the full theme API. */

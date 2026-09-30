@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { AppText, Card, SectionHeader, SeniorButton } from '@/components/ui';
+import { AppIcon } from '@/components/ui/app-icon';
 import { Radius, Spacing, TouchTarget } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -44,15 +45,21 @@ export function SeniorHobbyCourseSection() {
             minHeight: TouchTarget.minimum,
             justifyContent: 'center',
             alignItems: 'center',
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: Spacing.sm,
+            padding: Spacing.sm,
             borderRadius: Radius.md,
             backgroundColor: activeTab === 'courses' ? theme.primary : 'transparent',
           }}
         >
+          <AppIcon name="activity" color={activeTab === 'courses' ? theme.inverseText : theme.text} size={20} />
           <AppText
             variant="bodyStrong"
-            style={{ color: activeTab === 'courses' ? theme.inverseText : theme.text }}
+            selectable={false}
+            style={{ color: activeTab === 'courses' ? theme.inverseText : theme.text, flexShrink: 1, textAlign: 'center' }}
           >
-            🥾 완만 등산코스
+            완만 등산코스
           </AppText>
         </Pressable>
 
@@ -66,15 +73,21 @@ export function SeniorHobbyCourseSection() {
             minHeight: TouchTarget.minimum,
             justifyContent: 'center',
             alignItems: 'center',
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: Spacing.sm,
+            padding: Spacing.sm,
             borderRadius: Radius.md,
             backgroundColor: activeTab === 'hobbies' ? theme.primary : 'transparent',
           }}
         >
+          <AppIcon name="explore" color={activeTab === 'hobbies' ? theme.inverseText : theme.text} size={20} />
           <AppText
             variant="bodyStrong"
-            style={{ color: activeTab === 'hobbies' ? theme.inverseText : theme.text }}
+            selectable={false}
+            style={{ color: activeTab === 'hobbies' ? theme.inverseText : theme.text, flexShrink: 1, textAlign: 'center' }}
           >
-            ✨ 추천 취미생활
+            추천 취미생활
           </AppText>
         </Pressable>
       </View>
@@ -183,9 +196,10 @@ export function SeniorHobbyCourseSection() {
                   이런 점이 좋아요
                 </AppText>
                 {hobby.benefits.map((b, idx) => (
-                  <AppText key={idx} variant="caption" color="text">
-                    ✓ {b}
-                  </AppText>
+                  <View key={idx} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm }}>
+                    <AppIcon name="check" color={theme.primary} size={18} />
+                    <AppText variant="caption" color="text" style={{ flex: 1, minWidth: 0 }}>{b}</AppText>
+                  </View>
                 ))}
               </View>
 

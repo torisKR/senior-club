@@ -1,13 +1,13 @@
 import { Stack, type Href, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { isApiError } from '@/api/api-error';
 import { clubsApi, isSafeClubSlug, type PublicClub } from '@/api/clubs-api';
 import { apiErrorMessage } from '@/api/error-message';
 import { AppText, Card, EmptyState, Screen, SectionHeader } from '@/components/ui';
-import { CoverImage } from '@/components/ui/cover-image';
-import { Radius, Spacing } from '@/constants/theme';
+import { CoverImage, CoverImageRatios } from '@/components/ui/cover-image';
+import { Layout, Radius, Spacing } from '@/constants/theme';
 import { getClubCoverImage } from '@/data/image-assets';
 import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
@@ -24,8 +24,6 @@ export function ClubDetailScreen({ slug }: ClubDetailScreenProps) {
   const router = useRouter();
   const theme = useTheme();
   const { selectedInterestIds } = useAppState();
-  const { width } = useWindowDimensions();
-  const isTablet = width >= 760;
   const [club, setClub] = useState<PublicClub | null>(null);
   const [status, setStatus] = useState<DetailStatus>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -166,14 +164,10 @@ export function ClubDetailScreen({ slug }: ClubDetailScreenProps) {
             accessibilityLabel={`${club.title} 커뮤니티 대표 이미지`}
             recyclingKey={club.id}
             transition={180}
-            style={{
-              width: '100%',
-              aspectRatio: isTablet ? 2.4 : 4 / 3,
-              backgroundColor: theme.backgroundElement,
-            }}
+            aspectRatio={CoverImageRatios.detail}
           />
 
-          <View style={{ padding: Spacing.xxl, gap: Spacing.lg }}>
+          <View style={{ padding: Layout.cardPadding, gap: Spacing.lg }}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }}>
               <View
                 style={{

@@ -1,13 +1,13 @@
 import { View } from 'react-native';
 
-import { Radius, Spacing } from '@/constants/theme';
+import { Layout, Radius, Spacing } from '@/constants/theme';
 import { getEventCoverImage } from '@/data/image-assets';
 import { useTheme } from '@/hooks/use-theme';
 import type { Event, ParticipationStatus } from '@/types';
 
 import { AppText } from './app-text';
 import { Card } from './card';
-import { CoverImage } from './cover-image';
+import { CoverImage, CoverImageRatios } from './cover-image';
 import { SeatMeter } from './seat-meter';
 
 export interface EventCardProps {
@@ -87,10 +87,10 @@ export function EventCard({ event, participationStatus, onPress, compact = false
           accessibilityLabel={`${event.title} 모임 대표 이미지`}
           recyclingKey={event.id}
           transition={180}
-          style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor: theme.backgroundElement }}
+          aspectRatio={CoverImageRatios.card}
         />
       ) : null}
-      <View style={{ padding: Spacing.xl, gap: Spacing.md }}>
+      <View style={{ padding: Layout.cardPadding, gap: Spacing.md }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.sm }}>
           <View
             style={{

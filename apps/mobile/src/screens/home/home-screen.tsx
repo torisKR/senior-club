@@ -13,7 +13,8 @@ import {
   SeniorButton,
 } from '@/components/ui';
 import { Layout, Radius, Spacing, TouchTarget } from '@/constants/theme';
-import { CoverImage } from '@/components/ui/cover-image';
+import { CoverImage, CoverImageRatios } from '@/components/ui/cover-image';
+import { AppIcon } from '@/components/ui/app-icon';
 import { selectCoverImage } from '@/data/image-assets';
 import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
@@ -22,10 +23,10 @@ import { HomeEventCard } from './home-event-card';
 import { SeniorHobbyCourseSection } from './senior-hobby-course-section';
 
 const purposeJourney = [
-  { number: '1', title: '목적', description: '좋아하는 일과 배우고 싶은 것을 고릅니다.', emoji: '🧭' },
-  { number: '2', title: '사람', description: '같은 관심사와 가까운 지역의 사람을 만납니다.', emoji: '👥' },
-  { number: '3', title: '활동', description: '안전하게 준비된 모임에 함께 참여합니다.', emoji: '🌿' },
-  { number: '4', title: '관계', description: '대화와 다음 약속으로 인연을 이어갑니다.', emoji: '🤝' },
+  { number: '1', title: '목적', description: '좋아하는 일과 배우고 싶은 것을 고릅니다.', icon: 'explore' },
+  { number: '2', title: '사람', description: '같은 관심사와 가까운 지역의 사람을 만납니다.', icon: 'groups' },
+  { number: '3', title: '활동', description: '안전하게 준비된 모임에 함께 참여합니다.', icon: 'activity' },
+  { number: '4', title: '관계', description: '대화와 다음 약속으로 인연을 이어갑니다.', icon: 'handshake' },
 ] as const;
 
 function localDateKey(value: Date) {
@@ -94,7 +95,7 @@ export function HomeScreen() {
     }, [session]),
   );
 
-  const horizontalPadding = width < 360 ? Spacing.lg : Layout.screenPadding;
+  const horizontalPadding = Layout.screenPadding;
   const availableWidth = Math.min(width, Layout.maxContentWidth) - horizontalPadding * 2;
   const useTwoColumns = availableWidth >= 560;
   const cardColumnWidth = useTwoColumns ? (availableWidth - Spacing.md) / 2 : availableWidth;
@@ -131,113 +132,72 @@ export function HomeScreen() {
 
   return (
     <Screen testID="home-screen" contentContainerStyle={{ paddingTop: Spacing.lg }}>
-      <Card padded={false} style={{ backgroundColor: theme.surface }}>
+      <View style={{ minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
+        <View style={{ minWidth: 0, flex: 1, gap: Spacing.xs }}>
+          <AppText variant="caption" color="textSecondary">{user.region} · 시니어클럽</AppText>
+          <AppText variant="title">{user.name} 님, 반가워요.</AppText>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={unreadCount > 0 ? `알림 ${unreadCount}개 확인하기` : '알림 확인하기'}
+          onPress={() => router.push('/notifications' as Href)}
+          style={({ pressed }) => ({
+            position: 'relative', width: TouchTarget.compact, height: TouchTarget.compact,
+            flexShrink: 0, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill,
+            backgroundColor: pressed ? theme.backgroundSelected : theme.surface,
+          })}>
+          <AppIcon name="notifications" color={theme.primary} />
+          {unreadCount > 0 ? (
+            <View accessibilityElementsHidden style={{
+              position: 'absolute', top: 0, right: 0, minWidth: 20, minHeight: 20, paddingHorizontal: 4,
+              alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill, backgroundColor: theme.accent,
+            }}>
+              <AppText variant="caption" color="#FFFFFF" selectable={false} style={{ fontVariant: ['tabular-nums'] }}>
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </AppText>
+            </View>
+          ) : null}
+        </Pressable>
+      </View>
+
+      <Card padded={false}>
         <CoverImage
           image={selectCoverImage(undefined, 'hiking')}
           recyclingKey="home-hero"
           accessibilityLabel="시니어클럽 활동 소개 이미지"
-          style={{ width: '100%', aspectRatio: width < 420 ? 4 / 3 : 16 / 9, backgroundColor: theme.backgroundElement }}
+          aspectRatio={CoverImageRatios.hero}
         />
-        <View style={{ minWidth: 0, gap: Spacing.xl, padding: Spacing.xl }}>
-          <View style={{ minWidth: 0, flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md }}>
-            <View style={{ minWidth: 0, flex: 1, gap: Spacing.xs }}>
-              <AppText variant="caption" color="primary">
-                중년을 위한 목적 중심 커뮤니티
-              </AppText>
-              <AppText variant="title">{user.name} 님, 오늘도 반가워요.</AppText>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={unreadCount > 0 ? `알림 ${unreadCount}개 확인하기` : '알림 확인하기'}
-              onPress={() => router.push('/notifications' as Href)}
-              style={({ pressed }) => ({
-                position: 'relative',
-                width: TouchTarget.minimum,
-                height: TouchTarget.minimum,
-                flexShrink: 0,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: Radius.pill,
-                borderWidth: 1,
-                borderColor: theme.divider,
-                backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement,
-              })}>
-              <AppText variant="key" accessibilityLabel="" selectable={false}>
-                🔔
-              </AppText>
-              {unreadCount > 0 ? (
-                <View
-                  accessibilityElementsHidden
-                  style={{
-                    position: 'absolute',
-                    top: -3,
-                    right: -3,
-                    minWidth: 24,
-                    height: 24,
-                    paddingHorizontal: 5,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: Radius.pill,
-                    borderWidth: 2,
-                    borderColor: theme.surface,
-                    backgroundColor: theme.accent,
-                  }}>
-                  <AppText
-                    variant="caption"
-                    color="#FFFFFF"
-                    accessibilityLabel=""
-                    selectable={false}
-                    style={{ fontSize: 14, lineHeight: 18, fontVariant: ['tabular-nums'] }}>
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </AppText>
-                </View>
-              ) : null}
-            </Pressable>
-          </View>
-
+        <View style={{ minWidth: 0, gap: Spacing.md, padding: Layout.cardPadding }}>
+          <AppText variant="sectionTitle">좋아하는 일을 함께 시작해요</AppText>
           <AppText variant="body" color="textSecondary">
-            좋아하는 일을 함께할 사람을 만나고, 활동 뒤에도 다음 약속과 대화를 이어가세요.
+            가까운 모임에서 같은 관심사를 가진 사람들을 만나세요.
           </AppText>
-
-          <Pressable
-            accessibilityRole="switch"
-            accessibilityLabel="큰 글씨 사용"
-            accessibilityHint="화면 전체 글자 크기를 한 단계 키웁니다."
-            accessibilityState={{ checked: largeTextEnabled }}
-            onPress={toggleLargeText}
-            style={({ pressed }) => ({
-              minHeight: TouchTarget.minimum,
-              minWidth: 0,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: Spacing.md,
-              paddingHorizontal: Spacing.lg,
-              paddingVertical: Spacing.sm,
-              borderRadius: Radius.md,
-              borderWidth: 1,
-              borderColor: largeTextEnabled ? theme.primary : theme.border,
-              backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement,
-            })}>
-            <View style={{ minWidth: 0, flex: 1, gap: 2 }}>
-              <AppText variant="bodyStrong" selectable={false}>
-                글자를 더 크게 보기
-              </AppText>
-              <AppText variant="caption" color="textSecondary" selectable={false}>
-                {largeTextEnabled ? '큰 글씨를 사용하고 있어요.' : '누르면 모든 글자가 커져요.'}
-              </AppText>
-            </View>
-            <Switch
-              accessible={false}
-              pointerEvents="none"
-              value={largeTextEnabled}
-              trackColor={{ false: theme.border, true: theme.primary }}
-              thumbColor={theme.surface}
-            />
-          </Pressable>
-
           <SeniorButton label="내게 맞는 모임 찾기" onPress={() => router.push('/events')} />
         </View>
       </Card>
+
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityLabel="큰 글씨 사용"
+        accessibilityHint="화면 글자 크기를 한 단계 키웁니다."
+        accessibilityState={{ checked: largeTextEnabled }}
+        onPress={toggleLargeText}
+        style={({ pressed }) => ({
+          minHeight: TouchTarget.compact, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+          paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: Radius.md,
+          backgroundColor: pressed ? theme.backgroundSelected : 'transparent',
+        })}>
+        <AppText variant="caption" color="textSecondary" selectable={false} style={{ flex: 1, flexShrink: 1 }}>
+          큰 글씨로 보기
+        </AppText>
+        <Switch
+          accessible={false}
+          pointerEvents="none"
+          value={largeTextEnabled}
+          trackColor={{ false: theme.border, true: theme.primary }}
+          thumbColor={theme.surface}
+        />
+      </Pressable>
 
       <View style={{ minWidth: 0, gap: Spacing.lg }}>
         <SectionHeader
@@ -259,17 +219,15 @@ export function HomeScreen() {
                 <View
                   accessibilityElementsHidden
                   style={{
-                    width: TouchTarget.minimum,
-                    height: TouchTarget.minimum,
+                    width: 40,
+                    height: 40,
                     flexShrink: 0,
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderRadius: Radius.lg,
                     backgroundColor: theme.infoSurface,
                   }}>
-                  <AppText variant="key" accessibilityLabel="" selectable={false}>
-                    📅
-                  </AppText>
+                  <AppIcon name="calendar" color={theme.primary} />
                 </View>
                 <View style={{ minWidth: 0, flex: 1, gap: Spacing.xs }}>
                   <AppText variant="sectionTitle">오늘은 예정된 모임이 없어요.</AppText>
@@ -337,38 +295,22 @@ export function HomeScreen() {
           title="목적에서 관계까지"
           description="시니어클럽은 한 번의 만남이 오래 이어지도록 돕습니다."
         />
-        <View style={{ minWidth: 0, flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md }}>
+        <Card style={{ gap: Spacing.lg }}>
           {purposeJourney.map((step) => (
-            <Card key={step.title} style={{ width: cardColumnWidth, minWidth: 0 }}>
-              <View style={{ minWidth: 0, flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md }}>
-                <View
-                  accessibilityElementsHidden
-                  style={{
-                    width: 52,
-                    height: 52,
-                    flexShrink: 0,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: Radius.pill,
-                    backgroundColor: theme.backgroundSelected,
-                  }}>
-                  <AppText variant="key" accessibilityLabel="" selectable={false}>
-                    {step.emoji}
-                  </AppText>
-                </View>
-                <View style={{ minWidth: 0, flex: 1, gap: Spacing.xs }}>
-                  <AppText variant="caption" color="primary">
-                    {step.number}단계
-                  </AppText>
-                  <AppText variant="sectionTitle">{step.title}</AppText>
-                  <AppText variant="body" color="textSecondary">
-                    {step.description}
-                  </AppText>
-                </View>
+            <View key={step.title} style={{ minWidth: 0, flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md }}>
+              <View style={{
+                width: 40, height: 40, flexShrink: 0, alignItems: 'center', justifyContent: 'center',
+                borderRadius: Radius.pill, backgroundColor: theme.backgroundSelected,
+              }}>
+                <AppIcon name={step.icon} color={theme.primary} size={22} />
               </View>
-            </Card>
+              <View style={{ minWidth: 0, flex: 1, gap: Spacing.xs }}>
+                <AppText variant="bodyStrong">{step.number}. {step.title}</AppText>
+                <AppText variant="caption" color="textSecondary">{step.description}</AppText>
+              </View>
+            </View>
           ))}
-        </View>
+        </Card>
       </View>
 
       <View style={{ minWidth: 0, gap: Spacing.lg }}>

@@ -8,7 +8,7 @@ import type { TextProps, ViewProps } from 'react-native';
 
 import type { CoverImageSelection } from '@/data/image-assets';
 
-import { CoverImage, type CoverImageProps } from './cover-image';
+import { CoverImage, CoverImageRatios, type CoverImageProps } from './cover-image';
 
 const rendered = vi.hoisted(() => ({
   images: [] as ImageProps[],
@@ -33,6 +33,7 @@ vi.mock('react-native', () => ({
     rendered.texts.push(props);
     return createElement('span', {}, props.children);
   },
+  StyleSheet: { absoluteFill: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 } },
   Platform: { select: (options: { default: unknown }) => options.default },
 }));
 vi.mock('@/hooks/use-theme', () => ({ useTheme: () => ({ surface: '#fff', textSecondary: '#333', backgroundElement: '#eee' }) }));
@@ -147,10 +148,34 @@ describe('mobile CoverImage', () => {
     expect(container.textContent).toBe('주제 참고 이미지');
   });
 
-  it.each([16 / 9, 4 / 3, 2.4])('preserves reserved aspect ratio %s, caching and the caller transition', async (aspectRatio) => {
-    await render(reference(), { style: { width: '100%', aspectRatio }, transition: 160 });
-    expect(latestImage()).toMatchObject({ cachePolicy: 'memory-disk', contentFit: 'cover', transition: 160 });
-    expect(latestImage().style).toEqual(expect.arrayContaining([expect.objectContaining({ width: '100%', aspectRatio })]));
+  it.each([CoverImageRatios.hero, CoverImageRatios.card, CoverImageRatios.detail])(
+    'reserves image ratio %s independently from its caption and fills the slot without stretching',
+    async (aspectRatio) => {
+      await render(reference(), { aspectRatio, style: { borderRadius: 20, height: 250 }, transition: 160 });
+      expect(latestImage()).toMatchObject({
+        cachePolicy: 'memory-disk', contentFit: 'cover', contentPosition: 'center', transition: 160,
+        style: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
+      });
+      const slotStyle = rendered.views[1].style as Record<string, unknown>[];
+      const slot = Object.assign({}, ...slotStyle);
+      expect(slot).toMatchObject({ width: '100%', aspectRatio, borderRadius: 20, overflow: 'hidden' });
+      expect(slot.height).toBeUndefined();
+      const caption = rendered.views.at(-1)!;
+      expect(caption.style).not.toHaveProperty('aspectRatio');
+      expect(caption.style).not.toHaveProperty('height');
+      await fail();
+      expect(Object.assign({}, ...rendered.views[1].style as Record<string, unknown>[]).aspectRatio).toBe(aspectRatio);
+    },
+  );
+
+  it('keeps the exact slot after a portrait remote image fails to its landscape fallback', async () => {
+    await render(photo('https://cdn.example.test/portrait.jpg'), { aspectRatio: CoverImageRatios.detail });
+    const initialSlot = Object.assign({}, ...rendered.views[1].style as Record<string, unknown>[]);
+    await fail();
+    const slots = rendered.views.filter((view) => Array.isArray(view.style));
+    expect(Object.assign({}, ...slots.at(-1)!.style as Record<string, unknown>[])).toEqual(initialSlot);
+    expect(latestImage().contentFit).toBe('cover');
+    expect(container.textContent).toContain('주제 참고 이미지');
   });
 
   it('allows Android large-text scaling and wrapping in a caption below the reserved image', async () => {

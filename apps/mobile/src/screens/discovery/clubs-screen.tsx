@@ -35,7 +35,7 @@ export function ClubsScreen() {
   const router = useRouter();
   const theme = useTheme();
   const insets = useEffectiveSafeAreaInsets();
-  const { interests, selectedInterestIds } = useAppState();
+  const { interests, selectedInterestIds, largeTextEnabled } = useAppState();
   const { width } = useWindowDimensions();
   const columns = width >= 760 ? 2 : 1;
 
@@ -266,7 +266,7 @@ export function ClubsScreen() {
           alignSelf: 'center',
           paddingHorizontal: width < 360 ? Spacing.lg : Layout.screenPadding,
           paddingTop: insets.top + Spacing.lg,
-          paddingBottom: 120,
+          paddingBottom: Spacing.xxxl,
           gap: Spacing.lg,
         }}
         columnWrapperStyle={columns > 1 ? { gap: Spacing.lg, alignItems: 'stretch' } : undefined}
@@ -303,6 +303,7 @@ export function ClubsScreen() {
                   maxLength={80}
                   style={[
                     styles.searchInput,
+                    { fontSize: largeTextEnabled ? 18 : 16, lineHeight: largeTextEnabled ? 28 : 24 },
                     {
                       color: theme.text,
                       backgroundColor: theme.surface,
@@ -489,8 +490,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.lg,
-    fontSize: 18,
-    fontFamily: FontWeights.emphasis,
+    fontSize: 16,
+    fontFamily: FontWeights.body,
   },
   searchButton: {
     minWidth: 76,

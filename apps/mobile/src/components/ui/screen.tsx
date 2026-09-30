@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react';
 import type { ScrollViewProps, StyleProp, ViewStyle } from 'react-native';
-import { ScrollView, View, useWindowDimensions } from 'react-native';
+import { useSegments } from 'expo-router';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Layout, Spacing } from '@/constants/theme';
 import { useEffectiveSafeAreaInsets } from '@/hooks/use-effective-safe-area-insets';
@@ -28,9 +29,13 @@ export function Screen({
 }: ScreenProps) {
   const theme = useTheme();
   const insets = useEffectiveSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const horizontalPadding = padded ? (width < 360 ? Spacing.lg : Layout.screenPadding) : 0;
-  const bottomPadding = includeBottomInset ? Math.max(Spacing.xxxl, insets.bottom + Spacing.xl) : Spacing.xxxl;
+  const segments = useSegments();
+  const insideTabs = segments.some((segment) => segment === '(tabs)');
+  const horizontalPadding = padded ? Layout.screenPadding : 0;
+  // A tab scene ends above the tab bar, which already owns the system bottom inset.
+  const bottomPadding = includeBottomInset && !insideTabs ? Math.max(Spacing.xxxl, insets.bottom + Spacing.lg) : Spacing.xxxl;
+  const requestedTop = StyleSheet.flatten(contentContainerStyle)?.paddingTop;
+  const topGap = typeof requestedTop === 'number' ? requestedTop : Spacing.lg;
   const innerStyle: StyleProp<ViewStyle> = [
     {
       width: '100%',
@@ -46,7 +51,9 @@ export function Screen({
   if (!scroll) {
     return (
       <View testID={testID} style={[{ flex: 1, backgroundColor: theme.background }, style]}>
-        <View style={[{ flex: 1, paddingTop: insets.top }, innerStyle]}>{children}</View>
+        <View style={{ flex: 1, paddingTop: insets.top }}>
+          <View style={[{ flex: 1 }, innerStyle]}>{children}</View>
+        </View>
       </View>
     );
   }
@@ -58,7 +65,7 @@ export function Screen({
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
       style={[{ flex: 1, backgroundColor: theme.background }, style]}
-      contentContainerStyle={[innerStyle, { paddingTop: insets.top + Spacing.lg }]}
+      contentContainerStyle={[innerStyle, { paddingTop: insets.top + topGap }]}
       {...scrollViewProps}>
       {children}
     </ScrollView>
