@@ -28,15 +28,16 @@ target API는 날짜별 정책을 단정하지 않고 실제 AAB와 제출 시�
 
 | 산출물 | 소스/해시 | 확인 범위 |
 | --- | --- | --- |
-| 설치된 Android 디자인 QA APK | native source `0d91c279bb8d14c210a9dbac89326da9234a8428`; APK SHA-256 `8d117e63324d4de82c4550f2c2ced5e283a528704b07459bec80b7ae2014bad5` | Galaxy M33/Android 16의 디자인·글자 확대·탭·이미지·기존 로그인 복원과 프로필 유지 QA. release 모드, 기존 debug certificate 서명, 테스트 광고 설정 |
-| 최신 로컬 upload-signed AAB 후보 | source `8f25f7dd366fe2e8a43f41b1060e6403e611cf4c`; SHA-256 `4a6bd77bd2a7aa6181036bdb6dbb1d7fdb36b35a2a33811c4f6e669b692d6355` | `0.1.1` / `212215980`, 93,679,754 bytes, 4 ABI, bundletool·전체 서명·compiled manifest·공통 사진·Material font·production endpoint/ad 설정 검증 |
+| 앞선 Android 디자인 실기기 QA APK | native source `0d91c279bb8d14c210a9dbac89326da9234a8428`; APK SHA-256 `8d117e63324d4de82c4550f2c2ced5e283a528704b07459bec80b7ae2014bad5` | Galaxy M33/Android 16의 디자인·글자 확대·탭·이미지·기존 로그인 복원과 프로필 유지 QA. release 모드, 기존 debug certificate 서명, 테스트 광고 설정 |
+| 상태 표시줄 추가 수정 QA APK | native source `9a9825b…`; SHA-256 `3fa88ac99743a0ff593a697b500cdfb99973461139d72eed30ac36263b4a04a7` | 354개 검사/TypeScript/lint, build/manifest/동일 QA 서명/설치 hash 통과. 다른 앱이 foreground여서 runtime 스크롤 재검사 중단 |
+| 최신 로컬 upload-signed AAB 후보 | source `9a9825b32ae47f5abcfdbbc2af1b8f7103cabecd`; SHA-256 `968066c227bf77dfa7ba210cbdd7b3d310c5daa5c2e189514a60543f104086e0` | `0.1.1` / `212215980`, 93,679,910 bytes, 4 ABI, bundletool·전체 서명·compiled manifest·공통 사진·Material font·production endpoint/ad 설정 검증 |
 
 AAB 후보의 upload certificate SHA-256은 `58d2a5f2d30822599ff5b1d46e3d499e85a25c0ffb6efe396da0daba38b0634b`다.
-[최신 후보 증거](qa-evidence/20260930/android-latest-signed-candidate.json)에 native 디자인 소스 및 빌드 파일 hash가 기록돼 있다.
+[최신 후보 증거](qa-evidence/20260930/android-scroll-inset-signed-candidate.json)에 native 디자인 소스 및 빌드 파일 hash가 기록돼 있다.
 이 후보는 기기 설치, 해당 artifact의 provider 로그인, Play 최신 version 대조, 최종 screenshot 검토, hosted CI, Play 업로드를 완료하지 않았다.
 production banner 설정 확인은 실제 광고 제공·동의 화면 검증이 아니다. SDK의 test ID 상수가 존재하는 것과 설정된 광고 ID도 구분한다.
 기기의 debug-signed QA APK를 Play 제출 파일이나 Play 서명 설치물로 표시하지 않는다. 실제 카카오 재로그인은 앞선 인증 APK와 API task 24에서 확인했으며 최신 QA APK에서 provider 재로그인을 반복한 결과는 아니다.
-이전 f513 소스/99f577 AAB와 7월 캡처·업로드 기록은 historical 자료이며 최신 출시 증거로 재사용하지 않는다.
+이전 f513 소스/99f577 AAB, 8f25 소스/4a6bd7 AAB와 7월 캡처·업로드 기록은 historical 자료이며 최신 출시 증거로 재사용하지 않는다.
 상세 실행 결과는 [운영 QA 보고서](QA_PRODUCTION_20260930.md), 릴리스 전달 절차는 [인수 문서의 현재 계약](PLAY_UPLOAD_HANDOFF.md#소스-고정-후-screenshot-evidence-전달)을 본다.
 
 ## 3. 실제 앱 기능과 심사 안내

@@ -166,18 +166,18 @@ binary 검사와 최종 Play 제출 승인은 이 screenshot 전달 검사와 �
 
 ## 현재 로컬 서명 AAB 후보
 
-2026-09-30에 소스 `8f25f7dd366fe2e8a43f41b1060e6403e611cf4c`에서 기존 upload keystore로
+2026-09-30에 소스 `9a9825b32ae47f5abcfdbbc2af1b8f7103cabecd`에서 기존 upload keystore로
 최신 Android 디자인을 포함한 AAB를 생성했다. `0.1.1` / versionCode `212215980`, 4개 ABI,
-93,679,754 bytes다. SHA-256은 `4a6bd77bd2a7aa6181036bdb6dbb1d7fdb36b35a2a33811c4f6e669b692d6355`이며
-파일은 `apps/mobile/build-output/signed-candidate-8f25f7dd366f/app-release.aab`다.
+93,679,910 bytes다. SHA-256은 `968066c227bf77dfa7ba210cbdd7b3d310c5daa5c2e189514a60543f104086e0`이며
+파일은 `apps/mobile/build-output/signed-candidate-9a9825b32ae4/app-release.aab`다.
 
 공식 pinned bundletool, 모든 entry의 서명 및 upload certificate, 실제 compiled AAB manifest의
 권한 34개·exported component 10개, 공통 사진 7개와 Material font의 byte 일치,
 production endpoint 및 설정된 banner를 확인했다. 기기의 기존 debug-signed QA APK와 데이터를
 유지했다. 후보 AAB 설치·실제 provider 로그인·최신 Play versionCode 대조·최종 screenshot 검토·
-Play 제출은 수행하지 않았다. 이후 release 검증기와 등록정보 변경은 이 후보의 전체 소스 SHA에
+Play 제출은 수행하지 않았다. 이후 증거/문서 변경은 이 후보의 전체 소스 SHA에
 포함되지 않는다. 최종 고정 소스의 capture/build 계약을 다시 충족해야 한다.
-[최신 후보 검증 증거](qa-evidence/20260930/android-latest-signed-candidate.json).
+[최신 후보 검증 증거](qa-evidence/20260930/android-scroll-inset-signed-candidate.json).
 
 앞선 `f513abe6569f479a5e014ede29f4135e4650353e` / AAB SHA-256
 `99f577e1e70c38806c86c1f4b1273891827243dc24937fc011ac0f937dd9598b`는 Android 디자인 수정 전
@@ -340,7 +340,8 @@ find /tmp/aabcheck -iname "*Pretendard*"
 
 ## 2026-09-30 Android 디자인 재수정
 
-최신 native UI source `0d91c27…`는 글자·하단 탐색·사진 슬롯을 수정한다. 상단의 `8f25f7d…`
-서명 AAB 후보에는 이 디자인이 포함되며 실제 설치 QA APK는 `8d117e…`다. 디자인 실기기 결과는
+native UI source `0d91c27…`는 글자·하단 탐색·사진 슬롯을 수정했고 앞선 APK `8d117e…`에서 검증했다.
+추가 source `9a9825b…`는 스크롤 상태 표시줄 겹침을 수정했다. 상단의 최신 AAB에 포함됐고 새 QA
+APK `3fa88a…`의 설치 해시를 확인했으나 기기 foreground 변경으로 runtime 재검사는 중단됐다. 디자인 실기기 결과는
 [QA 보고서](QA_PRODUCTION_20260930.md)를 따른다. 제출할 전체 소스 SHA를 고정하고 실제
 screenshot provenance·Play versionCode·certificate·provider 조건을 확인해야 한다.

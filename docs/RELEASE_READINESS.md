@@ -11,13 +11,16 @@ Railway 배포와 EAS release 절차를 현재 출시 지침으로 사용하지 
 모임 신청에는 로그인과 서버 온보딩 완료가 필요하다. UGC는 게시글·댓글·후기·채팅의 텍스트 범위다.
 
 현재 제품 검증과 production 제출 완료를 구분한다. 저장소 소스
-`8f25f7dd366fe2e8a43f41b1060e6403e611cf4c`에서 로컬 업로드 서명 AAB 후보를 생성하고,
+`9a9825b32ae47f5abcfdbbc2af1b8f7103cabecd`에서 로컬 업로드 서명 AAB 후보를 생성하고,
 4개 ABI·target 36·실제 병합 manifest·업로드 서명·운영 주소/광고 설정·사진/Material font를 검증했다.
-AAB SHA-256은 `4a6bd77bd2a7aa6181036bdb6dbb1d7fdb36b35a2a33811c4f6e669b692d6355`다.
-[정확한 후보 증거](qa-evidence/20260930/android-latest-signed-candidate.json)를 확인한다.
-최신 native 제품 소스는 `0d91c279bb8d14c210a9dbac89326da9234a8428`이며 아래 QA APK의 소스다.
-Play versionCode 대조·최종 제출 artifact 확정·업로드·공개는 아직 수행하지 않았다. 이후 출시 검증기와
-등록정보를 보완한 변경은 후보의 전체 소스 SHA에 포함되지 않는다. 문서만 변경해도 Actions의 exact
+AAB SHA-256은 `968066c227bf77dfa7ba210cbdd7b3d310c5daa5c2e189514a60543f104086e0`다.
+[정확한 후보 증거](qa-evidence/20260930/android-scroll-inset-signed-candidate.json)를 확인한다.
+최신 native 제품 소스도 `9a9825b…`다. 상태 표시줄 겹침을 추가 수정한 새 QA APK `3fa88a…`는
+동일 QA 서명과 실제 설치 해시를 확인했지만 기기에 다른 앱이 foreground여서 스크롤 재검사는 중단됐다.
+아래 6개 확대 조합과 시각 검토는 앞선 native 소스 `0d91c27…` / APK `8d117e…`의 증거다.
+[새 APK의 검증 한계](qa-evidence/20260930/native-scroll-inset-candidate.json).
+Play versionCode 대조·최종 제출 artifact 확정·업로드·공개는 아직 수행하지 않았다. 이후 증거/문서 변경은
+후보의 전체 소스 SHA에 포함되지 않는다. 문서만 변경해도 Actions의 exact
 full SHA 계약이 바뀐다. `capture.commit`을 새 SHA로 덮어써 기존 증거를 재사용하지 말고,
 제출할 소스를 고정한 뒤 실제 캡처·검토·발급·빌드 절차를 따른다.
 
@@ -32,14 +35,15 @@ full SHA 계약이 바뀐다. `capture.commit`을 새 SHA로 덮어써 기존 �
 | API | 서울 AWS ECS `senior-club-api:25`, running 1 / rollout COMPLETED, 공개 HTTPS 진입점은 CloudFront | 실제 Kakao provider 로그인은 앞선 task 24에서 확인했다. task 25의 readiness·기존 로그인 거절·익명 인증 경계 통과가 provider 재검증을 대신하지 않는다. |
 | DB | Amazon RDS PostgreSQL 18.3, 공개 접근 해제, encrypted, 7일 backup, deletion protection. task 25 새 연결의 TLS 1.3·인증서 검증과 migration 10개 / 테이블 35개 일치 | private subnet 이전·Multi-AZ·전체 업무 row 검증은 완료하지 않았다. PITR 훈련은 복구 DB의 read-only migration/catalog 비교와 임시 자원 정리까지다. |
 | 웹 | `https://senior.toris.kr`, Vercel `dpl_FumS2oKgsfdmRXbSCESNJrtRPRet`. 공개 페이지·인증 경계·자체 호스팅 Pretendard·사진 검사 통과 | 로컬 역할 UI E2E는 외부 Kakao verifier를 대체했다. 운영 웹의 실제 provider callback·HttpOnly cookie·로그아웃 E2E는 별도다. |
-| Native 정적 검사 | mobile 348 tests / 45 files, TypeScript·ESLint 통과. 기본/큰 글씨 토큰, 하단 탐색·inset·image slot 검사 | 테스트 계산과 mocked 컴포넌트 결과는 실제 기기 렌더링·공급자 동작·Play 승인 증거가 아니다. |
-| 최신 QA APK | SHA-256 `8d117e63324d4de82c4550f2c2ced5e283a528704b07459bec80b7ae2014bad5`, 0.1.1 / versionCode 212215980 / target API 36 / arm64. 설치 base APK hash 일치 | standalone release 모드지만 기존 기기 데이터를 보존하기 위한 debug certificate 서명이다. Play upload/signing AAB가 아니다. |
+| Native 정적 검사 | mobile 354 tests / 46 files, TypeScript·scoped ESLint 통과. 기본/큰 글씨 토큰, 하단 탐색·inset·image slot과 고정 스크롤 viewport 검사 | 테스트 계산과 mocked 컴포넌트 결과는 실제 기기 렌더링·공급자 동작·Play 승인 증거가 아니다. |
+| 앞선 실기기 QA APK | SHA-256 `8d117e63324d4de82c4550f2c2ced5e283a528704b07459bec80b7ae2014bad5`, 0.1.1 / versionCode 212215980 / target API 36 / arm64. 설치 base APK hash 일치 | standalone release 모드지만 기존 기기 데이터를 보존하기 위한 debug certificate 서명이다. 새 상태 표시줄 수정의 runtime 검증이나 Play upload/signing AAB가 아니다. |
 | 실기기 Native | Galaxy M33 / Android 16, core 8개와 기본/큰 글씨 × 시스템 배율 1.0 / 1.3 / 2.0의 6개 조합 통과. 확대 탭 icon 정렬·5개 selected 상태, 홈/목록 16:9와 상세 3:2 실제 사진 측정·픽셀 검토 | 임시 글자 설정 원복. 실제 앱 dark palette, 전체 화면·스토어 screenshot 승인, 최신 APK의 provider 재로그인·SMS·FCM·Plus 구매를 포괄하지 않는다. |
 
 운영·기기 결과는 [QA 보고서](QA_PRODUCTION_20260930.md),
 [모바일 수정 기준과 검증](MOBILE_DESIGN_REVISION_20260930.md), [운영 런북](DEPLOYMENT.md)을 따른다.
 주제 사진 7개는 웹·앱에서 byte 단위로 같고, 실제 서버 사진이 우선이며 fallback은 참고 이미지로 표시한다.
-앞선 서명 AAB의 `android-signed-candidate.json`은 historical 후보 증거이며 최신 제품 artifact가 아니다.
+앞선 서명 AAB의 `android-signed-candidate.json`과 `android-latest-signed-candidate.json`은 historical
+후보 증거이며 최신 상태 표시줄 수정 artifact가 아니다.
 
 ## 현재 release 경로와 strict gate
 
@@ -65,7 +69,7 @@ gate 생략을 허용하지 않는다. issuer run은 동일 저장소·main·첫
 병합 manifest·권한·광고 consent metadata·실제 bundle endpoint·모든 entry 서명·upload certificate는
 별도 검증한다. Play app-signing certificate와 실기기 provider/결제 수용도 별도다.
 
-소스 `1babf95749bb7995cd06e41ad20c92a87cd25e2b`의 로컬 전체 preflight는 5개 중 2개 단계가
+마지막 전체 preflight 실행 소스 `1babf95749bb7995cd06e41ad20c92a87cd25e2b`에서는 5개 중 2개 단계가
 실패했다. 자산/문구·5개 Material glyph·production config와 과거 후보 PNG 규격은 통과했지만,
 공개 `/privacy`의 공급자 처리정보 미확정 문구와 최종 screenshot manifest 부재가 출시를 차단한다.
 API readiness·약관·계정 삭제 주소는 통과했다. [소스와 결과 증거](qa-evidence/20260930/android-release-preflight.json).

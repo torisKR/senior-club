@@ -53,9 +53,9 @@ store-listing README의 0.1.0 경로가 자동 선택을 뜻하지 않는다. Co
 [Billing 연결](../apps/mobile/src/billing/expo-iap-billing.ts),
 [로컬 구매 token](../apps/mobile/src/billing/plus-token-store.ts).
 
-설치된 광고 wrapper는 16.3.3이며, 소스 `8f25f7d…`의 정확한 로컬 서명 AAB 내부 properties에서
+설치된 광고 wrapper는 16.3.3이며, 소스 `9a9825b…`의 정확한 로컬 서명 AAB 내부 properties에서
 GMA 25.0.0 / UMP 4.0.0 / Firebase Auth 24.2.0 / Play Billing 9.1.0을 확인했다.
-[artifact 내부 버전·hash 증거](qa-evidence/20260930/android-latest-signed-candidate.json).
+[artifact 내부 버전·hash 증거](qa-evidence/20260930/android-scroll-inset-signed-candidate.json).
 이는 해당 properties의 버전 기록이며 전체 SDK 목록·실제 통신·동의 처리를 증명하지 않는다. 공식 GMA 안내는
 조회 당시 최신 25.5.0을 설명하므로 실제 제출 AAB의 resolved 버전/설정과 대조한다. GMA는 IP,
 광고 상호작용, 성능 진단, 광고 ID·app set ID 등을 광고/분석/부정 이용 방지 목적으로 처리·공유한다고

@@ -1,9 +1,16 @@
 # Android 모바일 디자인 수정 기준 · 2026-09-30
 
 사용자 요청: 기본 글자, 하단 내비게이션, 그래픽과 사진 비율을 다시 설계한다.
-검토 기준은 `9a376d9`의 소스와 이미지 파일 크기다. 화면 픽셀을 직접 검수한 결과나 구현 완료 보고서가 아니다.
+초기 설계 검토 기준은 `9a376d9`의 소스와 이미지 파일 크기다. 이 초기 진단과 이후 구현·실기기 결과를
+구분하며, 실제 결과와 한계는 하단 검증 기록 및 [운영 QA 보고서](QA_PRODUCTION_20260930.md)를 따른다.
 숲색 `#356347`, 밝은 배경 `#eef2e9`, Pretendard, 공통 AppText/Card/CoverImage/Button 역할을 유지한다.
 웹과 브랜드·역할·에셋을 공유하되 Android의 글자 밀도와 시스템 여백은 플랫폼에서 결정한다.
+
+추가 source `9a9825b…`에서는 목록을 스크롤할 때 검색창이 상태 표시줄과 겹치는 문제를 수정했다.
+공통 Screen과 custom FlatList의 top inset을 고정 viewport에서 처리한다. 354개 모바일 테스트와
+TypeScript·scoped lint, 새 APK build/manifest/signature/install hash 검증은 통과했다. 새 APK의 실제
+스크롤 재검사는 기기에 다른 앱이 전면에 있어 중단됐으며 사용자 기기 전환을 기다린다.
+[정확한 추가 후보와 범위](qa-evidence/20260930/native-scroll-inset-candidate.json).
 
 ## 소스에서 확인한 문제
 

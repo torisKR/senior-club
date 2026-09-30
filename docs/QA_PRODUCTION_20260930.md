@@ -1,6 +1,31 @@
 # 운영 배포 및 Android 재검사 — 2026-09-30
 
-Galaxy M33 / Android 16에서 최신 Android 디자인 QA APK의 로그인 복원·프로필·5개 탭·사진 슬롯과 6개 글자 확대 조합을 검사했다. 기본 글자와 하단 탐색을 조정하고 실기기에서 발견한 확대 아이콘 정렬 문제도 수정했다. 웹은 새 Vercel production에 배포해 Playwright CLI 검사가 통과했다. 전체 출시 검증 완료는 아니며 Firebase SMS 설정·origin TLS·별도 Play 조건이 남아 있다.
+Galaxy M33 / Android 16에서 Android 디자인 QA APK `8d117e…`의 로그인 복원·프로필·5개 탭·사진 슬롯과 6개 글자 확대 조합을 검사했다. 기본 글자와 하단 탐색을 조정하고 실기기에서 발견한 확대 아이콘 정렬 문제도 수정했다. 이후 스크롤 상태 표시줄 겹침을 수정한 새 APK `3fa88a…`를 설치했으며 아래 추가 절에 검증 한계를 기록했다. 웹은 새 Vercel production에 배포해 Playwright CLI 검사가 통과했다. 전체 출시 검증 완료는 아니며 Firebase SMS 설정·origin TLS·별도 Play 조건이 남아 있다.
+
+## 추가 상태 표시줄 수정과 최신 후보
+
+앞선 모임 목록 캡처를 직접 검토하면서 검색창이 스크롤 시 상태 표시줄 뒤로 올라가는 문제를
+발견했다. source `9a9825b32ae47f5abcfdbbc2af1b8f7103cabecd`에서 상태 표시줄 inset을 고정 viewport로
+옮기고 스크롤 내용에는 콘텐츠 여백만 적용했다. 공통 Screen과 모임·커뮤니티·대화방 목록·알림 목록이
+대상이다. pagination/filter/refresh/keyboard/반응형 배치와 하단 탐색은 보존했다. 모바일 354개 /
+46 files, TypeScript·scoped ESLint가 통과했고 공통 Screen 5개·discovery viewport 4개 회귀도 통과했다.
+
+새 release-mode QA APK는 `apps/mobile/build-output/android-scroll-inset-9a9825b3/app-release.apk`,
+SHA-256 `3fa88ac99743a0ff593a697b500cdfb99973461139d72eed30ac36263b4a04a7`, 64,126,775 bytes다.
+기존 QA 서명 일치·compiled manifest·package/version/target36·7개 사진/Material font·운영 주소를
+확인하고 데이터를 유지하는 업데이트 후 실제 설치 해시 일치를 확인했다. 설치 명령은 timeout으로
+종료했으나 provider 상태를 먼저 대조해 설치 완료를 확인했으며 중복 설치하지 않았다.
+현재 다른 앱이 foreground여서 입력 guard가 새 실기기 스크롤 검사를 중단했다. 새 APK의 runtime
+시각/스크롤 QA는 미완료이며 아래 `8d117e…`의 검사 결과를 새 APK 성공으로 바꾸지 않는다.
+[새 native 후보 증거](qa-evidence/20260930/native-scroll-inset-candidate.json).
+
+같은 source에서 생성한 최신 upload-signed AAB 후보는
+`apps/mobile/build-output/signed-candidate-9a9825b32ae4/app-release.aab`, SHA-256
+`968066c227bf77dfa7ba210cbdd7b3d310c5daa5c2e189514a60543f104086e0`, 93,679,910 bytes다.
+4개 ABI·target36·pinned bundletool·전체 서명·compiled manifest·운영 설정·동일 사진/font와 SDK
+property metadata를 검증했다. [최신 서명 후보 증거](qa-evidence/20260930/android-scroll-inset-signed-candidate.json).
+Play max version/signing/provider·최종 screenshot 검토·hosted run·업로드는 아직 없다.
+아래 `8f25f7d…` AAB는 상태 표시줄 수정 전 후보로 보존한다.
 
 ## 실제 배포
 
@@ -136,7 +161,7 @@ ADB 조작은 fresh UI hierarchy와 현재 foreground package를 확인했다. �
 | 최종 Android 디자인 source `0d91c27…` | 348 tests / 45 files / TypeScript / scoped ESLint / 하단 탐색 회귀 12; 실제 APK 증거 참조 |
 | 새 compiled manifest 회귀 | 35 tests; compiled AAB의 정확한 numeric enum도 검사 |
 | compiled release manifest | allowlist 권한 34개, 정확한 exported component 10개 |
-| Play production workflow 계약 | 7 tests / 세 workflow actionlint; exact screenshot 발급·수신 Python 계약 19 tests. hosted 실행 미관측 |
+| Play production workflow 계약 | 8 tests / internal wrapper 계약 / 세 workflow actionlint; exact screenshot 발급·수신 Python 계약 19 tests. hosted 실행 미관측 |
 | 최종 root ESLint / diff whitespace | 통과 |
 | 최종 native APK | Gradle release build / apksigner / 설치 hash 일치 |
 
