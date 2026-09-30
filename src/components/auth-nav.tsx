@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogIn, UserRound } from "lucide-react";
 import { clsx } from "clsx";
+import { browserSessionStillCurrent, logoutBrowserSession, readBrowserSession } from "@/lib/auth/browser-session";
 
 import {
   PROFILE_CACHE_CHANGE_EVENT,
@@ -56,22 +57,19 @@ export function AuthNav({
 
   // When mounted, if cache is empty, check session in background
   useEffect(() => {
-    if (cachedProfile) return;
+    if (cachedProfile || isLoggingOut) return;
     const controller = new AbortController();
-    fetch("/api/auth/session", {
-      credentials: "same-origin",
-      cache: "no-store",
-      signal: controller.signal,
-    })
+    readBrowserSession({ signal: controller.signal })
       .then(async (res) => {
         if (!res.ok) return;
         const session = await res.json();
+        if (!browserSessionStillCurrent(res)) return;
         syncServerProfileCacheFromSession(window.localStorage, session);
       })
       .catch(() => undefined);
 
     return () => controller.abort();
-  }, [cachedProfile]);
+  }, [cachedProfile, isLoggingOut]);
 
   const loginHref =
     pathname && pathname !== "/" && !pathname.startsWith("/login")
@@ -82,12 +80,7 @@ export function AuthNav({
     if (isLoggingOut) return;
     setIsLoggingOut(true);
     try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
+      await logoutBrowserSession();
     } catch {
       // Proceed with local cleanup even on network failure
     } finally {

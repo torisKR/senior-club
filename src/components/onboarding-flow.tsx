@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { browserSessionStillCurrent, readBrowserSession } from "@/lib/auth/browser-session";
 
 import { sanitizeReturnTo } from "@/lib/auth/return-to";
 import { buildOnboardingRoute } from "@/lib/auth/post-login-route";
@@ -161,17 +162,14 @@ export function OnboardingFlow({ returnTo = "/" }: { returnTo?: string }) {
     const controller = new AbortController();
 
     void Promise.all([
-      fetch("/api/auth/session", {
-        credentials: "same-origin",
-        cache: "no-store",
-        signal: controller.signal,
-      }),
+      readBrowserSession({ signal: controller.signal }),
       fetch("/api/interests", {
         credentials: "same-origin",
         signal: controller.signal,
       }),
     ])
       .then(async ([sessionResponse, interestsResponse]) => {
+        if (!browserSessionStillCurrent(sessionResponse)) return;
         if (sessionResponse.status === 401) {
           router.replace(loginHref);
           return;
@@ -197,7 +195,7 @@ export function OnboardingFlow({ returnTo = "/" }: { returnTo?: string }) {
           throw new Error("선택 가능한 관심사 목록을 확인하지 못했습니다.");
         }
 
-        if (!controller.signal.aborted) {
+        if (browserSessionStillCurrent(sessionResponse)) {
           syncServerProfileCache(window.localStorage, session.user);
           try {
             window.sessionStorage.setItem(PROFILE_SESSION_SYNC_KEY, "done");
@@ -208,7 +206,7 @@ export function OnboardingFlow({ returnTo = "/" }: { returnTo?: string }) {
         }
       })
       .catch((caught) => {
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted || (caught instanceof DOMException && caught.name === "AbortError")) return;
         setLoadState({
           status: "error",
           message:

@@ -11,6 +11,7 @@ import {
 import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { Brand } from "@/components/brand";
+import { browserSessionStillCurrent, readBrowserSession } from "@/lib/auth/browser-session";
 import { sanitizeReturnTo } from "@/lib/auth/return-to";
 import { postLoginRoute } from "@/lib/auth/post-login-route";
 import {
@@ -44,14 +45,11 @@ function returnDestination() {
 }
 
 async function syncProfileFromSession(signal?: AbortSignal) {
-  const response = await fetch("/api/auth/session", {
-    credentials: "same-origin",
-    cache: "no-store",
-    signal,
-  });
+  const response = await readBrowserSession({ signal });
   if (!response.ok) return null;
 
   const session = (await response.json()) as SessionProfilePayload;
+  if (!browserSessionStillCurrent(response)) return null;
   if (syncServerProfileCacheFromSession(window.localStorage, session)) {
     try {
       window.sessionStorage.setItem(PROFILE_SESSION_SYNC_KEY, "done");

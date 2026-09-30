@@ -14,6 +14,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import { browserSessionStillCurrent, readBrowserSession } from "@/lib/auth/browser-session";
 
 import {
   CommunityPostRequestError,
@@ -31,17 +32,14 @@ function useWritingAccess(): WritingAccess {
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetch("/api/auth/session", {
-      cache: "no-store",
-      credentials: "same-origin",
-      signal: controller.signal,
-    })
+    void readBrowserSession({ signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error("로그인 상태를 확인하지 못했습니다.");
-        setAccess(resolveWritingAccess(await response.json()));
+        const session = await response.json();
+        if (browserSessionStillCurrent(response)) setAccess(resolveWritingAccess(session));
       })
       .catch((error) => {
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError")) return;
         setAccess({
           status: "error",
           message:
