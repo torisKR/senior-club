@@ -9,7 +9,7 @@ import type { ProfileStateSnapshot } from '@/api/profile-api-core';
 import { BlockedUsersSection } from '@/components/safety';
 import { PlusCard } from '@/screens/profile/plus-card';
 import { AppText, Card, InterestChip, Screen, SectionHeader, SeniorButton } from '@/components/ui';
-import { Radius, Spacing, TouchTarget, FontWeights } from '@/constants/theme';
+import { Radius, Spacing, TouchTarget, FontWeights, FontSizes, LineHeights } from '@/constants/theme';
 import { getPublicWebPageUrl } from '@/config/public-web-links';
 import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
@@ -285,8 +285,9 @@ export function ProfileScreen() {
                 backgroundColor: theme.surface,
                 color: theme.text,
                 paddingHorizontal: Spacing.lg,
-                fontSize: 18,
-                fontFamily: FontWeights.emphasis,
+                fontSize: FontSizes[largeTextEnabled ? 'large' : 'standard'].body,
+                lineHeight: LineHeights[largeTextEnabled ? 'large' : 'standard'].body,
+                fontFamily: FontWeights.body,
               }}
               accessibilityLabel="이름 또는 별명 입력"
             />
@@ -316,8 +317,9 @@ export function ProfileScreen() {
                 backgroundColor: theme.surface,
                 color: theme.text,
                 paddingHorizontal: Spacing.lg,
-                fontSize: 18,
-                fontFamily: FontWeights.emphasis,
+                fontSize: FontSizes[largeTextEnabled ? 'large' : 'standard'].body,
+                lineHeight: LineHeights[largeTextEnabled ? 'large' : 'standard'].body,
+                fontFamily: FontWeights.body,
               }}
               accessibilityLabel="휴대폰 번호 입력"
             />
@@ -343,8 +345,9 @@ export function ProfileScreen() {
                 backgroundColor: theme.surface,
                 color: theme.text,
                 paddingHorizontal: Spacing.lg,
-                fontSize: 18,
-                fontFamily: FontWeights.emphasis,
+                fontSize: FontSizes[largeTextEnabled ? 'large' : 'standard'].body,
+                lineHeight: LineHeights[largeTextEnabled ? 'large' : 'standard'].body,
+                fontFamily: FontWeights.body,
               }}
               accessibilityLabel="활동 지역 입력"
             />
@@ -610,8 +613,9 @@ export function ProfileScreen() {
                   backgroundColor: theme.surface,
                   color: theme.text,
                   paddingHorizontal: Spacing.lg,
-                  fontSize: 18,
-                  fontFamily: FontWeights.emphasis,
+                  fontSize: FontSizes[largeTextEnabled ? 'large' : 'standard'].body,
+                  lineHeight: LineHeights[largeTextEnabled ? 'large' : 'standard'].body,
+                  fontFamily: FontWeights.body,
                 }}
                 accessibilityLabel="계정 삭제 확인 문구"
               />
@@ -637,8 +641,9 @@ export function ProfileScreen() {
                   backgroundColor: theme.surface,
                   color: theme.text,
                   padding: Spacing.lg,
-                  fontSize: 17,
-                  lineHeight: 25,
+                  fontSize: FontSizes[largeTextEnabled ? 'large' : 'standard'].body,
+                  lineHeight: LineHeights[largeTextEnabled ? 'large' : 'standard'].body,
+                  fontFamily: FontWeights.body,
                   textAlignVertical: 'top',
                 }}
                 accessibilityLabel="선택 입력인 탈퇴 사유"

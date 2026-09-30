@@ -4,8 +4,9 @@ import { Platform, Pressable, TextInput, View } from 'react-native';
 
 import type { ProfileStateSnapshot } from '@/api/profile-api-core';
 import { AppText, Card, SeniorButton } from '@/components/ui';
-import { FontWeights, Radius, Spacing, TouchTarget } from '@/constants/theme';
+import { FontSizes, LineHeights, FontWeights, Radius, Spacing, TouchTarget } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAppState } from '@/hooks/use-app-state';
 import { createNativePhoneAuthDriver } from '@/phone-verification/native-phone-auth';
 import { hasVerifiedPhone } from '@/phone-verification/phone-number';
 import { verifyNativePhoneToken } from '@/phone-verification/phone-verification-api';
@@ -21,6 +22,7 @@ interface Props {
 
 export function PhoneVerificationCard(props: Props) {
   const theme = useTheme();
+  const { largeTextEnabled } = useAppState();
   const [expanded, setExpanded] = useState(false);
   const [phone, setPhone] = useState(props.phoneNumber ?? '');
   const [consent, setConsent] = useState(false);
@@ -71,8 +73,9 @@ export function PhoneVerificationCard(props: Props) {
     color: theme.text,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    fontSize: 18,
-    fontFamily: FontWeights.emphasis,
+    fontSize: FontSizes[largeTextEnabled ? 'large' : 'standard'].body,
+    lineHeight: LineHeights[largeTextEnabled ? 'large' : 'standard'].body,
+    fontFamily: FontWeights.body,
   };
 
   return (

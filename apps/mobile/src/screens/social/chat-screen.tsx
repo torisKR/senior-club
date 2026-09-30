@@ -28,7 +28,7 @@ import { createNativeIdempotencyKey } from '@/api/idempotency-key';
 import { safetyApi } from '@/api/safety-api';
 import { ContentSafetyActions } from '@/components/safety';
 import { AppText, EmptyState, SeniorButton } from '@/components/ui';
-import { Layout, Radius, Shadows, Spacing, TouchTarget } from '@/constants/theme';
+import { FontSizes, LineHeights, FontWeights, Layout, Radius, Shadows, Spacing, TouchTarget } from '@/constants/theme';
 import { useAppState } from '@/hooks/use-app-state';
 import { useEffectiveSafeAreaInsets } from '@/hooks/use-effective-safe-area-insets';
 import { useTheme } from '@/hooks/use-theme';
@@ -1262,8 +1262,9 @@ export function ChatScreen() {
               borderCurve: 'continuous',
               color: theme.text,
               backgroundColor: theme.background,
-              fontSize: largeTextEnabled ? 20 : 18,
-              lineHeight: largeTextEnabled ? 31 : 28,
+              fontSize: FontSizes[largeTextEnabled ? 'large' : 'standard'].body,
+              lineHeight: LineHeights[largeTextEnabled ? 'large' : 'standard'].body,
+              fontFamily: FontWeights.body,
               textAlignVertical: 'center',
               opacity: canSend ? 1 : 0.62,
             }}
