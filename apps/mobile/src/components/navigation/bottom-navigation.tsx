@@ -54,7 +54,7 @@ export function BottomNavigation({ state, descriptors, navigation }: BottomTabBa
               onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
               style={({ pressed }) => ({
                 flex: 1, minWidth: 48, minHeight: 48, paddingVertical: 6, paddingHorizontal: 4,
-                alignItems: 'center', justifyContent: 'center', gap: 4, opacity: pressed ? 0.72 : 1,
+                alignItems: 'center', justifyContent: 'flex-start', gap: 4, opacity: pressed ? 0.72 : 1,
               })}>
               <View style={{ width: 48, height: 28, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: selected ? theme.backgroundSelected : 'transparent' }}>
                 <AppIcon name={destination.icon} color={color} />
@@ -63,7 +63,7 @@ export function BottomNavigation({ state, descriptors, navigation }: BottomTabBa
                 allowFontScaling
                 selectable={false}
                 style={{ color, fontFamily: FontWeights.emphasis, fontSize: layout.labelSize, lineHeight: layout.labelLineHeight, textAlign: 'center', alignSelf: 'stretch' }}>
-                {destination.label}
+                {destination.name === 'clubs' && layout.labelLines > 1 ? '커뮤\n니티' : destination.label}
               </Text>
             </Pressable>
           );

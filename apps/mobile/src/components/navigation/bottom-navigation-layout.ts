@@ -20,5 +20,5 @@ export function bottomNavigationLayout({
   const labelLines = Math.max(1, Math.ceil((4 * labelSize * scale) / labelWidth));
   const rowHeight = Math.max(60, Math.ceil(12 + 28 + 4 + labelLineHeight * scale * labelLines));
   const safeBottom = Math.max(0, bottomInset);
-  return { labelSize, labelLineHeight, rowHeight, bottomInset: safeBottom, height: rowHeight + safeBottom };
+  return { labelSize, labelLineHeight, labelLines, rowHeight, bottomInset: safeBottom, height: rowHeight + safeBottom };
 }
