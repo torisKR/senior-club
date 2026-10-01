@@ -12,6 +12,7 @@
 세션 이벤트를 직접 만들지 않습니다. 웹과 앱 이용자를 계정 ID로 합치지 않으므로 기기·브라우저별로 집계됩니다.
 웹은 최초 동의 전 Google 스크립트를 로드하지 않으며 Android는 `firebase.json`에서 기본 수집을 끕니다.
 홈의 선택 동의 카드와 내 정보에서 설정하며 웹은 개인정보 처리방침에서도 변경할 수 있습니다.
+Android 로그인 화면의 ‘이용 분석 설정’에서도 로그인 없이 동의를 켜거나 철회할 수 있습니다.
 동의 거부는 로그인·채팅·모임 사용에 영향을 주지 않습니다. 설정은 기기에 저장하며 회원 프로필 API로 보내지 않습니다.
 
 ## 데이터 제한
@@ -48,3 +49,6 @@ Android QA에서는 승인된 테스트 기기에 한해 `debug.firebase.analyti
 - [DebugView](https://analytics.google.com/analytics/web/#/a410406931p556989692/debugview)
 
 이벤트 데이터 보존은 2개월입니다. 운영 설정과 수신 검증 결과는 QA 증거에 기록합니다.
+속성 이름 `senior_club`, 대한민국 시간대, KRW, 운영 규모 1~10명으로 저장했습니다.
+Google 콘솔에서 웹 `page_view`, Android `screen_view`·`session_start` 수신을 확인했습니다.
+Vercel 운영 환경과 `deploy-main.yml`의 Sites 빌드에 공개 측정 ID를 전달합니다.

@@ -31,3 +31,22 @@ export function AnalyticsConsentCard({ prompt = false }: { prompt?: boolean }) {
     </Card>
   );
 }
+
+// Available outside RequireAuth as well, so logging out never hides withdrawal.
+export function AnalyticsSettingsEntry() {
+  const { available } = useAnalyticsConsent();
+  const [expanded, setExpanded] = useState(false);
+  if (!available) return null;
+  return (
+    <View style={{ gap: Spacing.md }}>
+      <SeniorButton
+        label={expanded ? '이용 분석 설정 닫기' : '이용 분석 설정'}
+        variant="quiet"
+        accessibilityState={{ expanded }}
+        onPress={() => setExpanded((current) => !current)}
+      />
+      {expanded && <AnalyticsConsentCard />}
+    </View>
+  );
+}
+import { useState } from 'react';
