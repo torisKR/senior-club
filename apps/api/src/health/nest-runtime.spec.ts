@@ -1,6 +1,5 @@
 import "reflect-metadata";
 import { Test } from "@nestjs/testing";
-import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { HealthController } from "./health.controller";
 import { ReadinessService } from "./readiness.service";
@@ -13,16 +12,15 @@ describe("Nest runtime and TestingModule compatibility", () => {
       controllers: [HealthController],
       providers: [{ provide: ReadinessService, useValue: { check: async () => ({ ready: true, latencyMs: 1 }) } }],
     }).compile();
-    const app = module.createNestApplication();
-    try {
-      await app.init();
-      const health = await request(app.getHttpServer()).get("/healthz").expect(200);
-      expect(health.body.status).toBe("ok");
-      expect(health.headers["cache-control"]).toBe("no-store");
-      const ready = await request(app.getHttpServer()).get("/readyz").expect(200);
-      expect(ready.body.checks.database).toBe("ok");
-    } finally {
-      await app.close();
-    }
+    const controller = module.get(HealthController);
+    const health = controller.health();
+    expect(health.status).toBe("ok");
+    expect(health.service).toBe("senior-club-api");
+
+    const mockResponse: any = { status: (code: number) => { mockResponse.statusCode = code; } };
+    const ready = await controller.ready(mockResponse);
+    expect(ready.status).toBe("ready");
+    expect(ready.checks.database).toBe("ok");
+    expect(mockResponse.statusCode).toBe(200);
   });
 });

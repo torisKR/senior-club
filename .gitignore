@@ -39,6 +39,8 @@ apps/mobile/*.keystore
 apps/mobile/.git.bak-nested
 
 # local tooling / caches (never commit)
+__pycache__/
+*.pyc
 .codegraph
 .omo/
 .playwright-cli/

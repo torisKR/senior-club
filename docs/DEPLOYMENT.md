@@ -1,277 +1,165 @@
-# 시니어클럽 프로덕션 배포 런북
+# 시니어클럽 운영 배포 런북
 
-MVP의 기준 구성은 비용과 운영 복잡도를 낮춘 서울 리전의 단일 API 구조다.
+운영 확인일: 2026-09-30. 현재 웹은 Vercel, API는 AWS ECS, DB는 Amazon RDS다. 이번 로그인 장애의 원인은 Lambda 타임아웃이 아니라 Prisma의 advisory lock 쿼리가 PostgreSQL void 결과를 역직렬화한 오류였다.
 
 ```text
-Android 앱 ─┐
-            ├─ HTTPS ─ ECS API 1개 ─ Railway PostgreSQL
-ChatGPT Sites 웹 ──┘                │
-                            ├─ Resend 이메일
-                             ├─ Twilio SMS
-                             └─ Firebase Cloud Messaging
+Android / Vercel BFF → CloudFront → ALB → ECS API → RDS PostgreSQL
+                      서울 리전 ap-northeast-2
 ```
 
-Redis는 첫 단일 API 인스턴스에서는 사용하지 않는다. Socket.IO를 둘 이상의 인스턴스로 확장하거나
-분산 presence가 필요해질 때 관리형 Redis adapter를 추가한다. 알림 outbox와 계정 삭제 작업의 진실의
-원본은 PostgreSQL이다.
+## 운영 리소스와 배포 증거
 
-## 1. 출시 전 필수 준비
+| 대상 | 현재 값 |
+| --- | --- |
+| 웹 canonical | https://senior.toris.kr |
+| 웹 보조 alias | https://clubsenior.vercel.app |
+| Vercel 배포 | dpl_FumS2oKgsfdmRXbSCESNJrtRPRet |
+| API 공개 origin | https://d33totqtaqpyfs.cloudfront.net |
+| ECS cluster / service | senior-club / senior-club-api |
+| ECS task | senior-club-api:26, running 1 / pending 0, deployment COMPLETED |
+| API image digest | sha256:38fd2444038fec5bd8177214f8ff12a82f6f0a9ec2c523f0caf90f8a9d0600ee |
+| RDS | senior-club-db, PostgreSQL 18.3, 공개 접근 해제, encrypted, 7일 backup, deletion protection |
+| Firebase project | clubsenior-app |
 
-- GitHub 저장소, 보호된 `main` 브랜치, GitHub Actions 실행 권한
-- ChatGPT Sites 프로젝트와 고정 production HTTPS 도메인
-- Railway 프로젝트, API 서비스, PostgreSQL 서비스와 백업 정책
-- 검증된 발신 도메인이 있는 Resend 계정
-- Twilio Messaging Service 또는 검증된 Twilio 발신번호
-- Android 앱과 연결된 Firebase 프로젝트, Firebase Admin 서비스 계정, EAS/Android FCM 자격 증명
-- Play App Signing, privacy/terms/account-deletion 공개 URL, 최종 AAB와 스토어 스크린샷
-- 검증된 Prisma baseline migration
+API health 경로는 `/healthz`, DB readiness는 `/readyz`다. `/v1/readyz`를 사용하지 않는다. 웹 BFF의 health/readiness는 `/api/healthz`, `/api/readyz`다. 실제 로그인과 QA 결과는 `QA_PRODUCTION_20260930.md`에 기록한다.
 
-baseline SQL은 `prisma/migrations/20260729210000_init/migration.sql`에 생성돼 있다. 다만 빈
-PostgreSQL 전체 적용, 대표 seed 데이터, 직전 schema에서의 업그레이드와 rollback 가능성을 실제 DB에서
-검증하기 전에는 production DB에 적용하지 않는다. production에서 `prisma db push`를 사용하지 않는다.
+## 인증과 환경변수
 
-실제 값은 저장소 파일에 기록하지 않는다. 로컬 키 이름은 [`.env.example`](../.env.example)을
-기준으로 하되 ChatGPT Sites, ECS, GitHub Environment, EAS의 encrypted environment에 각각 저장한다.
+카카오만 로그인 수단으로 제공한다. 이전 phone/email/Google 로그인 경로는 차단한다. 휴대폰 번호는 프로필에서 인증 없이 저장·삭제할 수 있고, Firebase 번호 인증은 선택 사항이다.
 
-## 2. 환경변수 배치
+| 위치 | 설정 |
+| --- | --- |
+| Vercel server | `SENIOR_CLUB_API_BASE_URL`, 카카오 REST key/client secret/redirect URI |
+| Vercel public | `NEXT_PUBLIC_APP_URL=https://senior.toris.kr` |
+| ECS API | `NODE_ENV=production`, `KAKAO_APP_ID=1539455`, HTTPS `CORS_ORIGINS`, DB 및 독립적인 auth secrets |
+| Android bundle | `EXPO_PUBLIC_APP_ENV=production`, CloudFront API URL, canonical web URL, Kakao native client key |
+| Android native build | package와 일치하는 `GOOGLE_SERVICES_JSON` client file |
+| 선택형 Firebase proof API | `FIREBASE_PROJECT_ID`, 권한 있는 Firebase Admin ADC |
 
-| 위치 | 필요한 값 | 주의 사항 |
-| --- | --- | --- |
-| ChatGPT Sites Web | `NEXT_PUBLIC_APP_URL`, `SENIOR_CLUB_API_BASE_URL` | API URL은 서버 전용이다. DB·FCM·인증 secret을 `NEXT_PUBLIC_*`로 만들지 않는다. |
-| ECS API | 아래 API production 변수 전체 | Railway가 주입하는 `PORT`를 사용하며 실제 secret을 이미지에 bake하지 않는다. |
-| EAS Build | `EXPO_PUBLIC_APP_ENV=production`, `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_WEB_URL` | 세 값은 앱 번들에 노출된다. 서버 secret과 서비스 계정 JSON을 넣지 않는다. |
-| GitHub CI | workflow의 테스트 전용 placeholder | production secret을 repository variable이나 로그에 노출하지 않는다. |
-| GitHub `play-internal` Environment | secret `EXPO_TOKEN`, secret `GOOGLE_SERVICES_JSON_BASE64`, variables `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_WEB_URL` | required reviewer를 권장한다. Firebase client JSON은 runner 임시 파일에만 복원한다. |
-| GitHub `play-store-production` Environment | 위와 동일한 secret/variable | `main` push production draft 제출용. required reviewer를 권장한다. |
+운영 CORS에는 위 두 웹 alias만 등록되어 있다. 네이티브 요청은 Origin이 없을 수 있다. DB/auth/Admin credentials는 서버 secret store에 두고, `NEXT_PUBLIC_*`나 `EXPO_PUBLIC_*`에 넣지 않는다. Android client JSON은 서버 Admin credential이 아니다. 개발자 CLI 로그인 token을 런타임 credential로 재사용하지 않는다.
 
-ECS API에는 다음 값을 등록한다.
+`AUTH_ACCESS_TOKEN_SECRET`, `AUTH_OTP_PEPPER`, 32바이트 OTP encryption key는 독립적으로 생성한다. 이전 OTP 데이터 처리 때문에 legacy secret 계약은 남아 있지만 OTP 로그인은 비활성화되어 있다. `AUTH_DEV_OTP_EXPOSE=false`를 유지한다.
 
-```dotenv
-NODE_ENV=production
-DATABASE_URL=${{Postgres.DATABASE_URL}}
-DATABASE_POOL_MAX=5
-DATABASE_CONNECT_TIMEOUT_MS=1500
-DATABASE_IDLE_TIMEOUT_MS=10000
-READINESS_TIMEOUT_MS=2000
-CORS_ORIGINS=https://실제-웹-도메인
+현재 `EMAIL_PROVIDER=disabled`, `SMS_PROVIDER=disabled`, `PUSH_PROVIDER=disabled`다. 운영에서 console sender를 허용하지 않는다. 미설정 발송을 성공으로 기록하지 않는다. Resend/Twilio/FCM은 자격증명·정책·실제 수신 검증 후에만 활성화한다. Firebase Phone Auth는 이 SMS outbox 설정과 별개다.
 
-AUTH_ACCESS_TOKEN_SECRET=<독립적으로 생성한 32자 이상 secret>
-AUTH_OTP_PEPPER=<다른 32자 이상 secret>
-AUTH_OTP_ENCRYPTION_KEY_BASE64=<정확히 32바이트를 base64 인코딩한 값>
-AUTH_ACCESS_TOKEN_TTL_SECONDS=900
-AUTH_REFRESH_TOKEN_TTL_DAYS=30
-AUTH_OTP_TTL_SECONDS=600
-AUTH_DEV_OTP_EXPOSE=false
-CONSENT_DOCUMENT_VERSION=2026-07-01
+## API 배포
 
-EMAIL_PROVIDER=resend
-EMAIL_FROM="시니어클럽 <no-reply@검증된-도메인>"
-RESEND_API_KEY=<Railway secret>
+Node 24.16.0 / pnpm 9.14.2 및 루트 workspace lockfile을 사용한다. API typecheck/test/build와 DB 회귀를 통과한 후 저장소 루트에서 `apps/api/Dockerfile`로 Linux amd64 image를 빌드한다.
 
-SMS_PROVIDER=twilio
-TWILIO_ACCOUNT_SID=<Railway secret>
-TWILIO_AUTH_TOKEN=<Railway secret>
-TWILIO_MESSAGING_SERVICE_SID=<Railway secret>
-# 또는 TWILIO_FROM_NUMBER=+8210xxxxxxxx
+1. ECR에 image를 push하고 변경 불가능한 repository digest를 얻는다.
+2. 현재 ECS service가 사용하는 task definition을 읽는다.
+3. `.github/scripts/prepare-api-task.mjs`로 production 설정, HTTPS CORS, Kakao app ID, secret reference와 digest를 검사한다. 원래 secret reference를 보존하고 emulator/legacy Google 설정을 제거한다.
+4. 새 task를 등록하고 deployment circuit breaker의 rollback을 켠다.
+5. 안정화 후 readiness, 기존 로그인 차단, 실제 Kakao login, refresh/프로필과 해당 새 task의 CloudWatch error를 검사한다.
+6. 실패 시 직전 ECS task로 rollback한다. DB migration의 호환성은 별도로 판단한다.
 
-PUSH_PROVIDER=firebase
-FCM_SERVICE_ACCOUNT_JSON_BASE64=<Railway secret>
-OUTBOX_POLL_INTERVAL_MS=5000
-ACCOUNT_DELETION_POLL_INTERVAL_MS=300000
-OUTBOX_WORKER_ENABLED=true
+`.github/workflows/deploy-main.yml`의 API job은 CI 성공 후 이 경로를 사용한다. 이 workflow의 Sites job은 별도 artifact 생성이며 Vercel live 배포를 대신하지 않는다. 현재 Vercel 웹 배포는 Vercel CLI로 수행했다.
+
+Prisma production migration은 `migrate deploy`를 사용한다. `db push`나 seed로 운영 모임을 만들지 않는다. 빈 local PostgreSQL 17에 10개 migration과 기존 auth DB 회귀 12개를 검증했다. 추가로 전용 DB에서 카카오·프로필·역할·후기·신고 12개를 실제 실행했으며 상세 범위는 QA 보고서를 확인한다. 별도 실제 운영 read-only 스키마 검사와 PITR 복구본의 메타데이터 비교·정리도 통과했다. 업무 row 복구와 실제 provider·기기의 모든 역할 E2E는 별도 검증이다.
+
+최신 source `84c4fe7…`는 기존 ECS task26에 배포했다. 실행 container image digest·rollout
+COMPLETED·running1/pending0·health/readiness·익명 인증/legacy 차단 8개·새 task 로그 오류0개를
+확인했다. 기존 environment/secret과 true인 worker 설정은 유지했다.
+[정확한 운영 readback](qa-evidence/20260930/api-deletion-live.json).
+
+## 탈퇴 복구 코드와 실제 DB 회귀
+
+추가 소스 `84c4fe751cc426c1839c44b74a58ff81750b38d3`는 탈퇴 claim·비식별화를 한 transaction으로
+묶고 FAILED 5분 재시도·stale PROCESSING 15분 복구를 추가했다. 예정일과 7일 유예, terminal 상태,
+기존 비식별화 범위·schema/migration은 유지한다. 취소/실패 상태 갱신은 status와 updatedAt을 비교한다.
+worker drain과 저장된 실패 코드는 고정 문자열이며 raw 오류 메시지를 기록하지 않는다.
+
+API 기본 415 tests / 42 opt-in skip, typecheck/build, 탈퇴 unit 37개와 DB runner guard 8개가
+통과했다. 전용 PostgreSQL17의 네 suite 30개 / skip 0개 중 탈퇴 SQL·롤백/재시도·실제 row lock/
+동시 취소 18개가 통과했다. 생성한 전용 QA DB는 검사 후 제거했다.
+[정제된 검증 증거](qa-evidence/20260930/account-deletion-recovery.json).
+운영 worker 설정은 전후 모두 `OUTBOX_WORKER_ENABLED=true`로 유지됐다. 발송 채널의 disabled와
+worker 비활성은 다르다. QA가 운영 탈퇴 요청·worker drain을 직접 호출하지 않았으며 자동 예약
+삭제의 실제 처리 결과는 이번 검사에서 확인하지 않았다. 외부 Firebase/Play 삭제도 추가하지 않았다.
+
+## 안전한 실제 DB QA 실행
+
+API의 test:e2e:db 명령은 카카오 전용 정책과 맞지 않던 email OTP 테스트 실행을 대체했다. 전용 local DB가 먼저 준비되어 있어야 한다. Node 24에서 아래 explicit 환경으로 실행한다.
+
+```sh
+env NODE_ENV=test RUN_DATABASE_E2E=true \
+  DATABASE_QA_URL='postgresql://postgres:senior-qa-local-only@127.0.0.1:55432/senior_role_qa_20260930?sslmode=disable' \
+  DATABASE_URL='postgresql://postgres:senior-qa-local-only@127.0.0.1:55432/senior_role_qa_20260930?sslmode=disable' \
+  EMAIL_PROVIDER=disabled SMS_PROVIDER=disabled PUSH_PROVIDER=disabled \
+  OUTBOX_WORKER_ENABLED=false \
+  pnpm --filter @senior-club/api test:e2e:db
 ```
 
-API는 production에서 다음 상태를 fail-closed로 거부한다.
+위 비밀번호는 일회성 local QA fixture다. 운영 credential을 사용하지 않는다. runner는 loopback·전용 DB 이름·포트·명시적인 두 URL의 일치를 요구하고 다른 DB와 추가 URL option을 거절한다. migration/seed/test를 실행할 때 프로젝트 .env와 상속된 cloud/provider/PG/TLS credential을 전달하지 않는다. 네 suite의 실행 결과에 누락·실패·skip이 있으면 실패한다. fixture 정리는 해당 suite가 담당하며 local DB의 폐기는 생성한 QA 환경에서 수행한다.
 
-- 빈 `CORS_ORIGINS`
-- 저장소의 development 인증 키
-- `AUTH_DEV_OTP_EXPOSE=true`
-- `EMAIL_PROVIDER`가 `resend`가 아니거나 빈 `RESEND_API_KEY`
-- `SMS_PROVIDER`가 `twilio`가 아니거나 Twilio 자격증명이 누락됨
-- `PUSH_PROVIDER`가 `firebase`가 아니거나 유효하지 않은 FCM 서비스 계정 JSON
+CI의 database-quality job은 전용 PostgreSQL 17 service와 이 명령을 사용한다. main API 배포는 reusable CI 전체 성공 이후에 진행하므로 DB suite 실패도 배포를 차단한다. 현재 local 실행은 통과했으며 hosted CI 실행은 아직 관찰하지 않았다.
 
-`AUTH_ACCESS_TOKEN_SECRET`, `AUTH_OTP_PEPPER`, OTP 암호화 키는 각각 별도로 생성한다. OTP 암호화 키는
-`openssl rand -base64 32`처럼 정확히 32바이트를 생성해 base64로 보관한다. FCM JSON은 로컬에서
-base64 한 줄로 변환해 Railway secret에 직접 입력하고 terminal/CI 로그에 출력하지 않는다.
+## 웹 배포와 QA
 
-`.env.example`의 Redis, S3, Sentry 변수는 향후 연동을 위한 예약 이름이며 현재 API가 읽지 않는다.
-현재 단일 API·텍스트 UGC 출시에는 Redis와 S3가 필수가 아니다. API 다중 인스턴스 또는 미디어 업로드를
-실제로 추가하는 릴리스에서만 해당 서비스와 Data Safety/삭제 계약을 함께 구성한다.
+Vercel encrypted production environment를 유지한 채 프로젝트 루트에서 배포한다. CLI로 sensitive env를 pull하면 `[SENSITIVE]` sentinel이 반환될 수 있으므로 그 문자열을 실제 credential로 사용하지 않는다. `.vercelignore`는 env, keystore, Firebase/Admin credential과 AWS 설정의 업로드를 제외한다.
 
-## 3. CI와 dependency freeze
+배포 후 실제 canonical 주소를 `playwright-cli`로 검사한다. `/index`로 prerender되는 home pathname을 `/`로 정규화하는 회귀가 이번 배포에 포함되어 있다. 360/390/1440px, 큰 글씨, 시간대·날짜 경계, localStorage 차단, 클라이언트 이동·뒤로가기, 로그인 오류·동의, 정책 페이지를 검사한다. 로컬 webpack build 통과만으로 원격 Turbopack/live 결과를 대신하지 않는다.
 
-[CI workflow](../.github/workflows/ci.yml)는 Node 24와 pnpm 9.14.2로 다음을 검증한다.
+최신 웹 `9a376d96…`는 고정 source 사본에서 Vercel production으로 배포했고 원격 Turbopack compile/READY 및 실제 alias의 공개 27개·인증 경계 15개·안전한 continuation 11개 검사가 통과했다. 격리된 실제 HTTPS/DB 역할 UI 19개와 두 tab restore/logout 5개도 통과했다. [검증 범위와 증거](QA_PRODUCTION_20260930.md).
 
-1. root workspace lockfile의 frozen install
-2. Prisma schema 검증
-3. 웹 lint, typecheck, test, production build
-4. API typecheck, test, build
-5. Android lint, typecheck, Play asset/manifest 검사와 production bundle export
-6. API production container build
-7. EAS build ID parser와 수동 내부 트랙 workflow의 fail-closed 정적 계약
+웹 OAuth는 승인된 실제 계정으로 callback·cookie·로그아웃까지 추가 검증해야 한다. Android Kakao 성공만으로 웹 BFF 인증 성공을 보고하지 않는다.
 
-`main`에는 CI 성공과 최소 한 명의 리뷰를 필수로 둔다. `pnpm-lock.yaml`은 저장소 루트의 workspace
-lockfile을 authoritative source로 사용한다. dependency가 바뀐 후에는 Node 24/pnpm 9.14.2로 lockfile을
-한 번 재생성하고 `pnpm install --frozen-lockfile`을 다시 통과시킨다.
+공통 색상·버튼 역할·터치 높이는 `shared/design/foundation.ts`에서 관리하고 웹 CSS adapter와 네이티브 theme이 함께 사용한다. 웹은 native OTF와 같은 Pretendard 1.3.9의 공식 variable subset을 자체 호스팅한다. 버전 경로의 font 파일은 immutable cache를 사용하며 모든 subset을 preload하지 않는다. 웹·앱의 주제 사진 7개는 byte 단위로 동일하고 실제 활동 사진이 없는 경우 참고 이미지라고 표시한다. 사진 `sizes`는 실제 container 폭을 반영한다. 최초 font 전송량 증가와 측정 한계는 QA 보고서에 함께 기록한다.
 
-`validate:store`는 후보 자산·manifest·후보 스크린샷의 기술 규격 검사다. Play 제출 직전에는 실제
-제출 빌드 화면을 캡처해 final manifest를 채우고, production config와 strict screenshot provenance를
-묶은 아래 release gate를 통과시킨다.
+운영 웹의 27개 렌더링·이동 검사, 익명 인증 경계 15개, 페이지당 3회의 성능/이미지 검사 24개를 실행했다. OAuth 진입/상태 쿠키/취소, anonymous logout 및 보호 API 거절은 실제 배포에서 확인했지만 실제 계정의 웹 provider 로그인·token exchange를 수행한 결과는 아니다.
 
-```bash
-EXPO_PUBLIC_API_URL=https://실제-api-도메인 \
-EXPO_PUBLIC_WEB_URL=https://실제-웹-도메인 \
-GOOGLE_SERVICES_JSON=/secure/path/google-services.json \
-pnpm release:android:preflight \
-  -- --screenshot-manifest store-listing/screenshots/final/ko-KR/manifest.json
-```
+## Android 배포와 QA
 
-release preflight는 `EXPO_PUBLIC_APP_ENV=production`을 강제하고 `localhost`, 사설·link-local·예약 IP,
-`.invalid`/`.example`/문서 예시 도메인을 API URL로 허용하지 않는다. 최종 screenshot strict gate에는
-skip 옵션이 없다. 이 검사는 AAB 파일 구조나 서명을 검사했다고 주장하지 않는다. EAS AAB 생성 뒤에는
-Play App Bundle Explorer에서 package, versionCode, target API 36, signing과 merged manifest를 확인해야
-출시 gate가 완결된다.
+ADB 재검사 기기: Galaxy M33, Android 16. 실제 운영 API를 사용하는 standalone release-mode QA APK를 설치했다. QA APK는 기존 기기의 데이터를 보존하기 위해 debug certificate로 서명했다. Play upload/signing artifact나 production AAB로 취급하지 않는다.
 
-[`android-play-internal.yml`](../.github/workflows/android-play-internal.yml)은 push나 tag가 아니라
-`workflow_dispatch`로만 실행한다. 위 preflight를 먼저 통과하고 EAS CLI `21.3.0`으로 `playInternal`
-AAB를 기다려 JSON 결과를 받는다. 단일 `FINISHED` Android UUID만 허용하며 원본 build JSON,
-검증 evidence, final screenshot manifest 해시와 source commit을 artifact로 보관한다. 선택 입력이
-켜졌을 때만 그 정확한 ID를 내부 트랙 `draft`로 제출하며 `--latest`와 production 승격은 사용하지 않는다.
+앞선 Android 디자인 소스 `0d91c27…`의 실제 설치 QA APK는 `8d117e63324d4de82c4550f2c2ced5e283a528704b07459bec80b7ae2014bad5`다. 기본 글자·하단 탐색·사진 slot과 6개 확대 조합을 실기기에서 검사했고 큰 글씨/시스템 설정을 복구했다. [실기기 증거와 범위](QA_PRODUCTION_20260930.md).
 
-[`android-play-production.yml`](../.github/workflows/android-play-production.yml)은 `main` push/merge와
-수동 실행으로 production AAB를 만들고, 성공 시 Play production 트랙 `draft`에 제출한다.
-GitHub Environment는 `play-store-production`이다.
+추가 상태 표시줄 수정 source `9a9825b…`의 새 QA APK `3fa88a…`는 같은 QA 서명과 build/manifest/
+실제 설치 해시를 확인했다. 기기에 다른 앱이 foreground여서 스크롤 재검사는 중단됐다.
+[새 APK의 검증 한계](qa-evidence/20260930/native-scroll-inset-candidate.json).
 
-## 4. ECS API 최초 구성
+이 디자인을 포함한 소스 `9a9825b32ae47f5abcfdbbc2af1b8f7103cabecd`에서 로컬 upload-signed AAB 후보를
+생성했다. `0.1.1` / `212215980`, 4 ABI, 93,679,910 bytes이며 SHA-256은
+`968066c227bf77dfa7ba210cbdd7b3d310c5daa5c2e189514a60543f104086e0`다. pinned bundletool·전체 서명·
+compiled manifest·production 설정·동일 사진/Material font를 확인했다.
+[정확한 후보 증거](qa-evidence/20260930/android-scroll-inset-signed-candidate.json).
+이후 증거/문서 변경은 후보의 전체 SHA에 포함되지 않는다. 해당 AAB 설치·provider 로그인·
+Play version 대조·최종 screenshot 검토·hosted CI·Play 업로드는 아직 수행하지 않았다.
 
-1. Railway에서 프로젝트와 PostgreSQL 서비스를 만든다.
-2. API 서비스를 같은 GitHub 저장소에 연결한다.
-3. build context는 저장소 루트로 둔다. [railway.json](../railway.json)이 Dockerfile,
-   `/readyz` deployment health check, 단일 replica와 restart/draining policy를 적용한다.
-4. PostgreSQL `DATABASE_URL`을 API의 reference variable로 연결한다.
-5. 위 production 변수들을 Railway Variables에 등록한다.
-6. 한 인스턴스로 시작하고 `OUTBOX_WORKER_ENABLED=true`를 한 worker에서만 유지한다.
-7. deployment health check path를 `/readyz`로 지정한다.
-8. migration을 승인된 release job에서 먼저 적용한 뒤 새 revision을 배포한다.
+릴리스는 `apps/mobile/scripts/release-android-preflight.mjs`와 최종 스크린샷 provenance gate를 통과한 후 Android App Bundle의 package/versionCode/target36, upload 및 Play signing, **병합 manifest**를 검사한다. Expo introspection은 SDK manifest merge 결과까지 검사하지 않는다. 미서명/QA APK를 스토어에 제출하지 않는다.
 
-API는 `0.0.0.0:$PORT`에서 수신한다. Docker liveness는 `/healthz`, Railway의 traffic readiness는
-`/readyz`를 사용한다. `/readyz`는 제한시간 안에 PostgreSQL `SELECT 1`이 실패하면 503을 반환한다.
-DB 장애 때 liveness까지 실패시켜 불필요한 container 재시작을 반복하지 않는다.
+현재 main 배포 workflow의 Android 호출은 `submit_to_play:false`다. binary 생성과 Play 공개는 별개다. Play 제출 전에 실제 최종 서명 AAB·Firebase certificate·정책/Data Safety·결제/푸시 검증·스크린샷을 마무리한다.
 
-## 5. 데이터베이스 migration
+마지막 실행 소스 `1babf95…`의 전체 로컬 preflight는 자산/Material navigation·production config·과거 후보 PNG
+규격을 통과했으나 `/privacy`의 공급자 처리정보 미확정 문구와 최종 screenshot manifest 부재로
+실패했다(2/5 단계). API readiness·약관·계정 삭제 endpoint는 통과했다.
+[현재 release preflight 증거](qa-evidence/20260930/android-release-preflight.json).
+내부 release wrapper에도 필수 screenshot run ID와 `actions: read`를 전달하도록 수정했다.
+이 검사 결과를 아래 운영 수용 조건 전체의 완료로 해석하지 않는다.
 
-baseline migration을 만든 뒤 다음 두 경로를 모두 검증한다.
+추가 인증 수정 source `948c232…`의 APK `d0c861…`와 AAB `0a1a15…`는 로컬 build/서명/
+manifest/번들 검증이 통과했다. 기기 인수 없이 새 APK를 설치하지 않았다. 앞선 `3fa88a…` 설치와
+`968066…` AAB가 새 인증 회귀 수정의 runtime 증거는 아니다.
+[현재 후보와 검증 구분](QA_PRODUCTION_20260930.md#추가-모바일-인증-회귀-수정).
 
-- 빈 PostgreSQL에 모든 migration 순차 적용
-- 직전 release schema와 대표 seed 데이터에서 새 migration 적용
+## Firebase Phone Auth의 남은 설정
 
-```bash
-# 실제 DB 연결 없이 schema 문법 검증
-DATABASE_URL='postgresql://ci:ci@127.0.0.1:5432/senior_club?schema=public' \
-  pnpm prisma:validate
+- 올바른 Android app의 실제 QA SHA-1/SHA-256 등록과 native rebuild는 완료했다.
+- Auth config GET은 `CONFIGURATION_NOT_FOUND`, initializeAuth는 `BILLING_NOT_ENABLED`를 반환했다.
+- 권한 있는 프로젝트 결제 계정 연결 후 Authentication을 초기화하고 Phone provider와 KR SMS region policy를 설정해야 한다.
+- ECS의 proof verification은 프로젝트 ID와 승인된 Admin ADC가 추가로 필요하다. FCM credential과 독립적이다.
+- upload/Play signing SHA-1/SHA-256도 등록하고 실제 SMS, Play Integrity/reCAPTCHA, 만료·재발송·backend linking을 기기에서 검증해야 한다.
 
-# 승인된 release runner에서만 실행
-pnpm prisma:migrate:deploy
-```
+결제 계정이나 서버 credential을 임의 생성·추정하지 않는다. 현재 실제 SMS 성공은 미검증이다. 휴대폰 인증은 카카오 로그인이나 일반 연락처 편집을 차단하지 않는다.
 
-migration을 애플리케이션 시작 명령에 넣지 않는다. 실패하면 새 API 배포를 중단한다. 이미 적용된
-production migration을 수정하거나 삭제하지 말고 후속 migration으로 고친다. 첫 배포 전에 Railway
-PostgreSQL backup에서 별도 인스턴스로 복구하는 연습을 완료한다.
+## 인프라 보호와 남은 출시 조건
 
-## 6. ChatGPT Sites Web 배포
+CloudFront가 생성한 secret origin header를 ALB forward 조건으로 검사하고 기본 응답은 403이다. ALB ingress는 CloudFront origin-facing managed prefix list만 허용한다. ECS ingress는 ALB SG, DB ingress는 기존 승인 SG/관리 IP로 제한되어 있다. direct ALB 요청 403, CloudFront readiness 200을 확인했다.
 
-1. `pnpm build:sites`로 OpenNext Worker를 빌드한다.
-2. 공식 Sites 패키징 helper로 아카이브를 만들고 저장·배포한다.
-3. `NEXT_PUBLIC_APP_URL`을 canonical production HTTPS origin으로 지정한다.
-4. `SENIOR_CLUB_API_BASE_URL`을 ECS API의 HTTPS origin으로 지정한다.
-5. preview에는 production DB나 production 인증 secret을 연결하지 않는다.
-6. 배포 후 `/api/healthz`, canonical/robots/sitemap, 정책 페이지, 로그인 복귀와 API CORS를 확인한다.
+CloudFront→ALB는 아직 HTTP다. 공개 NS 조회로 `toris.kr`의 DNS 관리 서비스가 Cloudflare임을 확인했다. origin 전용 DNS 레코드와 서울 리전 ACM certificate 요청은 준비했고 `PENDING_VALIDATION`이다. CLI 인증은 DNS API에서 403을 받았고 브라우저도 현재 로그인 페이지여서 Cloudflare 계정 로그인/권한이 필요하다. [DNS 레코드와 HTTPS 전환 순서](ORIGIN_TLS_HANDOFF.md)를 사용한다. TLS 완료로 보고하지 않는다.
 
-`NEXT_PUBLIC_API_URL`은 현재 웹 계약이 아니다. API origin은 server-only 변수로 유지한다. Prisma
-migration은 웹 build에서 실행하지 않는다.
+RDS의 공개 접근을 해제했다. 기존 endpoint·보안그룹·서브넷과 암호화·7일 backup·deletion protection을 유지했고, 변경 중·후 readiness 12회 및 task 25의 새 private 연결에서 TLS 1.3·인증서 검증 authorized=true·잘못된 hostname/신뢰하지 않는 CA 거절을 확인했다. task 25는 sslmode=verify-full과 모호하지 않은 TLS URL을 시작 시 요구하며 검증을 전역 해제하는 설정도 거절한다. [공개 접근 해제 및 실제 연결 증거](qa-evidence/20260930/database-private-live.json)를 확인한다. 운영 read-only 검사에서 SQL migration 10개·테이블 35개 일치와 무효 제약조건/인덱스 0개도 확인했다. [스키마 메타데이터 증거](qa-evidence/20260930/database-schema-live.json). private subnet 이전이나 Multi-AZ 전환을 완료했다고 보고하지 않는다. PITR 복구 검증 범위와 단일 인스턴스 가용성 검토는 별도로 확인한다.
 
-## 7. Android / EAS와 FCM
+2026-09-30 실제 PITR 훈련은 복구 DB의 strict TLS/read-only 연결, SQL migration·카탈로그 해시의 운영 baseline 일치와 임시 DB/SG/backup 잔존 0개까지 통과했다. 요청 준비부터 스키마 증거까지 845.3초, 정리 완료까지 1148.0초다. 복구 DB에서 서버·worker를 시작하거나 업무 row를 읽지 않았다. 운영 전환·물리 블록 전체 검증·snapshot restore·RPO/RTO 보장을 포함하지 않는다. [실제 복구 증거](qa-evidence/20260930/database-recovery-live.json), [실행 범위와 후속 복구 런북](RDS_RECOVERY_PLAN.md).
 
-`eas.json`은 internal/preview/production 환경을 분리하고 각 profile의 `EXPO_PUBLIC_APP_ENV`를
-명시하며 CLI를 `21.3.0`으로 고정한다. 해당 EAS environment에는 다음 공개 API URL과 Android client
-file secret을 등록한다.
-
-```dotenv
-EXPO_PUBLIC_APP_ENV=production
-EXPO_PUBLIC_API_URL=https://실제-Railway-API-도메인
-EXPO_PUBLIC_WEB_URL=https://senior.toris.kr
-GOOGLE_SERVICES_JSON=<EAS file secret: Android client google-services.json>
-```
-
-production API·웹 URL에는 공개 HTTPS FQDN 또는 공개 IP만 사용한다. `localhost`, 단일 레이블 host,
-RFC1918/loopback/link-local/ULA 주소, `.invalid`·`.example`·`example.com` 같은 placeholder는 앱 런타임
-환경 파서와 release endpoint gate에서 거부된다. 웹 origin의 개인정보 처리방침·약관·계정 삭제
-페이지도 동일 origin의 200 HTML 응답이어야 한다. 빌드 후에는 해당 FQDN의 실제 DNS가 사설 IP로
-변경되지 않았는지도 배포 smoke test에서 확인한다.
-
-앱은 Android notification channel을 만든 뒤 권한을 요청하고 `getDevicePushTokenAsync()`로 native FCM
-token을 받아 `/v1/devices`에 등록한다. 이는 Expo Go가 아니라 Firebase가 포함된 development/production
-build와 Play Services가 있는 실제 기기에서 검증한다. `app.config.ts`는 EAS file secret 경로만
-`android.googleServicesFile`로 주입한다. `eas-build-post-install` manifest gate는 production에서 파일이
-없거나 `com.toris.seniorclub` Android client가 아닌 경우 빌드를 중단한다. Firebase Admin 서비스 계정은
-이 client 파일과 별개이며 API에만 둔다.
-
-최종 AAB에서는 다음을 다시 확인한다.
-
-- Play App Signing의 package/signing certificate와 Firebase Android client 일치
-- 병합 manifest의 permission/exported component
-- 알림 권한 거부 시 로그인·모임 기능 정상 동작
-- foreground/background/terminated 상태의 수신과 allowlist 딥링크
-- privacy/terms/account-deletion URL과 실제 인앱 계정 삭제 요청
-- `versionCode` 증가, Data Safety와 데이터 삭제 응답 일치
-
-GitHub의 `GOOGLE_SERVICES_JSON_BASE64`는 preflight용 Android client file을 `RUNNER_TEMP`에 권한
-`0600`으로 복원하기 위한 별도 전달 경로다. 로그에 JSON을 출력하지 않고 workflow 종료 때 정확한
-임시 경로만 삭제한다. 이것은 Railway의 Firebase Admin secret이나 Google Play 서비스 계정이 아니다.
-원격 EAS build에는 EAS `production` environment의 `GOOGLE_SERVICES_JSON` file secret이 필요하고,
-선택 submit에는 EAS credentials에 등록된 최소 권한 Play 서비스 계정이 필요하다.
-
-## 8. 배포 및 smoke test 순서
-
-1. CI 전체 통과
-2. DB backup/snapshot 확인
-3. 승인된 migration 적용
-4. ECS API 배포 후 `/healthz` 200, `/readyz` 200 확인
-5. 회원 smoke: OTP 요청/검증, refresh rotation, 관심사·프로필, 공개 클럽·모임, 신청/취소,
-   게시글·댓글, 후기, 채팅·읽음, 인앱 알림, 신고·차단, 기기 등록과 계정 삭제 확인
-6. 리더 smoke: 담당 클럽 조회, 모임 생성/수정/공개/취소, 신청 승인·거절, 출석, 채팅 권한
-   부여·회수와 이메일·FCM outbox 확인
-7. 관리자 smoke: 신고 조회·상태 변경, 처리 메모와 감사 이력 확인
-8. Resend 실제 수신과 FCM 실제 기기 수신 확인
-9. ChatGPT Sites Web 배포와 SEO/GEO·정책·로그인/온보딩 복귀 흐름 확인
-10. 내부 테스트 AAB에서 production API smoke test
-11. 오류율, p95, DB connection, outbox 지연을 관찰한 뒤 Play 단계적 출시
-
-## 9. 롤백과 운영
-
-- API: 직전 Railway revision으로 rollback한다. schema 변경은 expand → data migration → contract 순으로
-  나눠 이전 revision도 새 schema를 읽을 수 있게 한다.
-- Web: 직전 ChatGPT Sites production version으로 rollback한다.
-- Android: 이미 배포된 `versionCode`는 되돌릴 수 없으므로 수정한 더 높은 versionCode를 내부 트랙부터
-  다시 배포한다.
-- 발송 장애: outbox worker를 중지하되 행은 보존하고 원인 수정 후 같은 idempotency key로 재시도한다.
-
-운영 알림에는 `/readyz`, 5xx 비율, p95, PostgreSQL connection/용량, outbox oldest age와 실패 횟수,
-계정 삭제 worker 실패를 포함한다. 구조화 로그에는 이메일, 이름, OTP, access/refresh token, FCM token,
-채팅 본문, signed URL, 서비스 계정 내용을 남기지 않는다.
-
-## 10. 현재 외부/출시 blocker
-
-- GitHub 저장소/remote와 `play-internal` Environment가 없으면 CI·수동 Android workflow와
-  ChatGPT Sites/ECS Git 연동을 시작할 수 없음
-- production domain, Railway/PostgreSQL, Resend 발신 도메인, Firebase/EAS 자격 증명이 필요함
-- Prisma schema와 단위·계약 테스트는 통과했지만 이번 최종 실행에서는 PostgreSQL 테스트 환경이 없어
-  DB 동시성 e2e가 건너뛰어짐. 빈 DB·업그레이드 migration, 백업 복구 rehearsal과 Railway 적용 승인이
-  필요함
-- 최종 AAB, 실기기 FCM 검증, Play 스크린샷과 콘솔 입력이 필요함
-- 실제 production 환경에서 커뮤니티·모임·텍스트 UGC·채팅·알림·신고/차단을 포함한 역할별 e2e와
-  운영 모니터링을 완료해야 함
-
-소셜 로그인과 사진/파일 업로드는 현재 출시 범위가 아니다. 휴대폰 SMS OTP와 텍스트 UGC만으로 출시하며,
-스토어 문구에서도 OAuth·사진·파일 기능을 약속하지 않는다. 나중에 해당 기능을 범위에 넣을 때만
-공급자 설정, S3 같은 저장소, Android 권한과 개인정보/삭제 정책을 별도 출시 조건으로 추가한다.
+readiness/5xx/p95/DB pool/outbox failure/계정 삭제 worker를 모니터링한다. 구조화 로그·QA 보고서에 사용자 이름·연락처·token·origin secret·Admin credential을 기록하지 않는다. 최종 출시 전에는 실제 역할별 UGC/신청·취소/채팅·차단·관리자 E2E와 웹 OAuth, SMS, 푸시·결제를 검증한다.

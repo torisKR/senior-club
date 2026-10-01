@@ -1,143 +1,153 @@
 # 시니어클럽 Data Safety 작성 초안
 
-기준일: 2026-07-30
+기준일: 2026-09-30. 대상: Android `com.toris.seniorclub`, versionName `0.1.1`.
 
-대상 앱: 시니어클럽(Senior Club), Android package `com.toris.seniorclub`
+이 문서는 현재 소스와 공식 공급자 문서를 대조한 제출 준비 자료다. 최종 서명 AAB의 의존성·병합
+manifest·실제 통신·공급자 설정과 운영 정책을 확인한 담당자가 Play Console 답변을 확정해야 한다.
+공식 자료 조회와 소스 검토는 실제 SMS/푸시/구매 성공, 법률 검토, 사람의 screenshot 승인 또는 제출 증거가 아니다.
 
-이 문서는 Google Play Console의 Data Safety 양식을 준비하기 위한 제품·개발팀 초안이다. 법률 자문이나 제출 완료본이 아니다. 실제 백엔드, 네트워크 트래픽, 포함된 모든 SDK, 개인정보 처리방침을 검증한 담당자만 최종 답변을 제출해야 한다.
+## 1. 현재 제품과 release 입력
 
-## 1. 현재 전제
+- 웹·Android 로그인은 카카오만 제공한다. API는 Kakao 계정 ID와 제공된 닉네임을 확인한다.
+  닉네임이 없으면 기본 표시 이름을 저장한다. 실명이나 별명을 직접 입력·수정하는 것은 선택이지만,
+  표시 이름은 계정에 저장되며 온보딩/프로필 저장 시 길이를 검사한다. 번호 입력도 선택이다.
+- 휴대폰 연락처는 인증 없이 저장·변경·삭제할 수 있다. Firebase Phone은 회원이 별도 동의 후
+  요청하는 선택 인증이다. 현재 Auth 초기화는 `BILLING_NOT_ENABLED`로 거절됐고 실제 SMS/linking은
+  미검증이다. 로그인/모임 이용에 인증을 요구하지 않는다. 실패한 요청도 번호·요청 정보가 공급자에
+  전달되지 않았다는 증거는 아니다.
+- 출생연도·지역·관심사 1~3개와 온보딩 상태를 서버에 저장하고, 신청에는 온보딩 완료가 필요하다.
+  성별·프로필 사진 편집과 사용자 사진/파일 업로드는 현재 범위에 없다.
+- 게시글·댓글·후기·평점·채팅은 텍스트 UGC다. 신청/승인/참석, 신고·차단/해제와 계정 삭제 요청을 처리한다.
+- Android 배너 광고와 광고 제거용 일회성 상품 `seniorclub.remove_ads` 코드가 있다. 모임 참가비는
+  현장 납부다. 실제 production 광고 설정·동의와 Play 상품 활성화·구매/복원 수용은 별도다.
+- 운영 `EMAIL_PROVIDER`, `SMS_PROVIDER`, `PUSH_PROVIDER`는 `disabled`다. 이것은 서버 발송
+  상태다. 앱 내 알림 조회, native SDK 초기화/통신, 권한 허용 후 기기 token의 API 등록을 제거하지 않는다.
 
-- 회원 가입과 로그인이 있다.
-- 필수 프로필은 이름, 휴대폰 번호, 출생연도, 지역, 관심사다. 현재 로그인 수단은 휴대폰 SMS OTP다.
-- 성별, 프로필 사진과 OAuth 로그인은 현재 Android 출시 범위에 구현되지 않았다.
-- 사용자는 텍스트 게시글, 댓글, 후기와 채팅을 작성할 수 있다. 사진·파일 업로드는 구현되지 않았다.
-- 모임 신청, 승인, 참석, 평가 이력이 저장된다.
-- 추천에는 관심사, 지역, 연령대, 참여 이력을 사용한다.
-- MVP에는 정밀 위치 추적, 연락처 수집, 마이크 녹음이 없다. Android 앱에는
-  AdMob 배너와 Google Play 일회성 플러스 구매가 있다. 모임 참가비는 현장에서 받는다.
-- 푸시 알림을 위해 사용자가 허용한 Android 기기의 FCM 토큰을 서버에 등록한다.
-- 분석·오류 수집 SDK를 붙이면 앱 상호작용, 진단, 기기 식별 관련 선언을 다시 검토한다.
+근거: [현재 운영 설정](DEPLOYMENT.md), [인증 verifier](../apps/api/src/auth/kakao-token-verifier.ts),
+[프로필 계약](../apps/api/src/profile/profile.contracts.ts),
+[선택 인증 안내](../apps/mobile/src/screens/profile/phone-verification-card.tsx).
 
-현재 앱 설정은 카메라, 마이크, 정밀·대략 위치 권한, 연락처, 전화, 통화 기록, SMS, 광범위 미디어 읽기 권한을 차단한다. 기능을 추가하면서 권한을 열 경우 이 문서와 Play 양식을 같은 릴리스에서 갱신한다.
+`app.json`과 package 버전은 0.1.1이다. 현재 workflow와 `direct-play-release.py`에는 설명/릴리스 노트
+파일을 읽어 Play 등록정보에 전송하는 코드가 없다. 현재 문구는
+[짧은 설명](../apps/mobile/store-listing/ko-KR/short-description.txt),
+[전체 설명](../apps/mobile/store-listing/ko-KR/full-description.txt),
+[0.1.1 노트](../apps/mobile/store-listing/ko-KR/release-notes-0.1.1.txt)를 사용한다.
+0.1.0 노트와 `PLAY_UPLOAD_HANDOFF.md`의 2026-07-30 인수 기록은 보존한 과거 자료다.
+store-listing README의 0.1.0 경로가 자동 선택을 뜻하지 않는다. Console의 실제 기존 문구는 이번 감사에서 읽지 않았다.
 
-## 2. 데이터 유형별 초안
+## 2. SDK 포함·실행·서버 발송을 구분
 
-아래의 `수집`은 앱 밖의 서버 또는 제3자 SDK로 전송되는 경우를 뜻한다. 최종 선택지는 실제 구현을 기준으로 한다.
-
-| Play 데이터 유형 | 예시 | 수집 | 공유 초안 | 필수 여부 | 목적 |
-| --- | --- | --- | --- | --- | --- |
-| 개인 정보 > 이름 | 표시 이름 | 예 | 아니요* | 필수 | 계정 관리, 커뮤니티 표시, 부정 사용 방지 |
-| 개인 정보 > 전화번호 | 휴대폰 SMS OTP 로그인 | 예 | 아니요* | 필수 | 인증, 계정 보안, 모임 연락 |
-| 개인 정보 > 이메일 주소 | 선택적 이메일 알림 | 선택 | 아니요* | 선택 | 알림, 지원, 계정 삭제 확인 |
-| 개인 정보 > 사용자 ID | 내부 user ID | 예 | 아니요* | 필수 | 인증, 계정·콘텐츠 연결 |
-| 개인 정보 > 기타 정보 | 출생연도/연령대, 관심사 | 예 | 아니요* | 필수 | 맞춤 추천, 커뮤니티 운영 |
-| 위치 > 대략적 위치 | 사용자가 입력한 지역 | 예 | 아니요* | 필수 | 근거리 모임 추천 |
-| 사진 및 동영상 > 사진 | 현재 사용자 업로드 없음 | 아니요 | 아니요 | 해당 없음 | 기능 추가 시 재검토 |
-| 파일 및 문서 | 현재 사용자 업로드 없음 | 아니요 | 아니요 | 해당 없음 | 기능 추가 시 재검토 |
-| 메시지 > 기타 인앱 메시지 | 모임 채팅 | 예 | 아니요* | 선택 | 사용자 간 커뮤니케이션, 안전 운영 |
-| 앱 활동 > 사용자 생성 콘텐츠 | 게시글, 댓글, 후기, 신고 | 예 | 아니요* | 선택 | 커뮤니티 기능, 운영·신고 처리 |
-| 앱 활동 > 앱 상호작용 | 모임 신청·승인·참석, 추천 반응 | 예 | 아니요* | 기능별 필수 | 서비스 제공, 추천, 품질 개선 |
-| 앱 정보 및 성능 > 광고 ID | Google 광고 ID | 예(Android 광고) | 예(AdMob) | 광고 표시에 필요 | 배너 광고 게재·측정 |
-| 기기 또는 기타 ID | FCM 푸시 토큰 | 예 | 아니요* | 선택 가능 | 알림 전송, 계정 보안 |
-| 앱 정보 및 성능 > 비정상 종료/진단 | 오류 SDK 도입 시 | 구현 시 예 | SDK 확인 | 선택 불가 가능 | 안정성, 문제 해결 |
-
-`아니요*`는 서버·데이터베이스·이메일·알림 업체가 계약상 서비스 제공자로만 처리하고 독자적 광고나 교차 서비스 목적으로 쓰지 않는다는 전제다. Google Play의 공유 예외 요건과 각 공급자 계약을 확인하지 못하면 `공유` 여부를 다시 판단한다.
-
-## 3. 현재 수집하지 않는 것으로 보는 항목
-
-출시 직전 실제 코드와 SDK에서 다시 확인한다.
-
-- 정밀 위치와 기기 위치 권한 기반 대략 위치
-- 주소록·연락처
-- SMS 내용, 통화 기록
-- 건강·피트니스·의료 정보
-- 신용카드 번호 등 앱이 직접 저장하는 결제 수단
-- 브라우징·검색 기록
-- 오디오·음성 녹음
-- 사용자가 올리는 사진·동영상·파일·문서
-- 캘린더 데이터
-- 설치된 앱 목록
-
-모임 `참가비`는 현장에서 리더 안내에 따라 낸다. Android 앱의 시니어클럽 플러스는
-Google Play Billing이 처리하며, 카드 번호는 시니어클럽 서버가 받지 않는다.
-배너 광고는 Google AdMob이 광고 ID와 광고 성과 데이터를 처리할 수 있다.
-
-## 4. Play 양식의 보안 질문
-
-### 전송 중 암호화
-
-출시 답변 목표: `예`.
-
-조건:
-
-- 모든 API와 WebSocket 연결이 TLS를 사용한다.
-- HTTP fallback과 유효하지 않은 인증서 허용을 막는다.
-- OTP와 JWT를 URL 쿼리나 로그에 남기지 않는다.
-
-실제 백엔드 연결과 네트워크 보안 설정을 확인하기 전에는 `예`로 제출하지 않는다.
-
-### 계정 삭제 요청
-
-출시 답변 목표: `예`.
-
-- 앱 내 경로: `내 정보 > 개인정보와 계정 > 계정 및 데이터 삭제`
-- 외부 경로: `https://확정-production-domain/account-deletion` — 도메인 확정 후 Play Console에 입력
-- 삭제 범위: 계정, 프로필, 휴대폰 인증 정보, 참여·추천 이력, 채팅, 신고·차단 기록 등 연결된 개인정보
-- 예외: 법령, 보안, 사기 방지, 분쟁 대응을 위해 필요한 최소 기록만 고지한 기간 동안 제한 보관
-
-현재 웹 문의 이메일은 임시 값이다. 실제 수신·본인 확인·처리·완료 통지가 작동하기 전에는 출시하지 않는다.
-
-### 독립적인 보안 검토
-
-독립 검토 프로그램을 실제로 완료하지 않았다면 `아니요`로 답한다. 일반적인 코드 리뷰나 자동 취약점 스캔을 독립 검토 인증으로 표현하지 않는다.
-
-## 5. 보유·삭제 기준 초안
-
-운영 책임자가 출시 전 확정하고 개인정보 처리방침, DB TTL, 백업 정책과 일치시켜야 한다.
-
-| 데이터 | 보유 기준 초안 | 삭제 시 처리 |
+| 구성 | 현재 소스에서 확인한 실행 | 선언/검증에 반영할 점 |
 | --- | --- | --- |
-| 계정·프로필·관심사 | 계정 유지 중 | 요청 확인 후 운영 DB에서 30일 이내 삭제 |
-| 휴대폰 인증·세션·푸시 토큰 | 계정 유지 또는 토큰 유효 기간 | 즉시 폐기/삭제 |
-| 모임 신청·참석·추천 이력 | 계정 유지 중 | 삭제하거나 개인과 연결되지 않도록 비식별화 |
-| 채팅 | 모임 운영 및 신고 대응에 필요한 기간 | 연결 개인정보 삭제, 법적 예외 분리 보관 |
-| 게시글·댓글·후기 | 게시 중 또는 계정 유지 중 | 개인정보 삭제; 커뮤니티 맥락 보존이 필요하면 작성자 연결을 제거한 익명 콘텐츠로 전환하는 정책을 사전 고지 |
-| 신고·차단·보안 로그 | 안전·분쟁 대응에 필요한 제한 기간 | 목적 달성 또는 확정 기간 후 삭제 |
-| 백업 | 재해 복구 순환 주기, 제안 최대 90일 | 활성 시스템 삭제 뒤 백업 순환 만료 시 삭제, 복구 시 삭제 상태 재적용 |
+| Kakao native/core/user | 카카오 로그인과 서버 token 검증, 계정 ID·닉네임 사용 | 이메일·성별·사진을 현재 verifier가 요청/저장한다고 선언하지 않는다. 공급자 자체 처리·scope·계약은 별도 확인한다. |
+| AdMob / Google Mobile Ads | billing 소유권 확인 후 광고 허용 계정에서 초기화·배너 요청. `delayAppMeasurementInit: true` | 광고 ID만으로 선언을 끝내지 않는다. SDK 처리의 진단/상호작용/위치 추정과 ID도 검토한다. |
+| UMP | 광고 허용 계정에서 `gatherConsent()` → consent 정보 갱신/폼, `canRequestAds` 이후 GMA 초기화. 이전 consent 처리와 privacy-options 경로도 있음 | consent 요청은 광고 요청 전 별도 SDK 동작이다. `canRequestAds`는 광고 요청 가능 상태이며 모든 데이터 수집에 대한 단일 opt-out이 아니다. 실제 요청 필드·지역/폼 설정·동의 거절 경로는 미검증이다. |
+| Firebase Auth | 회원이 선택 인증을 요청한 뒤 native module을 동적 import해 번호 인증·ID token proof를 처리 | JS import 지연과 서버 SMS outbox 비활성화가 모든 native SDK 처리 중단을 뜻하지 않는다. 번호 외 app ID·IP·인증 ID/앱 확인 정보를 고려한다. |
+| expo-notifications / FCM / Firebase Installations | 로그인한 실제 Android 기기에서 알림 권한 확인 후 native token을 구해 앱 API에 등록. token 갱신과 해제 코드 있음 | app-level 등록 허용과 FCM/FIS 자동 초기화는 별개다. 소스 config에서 FCM auto-init 차단이나 FIS 삭제 호출은 확인되지 않았다. `PUSH_PROVIDER=disabled`만으로 식별자 미수집을 선언하지 않는다. |
+| expo-iap / Play Billing | 앱 시작 시 연결·보유 구매 조회, 구매 요청·완료 처리·복원. 상품/구매 token을 처리하고 token은 기기 SecureStore에 저장 | 현재 결제 코드에는 영수증/token을 앱 서버에 보내는 경로가 없다. Play 거래 처리와 기기 로컬 저장을 분리해 판단한다. 실제 구매/복원 성공은 미검증이다. |
+| react-native-purchases / RevenueCat | 패키지와 helper는 존재하지만 현재 `AppBillingProvider`는 expo-iap을 사용하고 helper 호출 참조는 없음 | 패키지 존재만으로 RevenueCat 계정 동기화가 실행된다고 쓰지 않는다. 최종 AAB 포함·native 초기화·실제 통신을 확인해야 미수집 판정을 확정할 수 있다. |
 
-`30일`, `90일`은 구현 전 운영안이다. 실제 처리 가능 기간과 법적 보존 의무를 검토해 출시 문구로 확정한다.
+소스 근거: [AdsProvider](../apps/mobile/src/ads/AdsProvider.tsx),
+[App config](../apps/mobile/app.config.ts), [push 등록](../apps/mobile/src/notifications/push-registration.ts),
+[선택 Phone driver](../apps/mobile/src/phone-verification/native-phone-auth.native.ts),
+[Billing 연결](../apps/mobile/src/billing/expo-iap-billing.ts),
+[로컬 구매 token](../apps/mobile/src/billing/plus-token-store.ts).
 
-## 6. 제3자 처리자 점검표
+설치된 광고 wrapper는 16.3.3이며, 소스 `9a9825b…`의 정확한 로컬 서명 AAB 내부 properties에서
+GMA 25.0.0 / UMP 4.0.0 / Firebase Auth 24.2.0 / Play Billing 9.1.0을 확인했다.
+[artifact 내부 버전·hash 증거](qa-evidence/20260930/android-scroll-inset-signed-candidate.json).
+이는 해당 properties의 버전 기록이며 전체 SDK 목록·실제 통신·동의 처리를 증명하지 않는다. 공식 GMA 안내는
+조회 당시 최신 25.5.0을 설명하므로 실제 제출 AAB의 resolved 버전/설정과 대조한다. GMA는 IP,
+광고 상호작용, 성능 진단, 광고 ID·app set ID 등을 광고/분석/부정 이용 방지 목적으로 처리·공유한다고
+설명한다. 별도 분석/Crashlytics 앱 코드가 없어도 GMA 진단을 제외하지 않는다.
+[Google Mobile Ads 데이터 공개 안내](https://developers.google.com/admob/android/privacy/play-data-disclosure).
 
-현재 구현과 배포안에서 예상한 공급자다. 실제 채택한 서비스만 선언한다.
+UMP의 consent 갱신·광고 요청 허용·privacy-options 흐름은
+[공식 UMP 가이드](https://developers.google.com/admob/android/privacy)를 따른다. 이 가이드만으로
+프로젝트의 실제 UMP 전송 필드나 모든 수탁·보유 조건을 확정하지 않는다.
 
-| 범주 | 후보 | 확인할 내용 |
+Firebase 문서는 Auth의 IP·app ID/user-agent·사용 시 번호/인증 ID/앱 확인 token, FCM의 앱 정보와
+FIS 의존성, FIS의 설치 ID 처리를 구분한다.
+[Firebase Android 데이터 공개](https://firebase.google.com/docs/android/play-data-disclosure).
+FCM 등록 시 식별자·설정 데이터가 업로드될 수 있으며 자동 초기화 제어는 native 설정이다.
+[FCM 자동 초기화 안내](https://firebase.google.com/docs/cloud-messaging/android/get-started#prevent_auto_initialization).
+Phone 인증 번호는 Google의 스팸/악용 방지 처리에도 사용될 수 있으므로 독립적인 동의와 공유 판단이
+필요하다. [Firebase Phone 안내](https://firebase.google.com/docs/auth/android/phone-auth).
+
+## 3. 데이터 유형별 제출 준비표
+
+`수집`은 앱/SDK가 기기 밖으로 전송하는 경우를 기준으로 한다. 기기에서만 처리하는 값, 가명 ID,
+사용자 직접 게시/공급자 처리의 공유 예외를 구분한다. 공유 예외·필수/선택을 임의 확정하지 않는다.
+[Play Data Safety 정의와 결제 FAQ](https://support.google.com/googleplay/android-developer/answer/10787469?hl=en).
+
+| Play 유형 | 현재 처리와 수집 판단 | 선택성·공유 판단과 목적 |
 | --- | --- | --- |
-| SMS 인증 | Twilio Messaging | 전화번호, 인증 문자·로그 보유, 삭제 SLA |
-| 선택적 이메일 알림 | 이메일 전송 서비스(후보: Resend) | 이메일 주소, 알림 메일·로그 보유, 삭제 SLA |
-| API/DB | AWS, Railway 등 | 리전, 암호화, 접근 통제, 백업, 삭제 SLA |
-| 캐시/채팅 | Redis, Socket.io 호스팅 | 메시지 지속 여부, 로그, TTL |
-| 푸시 | Firebase Cloud Messaging | FCM token, SDK Data Safety 안내 |
-| 빌드/업데이트 | Expo EAS | 런타임 수집 여부, 배포 로그, 계정 권한 |
-| 분석/오류 | 미정 | 이벤트·기기 ID·진단 수집, 광고 목적 여부, opt-out |
-| 광고 | Google AdMob | 광고 ID, 광고 성과, 개인 맞춤 광고 동의 |
-| 인앱 결제 | Google Play Billing | 구매 토큰, 상품 ID. 카드 번호는 Play가 처리 |
+| 개인 정보 > 이름 | Kakao 닉네임 또는 기본 표시 이름과 사용자가 바꾼 이름/별명을 서버 저장 | 직접 실명/별명 입력은 선택; 표시 이름은 존재. 계정·UGC 표시 목적. 사용자 게시/호스팅 처리의 공유 예외 확인 필요 |
+| 개인 정보 > 사용자 ID | Kakao 계정 ID, 내부 user/session/identity ID. 선택 Phone 사용 시 Firebase 인증 ID/proof | 계정 연결·보안에 필요. Kakao/Firebase/앱 서버 경로와 각 공급자 처리 목적 구분 |
+| 개인 정보 > 전화번호 | 선택 연락처는 앱 서버에 저장. 선택 Firebase 인증 요청 시 Google 전송/proof 검증 경로 있음 | 로그인 필수 아님. 연락/선택 인증/악용 방지. Google 자체 악용 방지 처리의 공유 예외를 자동 적용하지 않음 |
+| 개인 정보 > 기타 정보 | 출생연도·연령대, 관심사와 동의 기록 서버 저장 | 온보딩·추천·계정 운영 목적. UGC와 결합한 식별 가능성 포함 |
+| 개인 정보 > 이메일 주소 | 현재 Kakao verifier/모바일 프로필 입력은 이메일을 수집하지 않음. 기존 DB의 nullable 이메일과 지원 메일은 별도 범위 | 과거 계정/지원 문의의 실제 수집·수신 경로 확인 필요. disabled 이메일 발송과 기존 저장 정보 보유를 구분 |
+| 위치 > 대략적 위치 | 사용자가 입력한 활동 지역을 서버 저장; GMA의 IP 기반 위치 추정도 검토 대상 | 지역 추천과 광고/분석 목적 구분. 기기 위치 권한이 없어도 IP 기반 SDK 수집을 제외하지 않음 |
+| 메시지 > 기타 인앱 메시지 | 채팅 텍스트 서버 저장·허용된 참여자에게 제공 | 작성은 선택. 커뮤니케이션·운영/신고. 공개 범위·차단과 사용자 직접 전송 공유 예외 확인 |
+| 앱 활동 > 기타 사용자 생성 콘텐츠 | 게시글·댓글·후기·평점·신고/삭제 사유 등 서버 저장 | 작성은 선택. 콘텐츠/안전 운영; 자유 입력의 연락처 등 개인정보도 포함해 처리 |
+| 앱 활동 > 앱 상호작용 | 신청·승인·참석·차단 등 서버 처리와 GMA 상호작용 수집 | 기능별 처리와 SDK 광고/분석/부정 이용 방지 공유를 분리 |
+| 기기 또는 기타 ID | 광고 ID·app set ID 등 GMA 식별자 | GMA 공유 선언 검토. Android ad-ID 제어를 전체 식별자 수집의 선택성으로 확대하지 않음 |
+| 기기 또는 기타 ID | FCM token, FIS 설치 ID와 Firebase 인증/앱 확인 식별자 | 앱 서버 push 등록은 권한 허용 후; native 자동 처리의 선택성은 별도. 알림·보안·SDK 운영 |
+| 앱 정보 및 성능 > 진단 | GMA 성능 진단, Firebase 앱/SDK 요청 정보, 서비스 접속/오류 기록 | 안정성·광고/분석·보안. 비정상 종료 로그 등 세부 유형은 실제 SDK/전송으로 확인 |
+| 금융 정보 > 구매 내역 | Play 상품/보유 구매/구매 token을 앱에서 처리·완료 요청; token은 기기 저장. 현재 앱 서버 전송 코드 없음 | 구매는 선택이지만 보유 조회는 시작 시 수행. 로컬 처리 제외와 Play 거래 처리 조건을 대조해 최종 수집/공유 답변 확정 |
+| 금융 정보 > 결제 수단 | 카드 번호를 앱/앱 서버가 읽거나 저장하는 코드 없음 | Play가 사용자로부터 직접 받는 결제 정보의 제외 조건 적용 여부 확인; 구매 내역까지 일괄 미수집으로 선언하지 않음 |
+| 사진·동영상 / 파일·문서 / 음성 / 주소록 / SMS·통화 기록 / 건강 / 캘린더 | 현재 사용자 업로드·읽기 기능 없음. 관련 민감 권한 차단 설정 | 직접 입력한 휴대폰 번호는 주소록 접근과 별개. 최종 병합 manifest/SDK와 UGC의 자발적 입력을 확인 |
 
-각 공급자에 대해 개인정보 처리 계약, 하위 처리자, 해외 이전, 보유 기간, 삭제 API를 확인한다.
+AdMob 관련 항목은 SDK 공유를 포함해 검토한다. 앱 서버의 AWS 처리, 공개 UGC, Kakao, Firebase,
+Google Play는 각 경로/목적/계약과 Play 예외 요건에 따라 판단한다. 모든 공급자에 같은 `공유: 아니요`
+전제를 적용하지 않는다. Phone 기능이 차단되어도 실패 요청 전송 가능성과 번들 SDK를 빠뜨리지 않는다.
 
-## 7. 최종 제출 전 검증
+## 4. 계정 삭제·보유·암호화의 실제 범위
 
-- [ ] 릴리스 AAB의 의존성·SDK 목록 추출
-- [ ] Android Manifest의 모든 권한 검토
-- [ ] 프록시 또는 서버 로그로 실제 전송 필드 확인
-- [ ] 회원·리더·관리자 역할별 API 응답의 과다 노출 확인
-- [ ] 개인정보 처리방침의 수집 항목·목적·보유·제3자 처리가 표와 일치
-- [ ] 앱과 웹에서 삭제 요청을 실제 테스트 계정으로 끝까지 수행
-- [ ] DB, 캐시, 검색, 로그, 백업의 삭제·비식별화 확인
-- [ ] 이메일·FCM·분석·오류 SDK 공식 Data Safety 문서 검토
-- [ ] 필수/선택 수집과 사용자가 끌 수 있는 항목을 정확히 구분
-- [ ] 데이터가 광고·마케팅·개인화에 쓰이는지 제품 담당자 확인
-- [ ] Play Console의 미리보기 문구를 개인정보 책임자가 최종 승인
+- 앱 경로: `내 정보 > 개인정보와 계정 > 계정 및 데이터 삭제`.
+  공개 웹 경로: [계정 삭제](https://senior.toris.kr/account-deletion).
+  앱 재설치 없이 Kakao 계정으로 요청하는 UI가 있다. 최근 인증과 리더/관리자의 역할 인계가 필요한
+  경로도 확인한다. [계정 삭제 요구사항](https://support.google.com/googleplay/android-developer/answer/13327111).
+- 서버 코드는 삭제 요청 직후 모든 로그인 session을 해제하고 기기 push token을 삭제한다.
+  7일 취소 기간 후 worker가 프로필을 비우고 WITHDRAWN 상태로 바꾸며 UGC 본문을 지우고,
+  채팅 본문·멤버십·차단·알림·관심사·consent/auth identity 등을 삭제/정리한다.
+- user ID를 가진 탈퇴 row와 일부 신청/신고/감사·운영 기록이 남을 수 있다. 전체 연결 ID의 물리 삭제나
+  완전 익명화, 보안/분쟁의 법정 보존을 완료했다고 선언하지 않는다. 잔존 데이터의 목적·기간·접근·삭제를
+  운영 정책과 [실제 worker 처리](../apps/api/src/account/account-deletion.service.ts)에서 확정한다.
+- 이 worker에는 Firebase Auth 사용자 삭제, 외부 공급자에 앱 계정 관련 데이터 삭제 요청이나 로컬
+  Plus token 삭제를 수행하는 코드가 없다. Play 요구사항에 따른 서비스 제공자 삭제 요청 절차와
+  잔존 데이터의 정당한 보유 사유·기간 공개, 기기 정보 처리·복구 후 삭제 상태 재적용을 확정한다.
+  앱 탈퇴가 Kakao 계정 자체나 Google Play의 독립 거래 기록 삭제를 포함한다고 안내하지 않는다.
+- RDS의 현재 자동 backup 설정은 7일이다. 모든 로그/수동 snapshot/외부 공급자 데이터가 같은 기간에
+  삭제된다는 보장은 아니다. 과거 초안의 30일 삭제·90일 backup 제안은 현재 SLA로 사용하지 않는다.
+  7일은 취소 유예 기간이며 worker 성공/완료 통지의 보장 시간은 별도로 검증한다.
+- 공개 client HTTPS와 DB의 strict TLS는 확인했다. CloudFront→ALB HTTP와 pending origin TLS가
+  남아 있다. [운영 런북](DEPLOYMENT.md)과 [TLS 전환 범위](ORIGIN_TLS_HANDOFF.md)를 따라 전체
+  전송 경로를 확인한 뒤 Play 암호화 답변을 확정한다. SDK의 TLS 안내를 앱 전체 경로의 증거로 쓰지 않는다.
+- 공개 privacy 페이지의 수탁자/처리 국가·기간은 아직 확정 문구가 아니다. 지원/개인정보 메일의 실제
+  수신, 처리 책임자·삭제 완료 통지와 공급자별 삭제 범위를 확인한다. 독립 보안 검토 인증 완료 증거는 없다.
 
-Data Safety는 한 번 작성하고 끝나는 문서가 아니다. 기능, SDK, 권한, 백엔드, 데이터 사용 목적이 바뀌는 릴리스마다 함께 갱신한다.
+## 5. 공급자와 남은 정보
+
+현재 API/DB는 서울 AWS ECS/RDS, 공개 API 진입점은 CloudFront, 웹은 Vercel이다.
+Kakao, Google AdMob/UMP, Firebase Auth/FCM/FIS, Google Play Billing이 현재 코드의 처리 대상이다.
+GitHub Actions는 현재 direct Gradle 빌드/증거 전달 경로다. EAS를 현재 release 실행 공급자로,
+Railway를 운영 DB로, Twilio를 선택 Firebase Phone 공급자로 선언하지 않는다.
+Resend/Twilio/서버 FCM 발송은 disabled이고 활성화 시 별도로 갱신한다.
+
+아래 정보가 남아 있으므로 이 문서를 제출 완료본으로 사용하지 않는다.
+
+1. 최종 AAB의 resolved native SDK·자동 초기화/measurement·AD_ID/권한/metadata와 실제 앱 통신 목록.
+   GMA/UMP consent 거절·기존 consent·Plus 보유, 알림 거절·허용, Phone 실패/성공의 처리 차이 확인.
+   UMP의 정확한 전송 필드와 RevenueCat helper 미호출 시 native 전송 여부도 포함한다.
+2. 각 데이터의 수집/공유·목적·필수/선택, 사용자 직접 전송/서비스 제공자/결제 처리 예외의 적용 근거.
+   단순 non-personalized 광고·disabled 서버 채널·JS import 지연을 일괄 미수집 근거로 삼지 않는다.
+3. 실제 운영 주체/개인정보 책임·위탁 계약·하위 처리자·처리 국가·개별 보유/삭제 기간, 공개 privacy와
+   문의 수신/삭제 SLA. 서울 API/DB 위치를 모든 공급자의 한국 내 처리 보장으로 확대하지 않는다.
+4. Firebase 결제/Phone provider/KR region/Admin ADC·서명 설정과 실제 인증, FCM 수신/해제,
+   Play 상품 활성화·구매/보류/취소/복원·광고 제거. 현재의 미검증 상태는 [release readiness](RELEASE_READINESS.md)에 기록했다.
+5. 실제 역할별 UGC·신고/차단/관리자 처리, 앱/웹 삭제 요청→취소/worker 완료→잔존 데이터·외부 공급자·
+   로그/백업 처리. local DB 테스트·PITR catalog 비교는 이 운영 수용을 대신하지 않는다.
+6. 실제 Console의 최신 설명/0.1.1 노트·App access·Data Safety·광고 포함(`예`)·UGC/성인 대상·
+   공개 privacy/deletion URL을 대조하고 확정한다. 사용자·공급자 식별 정보와 screenshot 수동 승인값을
+   이 문서에 만들거나 기록하지 않는다.

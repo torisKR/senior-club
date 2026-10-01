@@ -28,7 +28,7 @@ import { createNativeIdempotencyKey } from '@/api/idempotency-key';
 import { safetyApi } from '@/api/safety-api';
 import { ContentSafetyActions } from '@/components/safety';
 import { AppText, EmptyState, SeniorButton } from '@/components/ui';
-import { Layout, Radius, Shadows, Spacing, TouchTarget } from '@/constants/theme';
+import { FontSizes, LineHeights, FontWeights, Layout, Radius, Shadows, Spacing, TouchTarget } from '@/constants/theme';
 import { useAppState } from '@/hooks/use-app-state';
 import { useEffectiveSafeAreaInsets } from '@/hooks/use-effective-safe-area-insets';
 import { useTheme } from '@/hooks/use-theme';
@@ -830,148 +830,150 @@ export function ChatScreen() {
     const showInitialError = roomsStatus === 'error' && rooms.length === 0;
     const showInitialLoading = roomsStatus === 'loading' && rooms.length === 0;
     return (
-      <FlatList
-        data={rooms}
-        keyExtractor={(room) => room.id}
-        contentInsetAdjustmentBehavior="never"
-        keyboardShouldPersistTaps="handled"
-        refreshing={refreshingRooms}
-        onRefresh={() => void loadRooms('manual')}
-        style={{ flex: 1, backgroundColor: theme.background }}
-        contentContainerStyle={{
-          width: '100%',
-          maxWidth: Layout.maxContentWidth,
-          alignSelf: 'center',
-          paddingHorizontal: Spacing.xl,
-          paddingTop: insets.top + Spacing.lg,
-          paddingBottom: Math.max(Spacing.xxxl, insets.bottom + Spacing.xl),
-          gap: Spacing.md,
-          flexGrow: rooms.length === 0 ? 1 : undefined,
-        }}
-        ListHeaderComponent={
-          <View style={{ gap: Spacing.md, paddingBottom: Spacing.sm }}>
-            <View style={{ gap: Spacing.xs }}>
-              <AppText variant="title">모임 채팅</AppText>
-              <AppText color="textSecondary">
-                참가 승인이 유지되는 모임만 서버에서 확인해 보여드려요.
-              </AppText>
-            </View>
-            <SeniorButton
-              label="대화방 새로고침"
-              variant="outline"
-              loading={refreshingRooms}
-              onPress={() => void loadRooms('manual')}
-            />
-            {roomsError && !showInitialError ? (
-              <AppText accessibilityRole="alert" color="danger" variant="bodyStrong">
-                {roomsError}
-              </AppText>
-            ) : null}
-            {requestedRoomUnavailable ? (
-              <AppText accessibilityRole="alert" color="warning" variant="bodyStrong">
-                요청한 대화방을 찾지 못했습니다. 참가 승인이 유지되는지 확인해 주세요.
-              </AppText>
-            ) : null}
-            <AppText accessibilityLiveRegion="polite" color="textSecondary" variant="caption">
-              {announcement}
-            </AppText>
-          </View>
-        }
-        ListEmptyComponent={
-          showInitialLoading ? (
-            <View
-              accessibilityRole="progressbar"
-              accessibilityLabel="대화방 목록을 불러오는 중"
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md }}>
-              <ActivityIndicator color={theme.primary} size="large" />
-              <AppText variant="bodyStrong">대화방을 확인하고 있어요</AppText>
-            </View>
-          ) : showInitialError ? (
-            <EmptyState
-              emoji="⚠️"
-              title="대화방을 불러오지 못했어요"
-              description={roomsError}
-              actionLabel="다시 시도"
-              onActionPress={() => void loadRooms('manual')}
-            />
-          ) : (
-            <EmptyState
-              emoji="💬"
-              title="열린 대화방이 없어요"
-              description="모임 참가가 승인되면 이곳에서 실제 대화방을 확인할 수 있어요."
-            />
-          )
-        }
-        ListFooterComponent={
-          rooms.length > 0 && roomsHasNextPage ? (
-            <View style={{ paddingTop: Spacing.md }}>
+      <View style={{ flex: 1, backgroundColor: theme.background, paddingTop: insets.top, overflow: 'hidden' }}>
+        <FlatList
+          data={rooms}
+          keyExtractor={(room) => room.id}
+          contentInsetAdjustmentBehavior="never"
+          keyboardShouldPersistTaps="handled"
+          refreshing={refreshingRooms}
+          onRefresh={() => void loadRooms('manual')}
+          style={{ flex: 1, backgroundColor: theme.background, overflow: 'hidden' }}
+          contentContainerStyle={{
+            width: '100%',
+            maxWidth: Layout.maxContentWidth,
+            alignSelf: 'center',
+            paddingHorizontal: Spacing.xl,
+            paddingTop: Spacing.lg,
+            paddingBottom: Math.max(Spacing.xxxl, insets.bottom + Spacing.xl),
+            gap: Spacing.md,
+            flexGrow: rooms.length === 0 ? 1 : undefined,
+          }}
+          ListHeaderComponent={
+            <View style={{ gap: Spacing.md, paddingBottom: Spacing.sm }}>
+              <View style={{ gap: Spacing.xs }}>
+                <AppText variant="title">모임 채팅</AppText>
+                <AppText color="textSecondary">
+                  참가 승인이 유지되는 모임만 서버에서 확인해 보여드려요.
+                </AppText>
+              </View>
               <SeniorButton
-                label="대화방 더 보기"
+                label="대화방 새로고침"
                 variant="outline"
-                loading={loadingMoreRooms}
-                disabled={loadingMoreRooms}
-                onPress={() => void loadRooms('more')}
+                loading={refreshingRooms}
+                onPress={() => void loadRooms('manual')}
               />
+              {roomsError && !showInitialError ? (
+                <AppText accessibilityRole="alert" color="danger" variant="bodyStrong">
+                  {roomsError}
+                </AppText>
+              ) : null}
+              {requestedRoomUnavailable ? (
+                <AppText accessibilityRole="alert" color="warning" variant="bodyStrong">
+                  요청한 대화방을 찾지 못했습니다. 참가 승인이 유지되는지 확인해 주세요.
+                </AppText>
+              ) : null}
+              <AppText accessibilityLiveRegion="polite" color="textSecondary" variant="caption">
+                {announcement}
+              </AppText>
             </View>
-          ) : null
-        }
-        renderItem={({ item }: ListRenderItemInfo<ApiChatRoom>) => {
-          const unread = isChatRoomUnread(item, currentUserId);
-          return (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${item.event.title}${unread ? ', 새 메시지 있음' : ''}`}
-              accessibilityHint="두 번 탭하면 대화 내용을 엽니다"
-              onPress={() => openRoom(item)}
-              style={({ pressed }) => ({
-                minHeight: TouchTarget.minimum,
-                padding: Spacing.xl,
-                gap: Spacing.md,
-                borderWidth: 1,
-                borderColor: unread ? theme.primary : theme.divider,
-                borderRadius: Radius.lg,
-                borderCurve: 'continuous',
-                backgroundColor: pressed ? theme.backgroundSelected : theme.surface,
-                boxShadow: Shadows.card,
-              })}>
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md }}>
-                <View style={{ flex: 1, gap: Spacing.xs }}>
-                  <AppText variant="sectionTitle" selectable={false}>
-                    {item.event.title}
-                  </AppText>
-                  <AppText variant="bodyStrong" color="primary" selectable={false}>
-                    {item.event.club.title}
-                  </AppText>
-                </View>
-                {unread ? (
-                  <View
-                    accessibilityLabel="새 메시지 있음"
-                    style={{
-                      minWidth: 36,
-                      height: 36,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: Radius.pill,
-                      backgroundColor: theme.accent,
-                    }}>
-                    <AppText variant="caption" color="#FFFFFF" selectable={false}>
-                      새 글
+          }
+          ListEmptyComponent={
+            showInitialLoading ? (
+              <View
+                accessibilityRole="progressbar"
+                accessibilityLabel="대화방 목록을 불러오는 중"
+                style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md }}>
+                <ActivityIndicator color={theme.primary} size="large" />
+                <AppText variant="bodyStrong">대화방을 확인하고 있어요</AppText>
+              </View>
+            ) : showInitialError ? (
+              <EmptyState
+                emoji="⚠️"
+                title="대화방을 불러오지 못했어요"
+                description={roomsError}
+                actionLabel="다시 시도"
+                onActionPress={() => void loadRooms('manual')}
+              />
+            ) : (
+              <EmptyState
+                emoji="💬"
+                title="열린 대화방이 없어요"
+                description="모임 참가가 승인되면 이곳에서 실제 대화방을 확인할 수 있어요."
+              />
+            )
+          }
+          ListFooterComponent={
+            rooms.length > 0 && roomsHasNextPage ? (
+              <View style={{ paddingTop: Spacing.md }}>
+                <SeniorButton
+                  label="대화방 더 보기"
+                  variant="outline"
+                  loading={loadingMoreRooms}
+                  disabled={loadingMoreRooms}
+                  onPress={() => void loadRooms('more')}
+                />
+              </View>
+            ) : null
+          }
+          renderItem={({ item }: ListRenderItemInfo<ApiChatRoom>) => {
+            const unread = isChatRoomUnread(item, currentUserId);
+            return (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${item.event.title}${unread ? ', 새 메시지 있음' : ''}`}
+                accessibilityHint="두 번 탭하면 대화 내용을 엽니다"
+                onPress={() => openRoom(item)}
+                style={({ pressed }) => ({
+                  minHeight: TouchTarget.minimum,
+                  padding: Spacing.xl,
+                  gap: Spacing.md,
+                  borderWidth: 1,
+                  borderColor: unread ? theme.primary : theme.divider,
+                  borderRadius: Radius.lg,
+                  borderCurve: 'continuous',
+                  backgroundColor: pressed ? theme.backgroundSelected : theme.surface,
+                  boxShadow: Shadows.card,
+                })}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md }}>
+                  <View style={{ flex: 1, gap: Spacing.xs }}>
+                    <AppText variant="sectionTitle" selectable={false}>
+                      {item.event.title}
+                    </AppText>
+                    <AppText variant="bodyStrong" color="primary" selectable={false}>
+                      {item.event.club.title}
                     </AppText>
                   </View>
-                ) : null}
-              </View>
-              <AppText color="textSecondary" numberOfLines={2} selectable={false}>
-                {item.lastMessage ? messageBody(item.lastMessage) : '아직 메시지가 없습니다.'}
-              </AppText>
-              <AppText variant="caption" color="textMuted" selectable={false}>
-                {item.lastMessage
-                  ? formatChatTime(item.lastMessage.createdAt)
-                  : `${formatChatTime(item.joinedAt)} 참여`}
-              </AppText>
-            </Pressable>
-          );
-        }}
-      />
+                  {unread ? (
+                    <View
+                      accessibilityLabel="새 메시지 있음"
+                      style={{
+                        minWidth: 36,
+                        height: 36,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: Radius.pill,
+                        backgroundColor: theme.accent,
+                      }}>
+                      <AppText variant="caption" color="#FFFFFF" selectable={false}>
+                        새 글
+                      </AppText>
+                    </View>
+                  ) : null}
+                </View>
+                <AppText color="textSecondary" numberOfLines={2} selectable={false}>
+                  {item.lastMessage ? messageBody(item.lastMessage) : '아직 메시지가 없습니다.'}
+                </AppText>
+                <AppText variant="caption" color="textMuted" selectable={false}>
+                  {item.lastMessage
+                    ? formatChatTime(item.lastMessage.createdAt)
+                    : `${formatChatTime(item.joinedAt)} 참여`}
+                </AppText>
+              </Pressable>
+            );
+          }}
+        />
+      </View>
     );
   }
 
@@ -1262,8 +1264,9 @@ export function ChatScreen() {
               borderCurve: 'continuous',
               color: theme.text,
               backgroundColor: theme.background,
-              fontSize: largeTextEnabled ? 20 : 18,
-              lineHeight: largeTextEnabled ? 31 : 28,
+              fontSize: FontSizes[largeTextEnabled ? 'large' : 'standard'].body,
+              lineHeight: LineHeights[largeTextEnabled ? 'large' : 'standard'].body,
+              fontFamily: FontWeights.body,
               textAlignVertical: 'center',
               opacity: canSend ? 1 : 0.62,
             }}

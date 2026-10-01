@@ -97,6 +97,14 @@ export type KakaoLoginInput = z.infer<typeof kakaoLoginSchema>;
 export type GoogleLoginInput = z.infer<typeof googleLoginSchema>;
 export type RefreshSessionInput = z.infer<typeof refreshSessionSchema>;
 
+export const verifyFirebasePhoneSchema = z
+  .object({
+    idToken: z.string().trim().min(20, "유효한 Firebase ID 토큰을 입력해 주세요.").max(8192),
+  })
+  .strict();
+
+export type VerifyFirebasePhoneInput = z.infer<typeof verifyFirebasePhoneSchema>;
+
 export interface AuthenticatedPrincipal {
   userId: string;
   sessionId: string;

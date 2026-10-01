@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { browserSessionStillCurrent, readBrowserSession } from "@/lib/auth/browser-session";
 
 import {
   PROFILE_SESSION_SYNC_KEY,
@@ -20,16 +21,15 @@ export async function synchronizeProfileSession({
   profileStorage,
   signal,
 }: SessionSyncOptions) {
-  const response = await fetchImplementation("/api/auth/session", {
-    credentials: "same-origin",
-    cache: "no-store",
-    signal,
-  });
+  const response = await readBrowserSession({ fetchImplementation, signal });
   if (!response.ok) return false;
+
+  const session = await response.json();
+  if (!browserSessionStillCurrent(response)) return false;
 
   const synchronized = syncServerProfileCacheFromSession(
     profileStorage,
-    await response.json(),
+    session,
   );
   if (!synchronized) return false;
   try {
@@ -52,11 +52,15 @@ export function ProfileSessionSync() {
     }
 
     const controller = new AbortController();
-    void synchronizeProfileSession({
-      markerStorage: window.sessionStorage,
-      profileStorage: window.localStorage,
-      signal: controller.signal,
-    }).catch(() => undefined);
+    try {
+      void synchronizeProfileSession({
+        markerStorage: window.sessionStorage,
+        profileStorage: window.localStorage,
+        signal: controller.signal,
+      }).catch(() => undefined);
+    } catch {
+      // Storage getters can throw too; this optional mirror must not crash the page.
+    }
 
     return () => controller.abort();
   }, []);

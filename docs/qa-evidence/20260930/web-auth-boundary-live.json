@@ -1,0 +1,119 @@
+{
+  "observedAt": "2026-09-30T06:54:25.589Z",
+  "deployment": "dpl_9fK6bmYnVLeaP9PVhbY3HCFSuYcG",
+  "origin": "https://senior.toris.kr",
+  "cases": [
+    {
+      "name": "required consent rejects missing",
+      "passed": true,
+      "status": 307
+    },
+    {
+      "name": "required consent rejects duplicate",
+      "passed": true,
+      "status": 307
+    },
+    {
+      "name": "canonical Kakao OAuth entry and safe returnTo",
+      "passed": true,
+      "status": 307,
+      "providerOrigin": "https://kauth.kakao.com",
+      "callbackPath": "/api/auth/kakao/callback"
+    },
+    {
+      "name": "host-only OAuth intent cookie attributes",
+      "passed": true,
+      "cookies": [
+        {
+          "name": "__Host-senior_club_kakao_state",
+          "httpOnly": true,
+          "secure": true,
+          "sameSiteLax": true,
+          "pathRoot": true,
+          "hostOnly": true,
+          "deleted": false
+        }
+      ]
+    },
+    {
+      "name": "mismatched OAuth state rejected",
+      "passed": true,
+      "status": 307
+    },
+    {
+      "name": "cancelled OAuth safely clears intent",
+      "passed": true,
+      "status": 307
+    },
+    {
+      "name": "retired provider /api/auth/phone/request",
+      "passed": true,
+      "status": 410
+    },
+    {
+      "name": "retired provider /api/auth/phone/verify",
+      "passed": true,
+      "status": 410
+    },
+    {
+      "name": "retired provider /api/auth/email/request",
+      "passed": true,
+      "status": 410
+    },
+    {
+      "name": "retired provider /api/auth/email/verify",
+      "passed": true,
+      "status": 410
+    },
+    {
+      "name": "retired provider /api/auth/google",
+      "passed": true,
+      "status": 410
+    },
+    {
+      "name": "anonymous protected profile update denied",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "foreign Origin mutation denied",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "non-JSON mutation denied",
+      "passed": true,
+      "status": 415
+    },
+    {
+      "name": "anonymous logout secure cookie deletion",
+      "passed": true,
+      "status": 200,
+      "cookies": [
+        {
+          "name": "__Host-senior_club_access",
+          "httpOnly": true,
+          "secure": true,
+          "sameSiteLax": true,
+          "pathRoot": true,
+          "hostOnly": true,
+          "deleted": true
+        },
+        {
+          "name": "__Host-senior_club_session",
+          "httpOnly": true,
+          "secure": true,
+          "sameSiteLax": true,
+          "pathRoot": true,
+          "hostOnly": true,
+          "deleted": true
+        }
+      ]
+    }
+  ],
+  "passed": true,
+  "providerAccountLogin": false,
+  "providerTokenExchange": false,
+  "realAccountWrites": 0,
+  "actualSmsSent": 0
+}

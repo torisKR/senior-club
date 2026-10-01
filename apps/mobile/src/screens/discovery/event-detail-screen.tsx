@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, View, useWindowDimensions } from 'react-native';
@@ -8,8 +7,9 @@ import { eventsApi } from '@/api/events-api';
 import { ApiError } from '@/api/api-error';
 import { persistPendingAuthNavigation } from '@/auth/pending-auth-navigation';
 import { AppText, Card, EmptyState, Screen, SeniorButton } from '@/components/ui';
-import { Radius, Spacing } from '@/constants/theme';
-import { getEventImageSource } from '@/data/image-assets';
+import { CoverImage, CoverImageRatios } from '@/components/ui/cover-image';
+import { Layout, Radius, Spacing } from '@/constants/theme';
+import { getEventCoverImage } from '@/data/image-assets';
 import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
 import type { Event, ParticipationStatus } from '@/types';
@@ -68,7 +68,7 @@ function ParticipationBanner({ status }: { status: ParticipationStatus }) {
       accessibilityRole="summary"
       accessibilityLabel={`${participationLabels[status]}. ${participationDescriptions[status]}`}
       style={{
-        padding: Spacing.xl,
+        padding: Layout.cardPadding,
         gap: Spacing.sm,
         borderWidth: 2,
         borderColor: isPending ? theme.warning : theme.success,
@@ -357,17 +357,15 @@ export function EventDetailScreen({ eventId, intent }: EventDetailScreenProps) {
       <Stack.Screen options={{ title: event.title, headerBackTitle: '모임' }} />
       <Screen contentContainerStyle={{ maxWidth: 980 }}>
         <Card padded={false}>
-          <Image
-            source={getEventImageSource(event)}
-            accessibilityLabel={`${event.title} 모임 사진`}
-            cachePolicy="memory-disk"
-            contentFit="cover"
+          <CoverImage
+            image={getEventCoverImage(event)}
+            accessibilityLabel={`${event.title} 모임 대표 이미지`}
             recyclingKey={event.id}
             transition={180}
-            style={{ width: '100%', aspectRatio: isTablet ? 2.4 : 4 / 3, backgroundColor: theme.backgroundElement }}
+            aspectRatio={CoverImageRatios.detail}
           />
 
-          <View style={{ padding: Spacing.xxl, gap: Spacing.lg }}>
+          <View style={{ padding: Layout.cardPadding, gap: Spacing.lg }}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }}>
               <View
                 style={{
@@ -395,9 +393,11 @@ export function EventDetailScreen({ eventId, intent }: EventDetailScreenProps) {
 
             <View style={{ gap: Spacing.sm }}>
               <AppText variant="display">{event.title}</AppText>
-              <AppText variant="key" color="textSecondary">
-                {event.summary}
-              </AppText>
+              {event.summary.trim() && event.summary.trim() !== event.description.trim() ? (
+                <AppText variant="key" color="textSecondary">
+                  {event.summary}
+                </AppText>
+              ) : null}
               <AppText variant="body">{event.description}</AppText>
             </View>
           </View>
@@ -430,7 +430,7 @@ export function EventDetailScreen({ eventId, intent }: EventDetailScreenProps) {
             accessibilityRole="summary"
             accessibilityLiveRegion="polite"
             style={{
-              padding: Spacing.xl,
+              padding: Layout.cardPadding,
               gap: Spacing.sm,
               borderWidth: 1,
               borderColor: theme.border,
@@ -547,7 +547,9 @@ export function EventDetailScreen({ eventId, intent }: EventDetailScreenProps) {
               <DetailRow
                 emoji="👥"
                 label="정원"
-                value={`${event.participantCount}명 참여 · ${seatsLeft}자리 남음 (총 ${event.capacity}명)`}
+                value={isEventOpen(event)
+                  ? `${event.participantCount}명 참여 · ${seatsLeft}자리 남음 (총 ${event.capacity}명)`
+                  : `${event.participantCount}명 참여 · 정원 ${event.capacity}명`}
                 emphasis
               />
 

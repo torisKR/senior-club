@@ -1,0 +1,66 @@
+{
+  "package": "com.toris.seniorclub",
+  "versionCode": 212215980,
+  "versionName": "0.1.1",
+  "sha256": "968066c227bf77dfa7ba210cbdd7b3d310c5daa5c2e189514a60543f104086e0",
+  "certificateSha256": "58d2a5f2d30822599ff5b1d46e3d499e85a25c0ffb6efe396da0daba38b0634b",
+  "commit": "9a9825b32ae47f5abcfdbbc2af1b8f7103cabecd",
+  "execution": "local",
+  "hostedWorkflowRunId": null,
+  "bytes": 93679910,
+  "bundletoolPinnedHashMatches": true,
+  "bundletoolValidationPassed": true,
+  "uploadSignatureAndCertificateVerified": true,
+  "compiledManifestExactContractPassed": true,
+  "permissionCount": 34,
+  "exportedContractCount": 10,
+  "abis": [
+    "arm64-v8a",
+    "armeabi-v7a",
+    "x86",
+    "x86_64"
+  ],
+  "sharedPhotoCount": 7,
+  "sharedPhotosByteIdenticalInBundle": true,
+  "materialSymbolsFontBytesVerified": true,
+  "productionApiAndWebUrlsInJs": true,
+  "productionBannerIdInJs": true,
+  "qaBannerIdAbsentFromConfiguredEnvironment": true,
+  "sdkTestIdLiteralPresentInJs": true,
+  "playUploaded": false,
+  "playVersionReconciled": false,
+  "providerLoginVerifiedOnThisArtifact": false,
+  "deviceInstalled": false,
+  "finalScreenshotReviewComplete": false,
+  "scope": "Local upload-signed AAB candidate only; current installed debug QA APK preserved",
+  "adVerificationLimit": "Configured production banner and bundle literal checked; SDK retains test constants, no ad serving performed",
+  "artifactRelativePath": "apps/mobile/build-output/signed-candidate-9a9825b32ae4/app-release.aab",
+  "nativeDesignSourceCommit": "9a9825b32ae47f5abcfdbbc2af1b8f7103cabecd",
+  "nativeDesignSourceSha256": "60cfa93da1c82d783d3b1973b3728dbdfeb39ac7dcd3bc8508208721e171d767",
+  "nativeQaApkSha256": "3fa88ac99743a0ff593a697b500cdfb99973461139d72eed30ac36263b4a04a7",
+  "buildSourceSha256": "e5a053f43d6d2a86808cf4999c0eb8bdc859ee48542b626ecb98fe9c31f9e536",
+  "buildSourceFileCount": 241,
+  "sdkPropertyMetadata": {
+    "billing": {
+      "version": "9.1.0",
+      "entry": "base/root/billing.properties",
+      "sha256": "889731fed6ed2cf88896be49cb8d153cef6e45b28ab4c8dcb63126e7e0e9cf1c"
+    },
+    "firebase-auth": {
+      "version": "24.2.0",
+      "entry": "base/root/firebase-auth.properties",
+      "sha256": "d8400c654ccca23b8ff6cf12dff5898064c5ecc6e7bcd6aec6c9d50048af4cc1"
+    },
+    "play-services-ads": {
+      "version": "25.0.0",
+      "entry": "base/root/play-services-ads.properties",
+      "sha256": "d9e8b92372acd40e22372b8ec7068bd65e993004e0527233991a642c835bb5d9"
+    },
+    "user-messaging-platform": {
+      "version": "4.0.0",
+      "entry": "base/root/user-messaging-platform.properties",
+      "sha256": "00a56db523c42386524871d9a24ddb9c82fe2d644ad503367ff8aad3e4600a53"
+    }
+  },
+  "sdkMetadataLimit": "Version strings in exact AAB property entries; does not prove SDK traffic, consent or complete dependency inventory"
+}

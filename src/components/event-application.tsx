@@ -374,7 +374,7 @@ export function EventApplication({
         <p className="mt-3 text-center text-sm font-bold text-[var(--muted)]">
           {sessionState === "authenticated"
             ? "비용 결제 없이 신청이 접수됩니다"
-            : "이메일 인증 후 원래 모임으로 돌아옵니다"}
+            : "카카오 로그인 후 원래 모임으로 돌아옵니다"}
         </p>
       ) : null}
     </section>

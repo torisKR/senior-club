@@ -20,6 +20,18 @@ describe("updateProfileSchema", () => {
     ).toEqual(validProfile);
   });
 
+  it("accepts and normalizes optional phone number", () => {
+    expect(
+      updateProfileSchema.parse({
+        ...validProfile,
+        phoneNumber: "010-1234-5678",
+      }),
+    ).toEqual({
+      ...validProfile,
+      phoneNumber: "+821012345678",
+    });
+  });
+
   it("rejects duplicate, empty, and excessive interest selections", () => {
     expect(() =>
       updateProfileSchema.parse({

@@ -1,7 +1,12 @@
 import { z } from "zod";
+import { createPrivateKey } from "node:crypto";
 
 const DEFAULT_DEVELOPMENT_ORIGIN = "http://localhost:3000";
 const POSTGRES_PROTOCOLS = new Set(["postgres:", "postgresql:"]);
+const DATABASE_TLS_QUERY_PARAMETERS = new Set([
+  "ssl", "sslmode", "sslrootcert", "sslcert", "sslkey",
+  "uselibpqcompat", "sslnegotiation",
+]);
 const DEVELOPMENT_ACCESS_SECRET =
   "development-only-access-token-secret-change-me";
 const DEVELOPMENT_OTP_PEPPER =
@@ -48,11 +53,13 @@ const rawApiEnvSchema = z.object({
   AUTH_DEV_OTP_EXPOSE: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
   KAKAO_APP_ID: z.coerce.number().int().positive().optional(),
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  // Phone verification uses Firebase Admin with ADC, independently of FCM.
+  FIREBASE_PROJECT_ID: z.string().regex(/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/).optional(),
   CONSENT_DOCUMENT_VERSION: z.string().min(1).max(40).default("2026-07-01"),
-  EMAIL_PROVIDER: z.enum(["console", "resend"]).default("console"),
+  EMAIL_PROVIDER: z.enum(["disabled", "console", "resend"]).default("console"),
   EMAIL_FROM: z.string().min(3).max(320).default("시니어클럽 <no-reply@localhost>"),
   RESEND_API_KEY: z.string().min(1).optional(),
-  SMS_PROVIDER: z.enum(["console", "twilio"]).default("console"),
+  SMS_PROVIDER: z.enum(["disabled", "console", "twilio"]).default("console"),
   TWILIO_ACCOUNT_SID: z.string().regex(/^AC[a-f0-9]{32}$/i).optional(),
   TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
   TWILIO_MESSAGING_SERVICE_SID: z.string().regex(/^MG[a-f0-9]{32}$/i).optional(),
@@ -84,11 +91,12 @@ export interface ApiEnv {
   readonly AUTH_DEV_OTP_EXPOSE: boolean;
   readonly KAKAO_APP_ID: number | undefined;
   readonly GOOGLE_CLIENT_ID: string | undefined;
+  readonly FIREBASE_PROJECT_ID: string | undefined;
   readonly CONSENT_DOCUMENT_VERSION: string;
-  readonly EMAIL_PROVIDER: "console" | "resend";
+  readonly EMAIL_PROVIDER: "disabled" | "console" | "resend";
   readonly EMAIL_FROM: string;
   readonly RESEND_API_KEY: string | undefined;
-  readonly SMS_PROVIDER: "console" | "twilio";
+  readonly SMS_PROVIDER: "disabled" | "console" | "twilio";
   readonly TWILIO_ACCOUNT_SID: string | undefined;
   readonly TWILIO_AUTH_TOKEN: string | undefined;
   readonly TWILIO_MESSAGING_SERVICE_SID: string | undefined;
@@ -154,6 +162,53 @@ export function parseCorsOrigins(
   return Object.freeze([...new Set(normalized)]);
 }
 
+function validateProductionDatabaseTransport(databaseUrl: string): string[] {
+  // pg-connection-string rewrites URLs containing spaces or malformed escapes.
+  // Require encoded input so its query keys match WHATWG URL parsing here.
+  if (/ |%(?![a-f0-9]{2})/i.test(databaseUrl)) {
+    return ["DATABASE_URL must percent-encode spaces and use valid percent escapes in production"];
+  }
+
+  const parameters = new URL(databaseUrl).searchParams;
+  const seen = new Set<string>();
+  for (const key of parameters.keys()) {
+    const normalizedKey = key.toLowerCase();
+    if (!DATABASE_TLS_QUERY_PARAMETERS.has(normalizedKey)) continue;
+    if (key !== normalizedKey) {
+      return ["DATABASE_URL must use lowercase TLS query parameter names in production"];
+    }
+    // URLSearchParams.get reads the first value; pg uses the last. Even
+    // identical or percent-encoded duplicates must fail closed.
+    if (seen.has(key)) {
+      return ["DATABASE_URL must not repeat TLS query parameters in production"];
+    }
+    seen.add(key);
+  }
+
+  const issues: string[] = [];
+  // Other modes either weaken verification under libpq compatibility or are
+  // deprecated aliases whose guarantees can change with a driver upgrade.
+  if (parameters.get("sslmode") !== "verify-full") {
+    issues.push("DATABASE_URL must set sslmode=verify-full in production");
+  }
+  if (parameters.has("ssl") && !["true", "1"].includes(parameters.get("ssl")!)) {
+    issues.push("DATABASE_URL ssl must be true or 1 when specified in production");
+  }
+  for (const key of ["sslrootcert", "sslcert", "sslkey"]) {
+    if (parameters.has(key) && !parameters.get(key)?.trim()) {
+      issues.push("DATABASE_URL must use nonempty TLS certificate paths in production");
+      break;
+    }
+  }
+  if (parameters.has("uselibpqcompat") && !["true", "false"].includes(parameters.get("uselibpqcompat")!)) {
+    issues.push("DATABASE_URL uselibpqcompat must be true or false when specified in production");
+  }
+  if (parameters.has("sslnegotiation") && !["postgres", "direct"].includes(parameters.get("sslnegotiation")!)) {
+    issues.push("DATABASE_URL sslnegotiation must be postgres or direct when specified in production");
+  }
+  return issues;
+}
+
 export function parseApiEnv(input: NodeJS.ProcessEnv = process.env): ApiEnv {
   const parsed = rawApiEnvSchema.safeParse(input);
 
@@ -186,7 +241,7 @@ export function parseApiEnv(input: NodeJS.ProcessEnv = process.env): ApiEnv {
   } catch {
     otpEncryptionKey = Buffer.alloc(0);
   }
-  if (otpEncryptionKey.length !== 32) {
+  if (otpEncryptionKey.length !== 32 || otpEncryptionKey.toString("base64") !== parsed.data.AUTH_OTP_ENCRYPTION_KEY_BASE64) {
     throw new EnvValidationError([
       "AUTH_OTP_ENCRYPTION_KEY_BASE64 must decode to exactly 32 bytes",
     ]);
@@ -201,14 +256,30 @@ export function parseApiEnv(input: NodeJS.ProcessEnv = process.env): ApiEnv {
       ) as Record<string, unknown>;
       if (
         typeof serviceAccount.project_id !== "string" ||
-        typeof serviceAccount.client_email !== "string" ||
-        typeof serviceAccount.private_key !== "string"
+        !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(serviceAccount.project_id) ||
+        !z.email().safeParse(serviceAccount.client_email).success ||
+        typeof serviceAccount.private_key !== "string" ||
+        createPrivateKey(serviceAccount.private_key).asymmetricKeyType !== "rsa"
       ) {
         throw new Error("invalid");
       }
     } catch {
       throw new EnvValidationError([
         "FCM_SERVICE_ACCOUNT_JSON_BASE64 must encode a Firebase service account JSON",
+      ]);
+    }
+  }
+
+  if (parsed.data.EMAIL_PROVIDER === "resend") {
+    const sender = /^(?:[^<>]+<)?([^<>]+)>?$/.exec(parsed.data.EMAIL_FROM)?.[1]?.trim();
+    if (
+      !parsed.data.RESEND_API_KEY ||
+      !/^re_[A-Za-z0-9_-]{10,}$/.test(parsed.data.RESEND_API_KEY) ||
+      !sender || !z.email().safeParse(sender).success ||
+      sender.endsWith("@localhost")
+    ) {
+      throw new EnvValidationError([
+        "EMAIL_PROVIDER=resend requires a valid RESEND_API_KEY and EMAIL_FROM email address",
       ]);
     }
   }
@@ -221,6 +292,7 @@ export function parseApiEnv(input: NodeJS.ProcessEnv = process.env): ApiEnv {
     if (
       !parsed.data.TWILIO_ACCOUNT_SID ||
       !parsed.data.TWILIO_AUTH_TOKEN ||
+      !/^[a-f0-9]{32}$/i.test(parsed.data.TWILIO_AUTH_TOKEN) ||
       !hasSender
     ) {
       throw new EnvValidationError([
@@ -235,10 +307,19 @@ export function parseApiEnv(input: NodeJS.ProcessEnv = process.env): ApiEnv {
         "Set only one of TWILIO_MESSAGING_SERVICE_SID or TWILIO_FROM_NUMBER",
       ]);
     }
+    if (parsed.data.TWILIO_FROM_NUMBER && !/^\+[1-9]\d{1,14}$/.test(parsed.data.TWILIO_FROM_NUMBER)) {
+      throw new EnvValidationError(["TWILIO_FROM_NUMBER must be an E.164 phone number"]);
+    }
   }
 
   if (parsed.data.NODE_ENV === "production") {
-    const productionIssues: string[] = [];
+    const productionIssues = validateProductionDatabaseTransport(parsed.data.DATABASE_URL);
+    if (input.NODE_TLS_REJECT_UNAUTHORIZED === "0") {
+      productionIssues.push("NODE_TLS_REJECT_UNAUTHORIZED=0 is forbidden in production");
+    }
+    if (input.FIREBASE_AUTH_EMULATOR_HOST) {
+      productionIssues.push("FIREBASE_AUTH_EMULATOR_HOST is forbidden in production");
+    }
     if (parsed.data.AUTH_DEV_OTP_EXPOSE) {
       productionIssues.push("AUTH_DEV_OTP_EXPOSE must be false in production");
     }
@@ -256,29 +337,14 @@ export function parseApiEnv(input: NodeJS.ProcessEnv = process.env): ApiEnv {
         "AUTH_OTP_ENCRYPTION_KEY_BASE64 must be replaced in production",
       );
     }
-    if (parsed.data.EMAIL_PROVIDER !== "resend" || !parsed.data.RESEND_API_KEY) {
-      productionIssues.push(
-        "EMAIL_PROVIDER=resend and RESEND_API_KEY are required in production",
-      );
+    if (!parsed.data.KAKAO_APP_ID) {
+      productionIssues.push("KAKAO_APP_ID is required for Kakao-only production login");
     }
-    if (
-      parsed.data.PUSH_PROVIDER !== "firebase" ||
-      !parsed.data.FCM_SERVICE_ACCOUNT_JSON_BASE64
-    ) {
-      productionIssues.push(
-        "PUSH_PROVIDER=firebase and FCM_SERVICE_ACCOUNT_JSON_BASE64 are required in production",
-      );
+    if (parsed.data.EMAIL_PROVIDER === "console") {
+      productionIssues.push("EMAIL_PROVIDER=console is forbidden in production; use disabled or resend");
     }
-    if (
-      parsed.data.SMS_PROVIDER !== "twilio" ||
-      !parsed.data.TWILIO_ACCOUNT_SID ||
-      !parsed.data.TWILIO_AUTH_TOKEN ||
-      (!parsed.data.TWILIO_MESSAGING_SERVICE_SID &&
-        !parsed.data.TWILIO_FROM_NUMBER)
-    ) {
-      productionIssues.push(
-        "SMS_PROVIDER=twilio and Twilio SMS credentials are required in production",
-      );
+    if (parsed.data.SMS_PROVIDER === "console") {
+      productionIssues.push("SMS_PROVIDER=console is forbidden in production; use disabled or twilio");
     }
     if (productionIssues.length > 0) {
       throw new EnvValidationError(productionIssues);
@@ -289,6 +355,7 @@ export function parseApiEnv(input: NodeJS.ProcessEnv = process.env): ApiEnv {
     ...parsed.data,
     KAKAO_APP_ID: parsed.data.KAKAO_APP_ID,
     GOOGLE_CLIENT_ID: parsed.data.GOOGLE_CLIENT_ID,
+    FIREBASE_PROJECT_ID: parsed.data.FIREBASE_PROJECT_ID,
     RESEND_API_KEY: parsed.data.RESEND_API_KEY,
     SMS_PROVIDER: parsed.data.SMS_PROVIDER,
     TWILIO_ACCOUNT_SID: parsed.data.TWILIO_ACCOUNT_SID,

@@ -9,6 +9,13 @@ import { EVENTS } from "@/lib/data";
 import { getHomeFeaturedEvents } from "@/lib/home-featured-events";
 
 describe("home dashboard canonical data", () => {
+  it("shows API timestamps in Korea time for both UTC and offset input", () => {
+    const base = EVENTS.find((event) => event.category === "hiking")!;
+    const utc = getHomeEventPreviews([{ ...base, startAt: "2026-10-05T01:30:00Z" }])[0];
+    const offset = getHomeEventPreviews([{ ...base, startAt: "2026-10-05T10:30:00+09:00" }])[0];
+    expect(utc.date).toBe(offset.date);
+    expect(utc.date).toContain("오전 10:30");
+  });
   it("추천 카드의 핵심 정보는 정본 모임 데이터에서 파생한다", () => {
     const featuredEvents = getHomeFeaturedEvents(
       EVENTS,

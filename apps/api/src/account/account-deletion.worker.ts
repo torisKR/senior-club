@@ -58,9 +58,8 @@ export class AccountDeletionWorker
   }
 
   private scheduleDrain() {
-    void this.drainOnce().catch((error: unknown) => {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      this.logger.error(`Account deletion drain failed: ${message}`);
+    void this.drainOnce().catch(() => {
+      this.logger.error("ACCOUNT_DELETION_DRAIN_FAILED");
     });
   }
 }

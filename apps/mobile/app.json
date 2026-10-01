@@ -3,7 +3,7 @@
     "name": "시니어클럽",
     "slug": "club-senior",
     "description": "같은 관심사를 가진 사람들과 모임을 만들고 관계를 이어가는 시니어 커뮤니티",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "orientation": "portrait",
     "icon": "./assets/images/senior-club-icon-v2.png",
     "scheme": "clubsenior",
@@ -11,7 +11,7 @@
     "primaryColor": "#0E5142",
     "android": {
       "package": "com.toris.seniorclub",
-      "versionCode": 1,
+      "versionCode": 212215980,
       "allowBackup": false,
       "predictiveBackGestureEnabled": true,
       "permissions": [],
@@ -90,6 +90,7 @@
       "reactCompiler": true
     },
     "extra": {
+      "kakaoNativeAppKey": "1b282a388c19fa49b2e4075ffe44a3fd",
       "router": {},
       "eas": {
         "projectId": "89cbd11f-03c0-4d30-9062-295654924f59"

@@ -63,4 +63,13 @@ describe("ConfiguredSmsSender", () => {
       fetchMock.mockRestore();
     }
   });
+  it("rejects disabled OTP delivery before HTTP requests", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    try {
+      const sender = new ConfiguredSmsSender({ ...baseEnv, SMS_PROVIDER: "disabled" });
+      await expect(sender.sendOtp({ phoneNumber: "+821012345678", code: "123456", expiresAt: "2026-10-01T00:00:00.000Z", idempotencyKey: "auth-otp:1" })).rejects.toThrow("disabled");
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally { fetchMock.mockRestore(); }
+  });
+
 });

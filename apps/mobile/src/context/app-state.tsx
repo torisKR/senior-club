@@ -29,6 +29,7 @@ import { unregisterCurrentAndroidDevice } from '@/notifications/push-registratio
 import {
   createDefaultAppState,
   normalizePersistedAppState,
+  updateCachedProfile,
 } from '@/context/persisted-app-state';
 import type {
   AppStateContextValue,
@@ -205,6 +206,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
           session: {
             ...current.session,
             displayName: profile.user.name,
+            phoneNumber: profile.user.phoneNumber ?? null,
             onboardingCompletedAt: profile.onboardingCompletedAt,
           },
           user: profile.user,
@@ -675,15 +677,10 @@ export function AppStateProvider({ children }: PropsWithChildren) {
   );
 
   const updateUser = useCallback(
-    (updates: Partial<User>) =>
-      updateState((current) => {
-        const nextUser = { ...current.user, ...updates };
-        return {
-          ...current,
-          user: nextUser,
-          selectedInterestIds: updates.interestIds ? [...updates.interestIds] : current.selectedInterestIds,
-        };
-      }),
+    (updates: Partial<User>) => {
+      profileMutationVersion.current += 1;
+      updateState((current) => updateCachedProfile(current, updates));
+    },
     [updateState],
   );
 

@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { browserSessionStillCurrent, readBrowserSession } from "@/lib/auth/browser-session";
 
 import { sanitizeReturnTo } from "@/lib/auth/return-to";
 import { buildOnboardingRoute } from "@/lib/auth/post-login-route";
@@ -30,8 +31,9 @@ type ProfileInterest = {
 
 type SessionUser = {
   id: string;
-  email: string;
+  email?: string | null;
   name: string;
+  phoneNumber?: string | null;
   role: "MEMBER" | "LEADER" | "ADMIN";
   birthYear?: number | null;
   region?: string | null;
@@ -124,7 +126,6 @@ function isSessionUser(value: unknown): value is SessionUser {
   const user = value as Partial<SessionUser>;
   return (
     typeof user.id === "string" &&
-    typeof user.email === "string" &&
     typeof user.name === "string" &&
     (user.role === "MEMBER" || user.role === "LEADER" || user.role === "ADMIN")
   );
@@ -161,17 +162,14 @@ export function OnboardingFlow({ returnTo = "/" }: { returnTo?: string }) {
     const controller = new AbortController();
 
     void Promise.all([
-      fetch("/api/auth/session", {
-        credentials: "same-origin",
-        cache: "no-store",
-        signal: controller.signal,
-      }),
+      readBrowserSession({ signal: controller.signal }),
       fetch("/api/interests", {
         credentials: "same-origin",
         signal: controller.signal,
       }),
     ])
       .then(async ([sessionResponse, interestsResponse]) => {
+        if (!browserSessionStillCurrent(sessionResponse)) return;
         if (sessionResponse.status === 401) {
           router.replace(loginHref);
           return;
@@ -197,7 +195,7 @@ export function OnboardingFlow({ returnTo = "/" }: { returnTo?: string }) {
           throw new Error("선택 가능한 관심사 목록을 확인하지 못했습니다.");
         }
 
-        if (!controller.signal.aborted) {
+        if (browserSessionStillCurrent(sessionResponse)) {
           syncServerProfileCache(window.localStorage, session.user);
           try {
             window.sessionStorage.setItem(PROFILE_SESSION_SYNC_KEY, "done");
@@ -208,7 +206,7 @@ export function OnboardingFlow({ returnTo = "/" }: { returnTo?: string }) {
         }
       })
       .catch((caught) => {
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted || (caught instanceof DOMException && caught.name === "AbortError")) return;
         setLoadState({
           status: "error",
           message:
@@ -240,7 +238,7 @@ export function OnboardingFlow({ returnTo = "/" }: { returnTo?: string }) {
           {loadState.message}
         </p>
         <button
-          className="mt-6 inline-flex min-h-13 items-center justify-center rounded-xl bg-[var(--primary)] px-7 py-3 text-[18px] font-extrabold text-white outline-none focus-visible:ring-4 focus-visible:ring-[var(--primary)]/35"
+          className="mt-6 inline-flex min-h-14 items-center justify-center rounded-xl bg-[var(--primary)] px-7 py-3 text-[18px] font-extrabold text-white outline-none focus-visible:ring-4 focus-visible:ring-[var(--primary)]/35"
           onClick={() => {
             setLoadState({ status: "loading" });
             setLoadAttempt((current) => current + 1);
@@ -293,6 +291,7 @@ function OnboardingForm({
     typeof user.birthYear === "number" ? String(user.birthYear) : "",
   );
   const [name, setName] = useState(user.name);
+  const [phoneNumber, setPhoneNumber] = useState(user.phoneNumber ?? "");
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -330,11 +329,17 @@ function OnboardingForm({
   async function saveProfile() {
     if (submitLock.current) return;
 
-    const normalizedName = name.trim() || user.name.trim();
+    // A blank optional display name preserves the server's existing name.
+    const normalizedName = name.trim() || user.name;
+    const normalizedPhone = phoneNumber.trim().replace(/[\s().-]/g, "");
     const normalizedRegion = region.trim();
     const parsedBirthYear = parseBirthYearInput(birthYear);
-    if (normalizedName.length < 2 || normalizedName.length > 40) {
-      setError("이름은 2~40자로 입력해 주세요.");
+    if (name.trim() && (name.trim().length < 2 || name.trim().length > 40 || /[<>\u0000-\u001f\u007f]/u.test(name))) {
+      setError("이름 또는 닉네임을 입력할 경우 2~40자로 입력해 주세요.");
+      return;
+    }
+    if (normalizedPhone && !/^(?:\+[1-9]\d{9,14}|01[016789]\d{7,8})$/.test(normalizedPhone)) {
+      setError("전화번호를 입력할 경우 010-1234-5678 형식으로 입력해 주세요.");
       return;
     }
     if (!normalizedRegion) {
@@ -362,6 +367,7 @@ function OnboardingForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: normalizedName,
+          phoneNumber: normalizedPhone || null,
           region: normalizedRegion,
           birthYear: parsedBirthYear,
           interestSlugs: interests,
@@ -489,7 +495,7 @@ function OnboardingForm({
               <button
                 type="button"
                 onClick={goToProfileStep}
-                className="inline-flex min-h-13 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-6 py-3 text-[18px] font-extrabold text-white outline-none transition hover:bg-[var(--primary-strong)] focus-visible:ring-4 focus-visible:ring-[var(--primary)]/35"
+                className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-6 py-3 text-[18px] font-extrabold text-white outline-none transition hover:bg-[var(--primary-strong)] focus-visible:ring-4 focus-visible:ring-[var(--primary)]/35"
               >
                 다음
                 <ArrowRight aria-hidden="true" className="h-5 w-5" />
@@ -518,7 +524,7 @@ function OnboardingForm({
             <div className="mt-9 grid gap-8 lg:grid-cols-2">
               <div>
                 <label htmlFor="display-name" className="block text-[18px] font-extrabold">
-                  불리고 싶은 이름 <span className="font-medium text-[var(--muted)]">(선택)</span>
+                  이름 또는 닉네임 <span className="font-medium text-[var(--muted)]">(선택)</span>
                 </label>
                 <input
                   id="display-name"
@@ -534,6 +540,15 @@ function OnboardingForm({
                   autoComplete="nickname"
                   className="mt-3 min-h-14 w-full rounded-2xl border-2 border-[var(--line)] bg-[var(--surface)] px-4 text-[18px] outline-none transition placeholder:text-[var(--muted)]/70 focus:border-[var(--primary)] focus:ring-4 focus:ring-[var(--primary)]/20"
                 />
+                <p className="mt-2 text-[16px] text-[var(--muted)]">비워 두면 현재 표시 이름을 유지합니다.</p>
+              </div>
+
+              <div>
+                <label htmlFor="profile-phone" className="block text-[18px] font-extrabold">
+                  전화번호 <span className="font-medium text-[var(--muted)]">(선택)</span>
+                </label>
+                <input id="profile-phone" type="tel" autoComplete="tel" inputMode="tel" maxLength={24} value={phoneNumber} disabled={isSaving} onChange={(event) => { setPhoneNumber(event.target.value); setError(""); }} placeholder="예: 010-1234-5678" aria-describedby="profile-phone-help" className="mt-3 min-h-14 w-full rounded-2xl border-2 border-[var(--line)] bg-[var(--surface)] px-4 text-[18px]" />
+                <p id="profile-phone-help" className="mt-2 text-[16px] text-[var(--muted)]">로그인에 필요하지 않습니다. 비워 두면 전화번호를 저장하지 않습니다.</p>
               </div>
 
               <div>
@@ -608,7 +623,7 @@ function OnboardingForm({
                   setError("");
                   setStep(1);
                 }}
-                className="inline-flex min-h-13 items-center justify-center gap-2 rounded-xl border-2 border-[var(--line)] px-6 py-3 text-[18px] font-extrabold outline-none transition hover:bg-[var(--canvas)] focus-visible:ring-4 focus-visible:ring-[var(--primary)]/30"
+                className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-[var(--line)] px-6 py-3 text-[18px] font-extrabold outline-none transition hover:bg-[var(--canvas)] focus-visible:ring-4 focus-visible:ring-[var(--primary)]/30"
               >
                 <ArrowLeft aria-hidden="true" className="h-5 w-5" />
                 이전
@@ -617,7 +632,7 @@ function OnboardingForm({
                 type="button"
                 disabled={isSaving}
                 onClick={() => void saveProfile()}
-                className="inline-flex min-h-13 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-7 py-3 text-[18px] font-extrabold text-white outline-none transition hover:bg-[var(--primary-strong)] focus-visible:ring-4 focus-visible:ring-[var(--primary)]/35 disabled:cursor-wait disabled:opacity-65"
+                className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-7 py-3 text-[18px] font-extrabold text-white outline-none transition hover:bg-[var(--primary-strong)] focus-visible:ring-4 focus-visible:ring-[var(--primary)]/35 disabled:cursor-wait disabled:opacity-65"
               >
                 {isSaving ? (
                   <>

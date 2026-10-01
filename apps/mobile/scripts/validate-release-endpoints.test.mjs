@@ -197,7 +197,10 @@ test('policy endpoints require non-empty HTML without release blocker wording', 
 
   assert.match(getResponseBodyViolation(check, 'application/json', '{}'), /HTML이 아닙니다/);
   assert.match(getResponseBodyViolation(check, 'text/html', '   '), /비어 있습니다/);
-  for (const blocker of ['MVP 운영 초안', '임시 문의처', '법인 정보 미확정']) {
+  for (const blocker of [
+    'MVP 운영 초안', '임시 문의처', '법인 정보 미확정',
+    '실제 수탁자, 처리 국가, 항목과 기간은 공급자 계약을 확정한 뒤 이 페이지에 공개합니다.',
+  ]) {
     assert.match(
       getResponseBodyViolation(check, 'text/html', `<html>${blocker}</html>`),
       /출시 차단 문구/,

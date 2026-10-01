@@ -35,7 +35,7 @@ export function ClubsScreen() {
   const router = useRouter();
   const theme = useTheme();
   const insets = useEffectiveSafeAreaInsets();
-  const { interests, selectedInterestIds } = useAppState();
+  const { interests, selectedInterestIds, largeTextEnabled } = useAppState();
   const { width } = useWindowDimensions();
   const columns = width >= 760 ? 2 : 1;
 
@@ -247,7 +247,7 @@ export function ClubsScreen() {
   };
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: theme.background, paddingTop: insets.top }}>
       <Stack.Screen options={{ title: '커뮤니티', headerBackTitle: '뒤로' }} />
       <FlatList
         key={`club-grid-${columns}`}
@@ -258,15 +258,15 @@ export function ClubsScreen() {
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={false}
-        style={{ flex: 1, backgroundColor: theme.background }}
+        style={{ flex: 1, backgroundColor: theme.background, overflow: 'hidden' }}
         contentContainerStyle={{
           width: '100%',
           maxWidth: 980,
           flexGrow: 1,
           alignSelf: 'center',
           paddingHorizontal: width < 360 ? Spacing.lg : Layout.screenPadding,
-          paddingTop: insets.top + Spacing.lg,
-          paddingBottom: 120,
+          paddingTop: Spacing.lg,
+          paddingBottom: Spacing.xxxl,
           gap: Spacing.lg,
         }}
         columnWrapperStyle={columns > 1 ? { gap: Spacing.lg, alignItems: 'stretch' } : undefined}
@@ -303,6 +303,7 @@ export function ClubsScreen() {
                   maxLength={80}
                   style={[
                     styles.searchInput,
+                    { fontSize: largeTextEnabled ? 18 : 16, lineHeight: largeTextEnabled ? 28 : 24 },
                     {
                       color: theme.text,
                       backgroundColor: theme.surface,
@@ -412,7 +413,13 @@ export function ClubsScreen() {
           </View>
         }
         renderItem={({ item }) => (
-          <View style={{ flex: 1, minWidth: 0, paddingBottom: columns > 1 ? 0 : Spacing.xs }}>
+          <View
+            style={{
+              // Only horizontal grid rows need flex; vertical cards retain their content height.
+              flex: columns > 1 ? 1 : undefined,
+              minWidth: 0,
+              paddingBottom: columns > 1 ? 0 : Spacing.xs,
+            }}>
             <ClubCard
               club={item}
               recommended={selectedInterestIds.includes(item.interest.slug)}
@@ -476,7 +483,7 @@ export function ClubsScreen() {
         onEndReachedThreshold={0.35}
         keyExtractor={(item) => item.id}
       />
-    </>
+    </View>
   );
 }
 
@@ -489,8 +496,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.lg,
-    fontSize: 18,
-    fontFamily: FontWeights.emphasis,
+    fontSize: 16,
+    fontFamily: FontWeights.body,
   },
   searchButton: {
     minWidth: 76,

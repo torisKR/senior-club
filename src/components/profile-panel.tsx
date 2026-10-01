@@ -181,7 +181,7 @@ export function ProfilePanel({ initialUser }: { initialUser: BackendUser }) {
               <div className="flex min-h-14 items-center gap-3 rounded-2xl bg-[var(--canvas)] px-4 py-3">
                 <Smartphone aria-hidden="true" className="h-5 w-5 shrink-0 text-[var(--primary-strong)]" />
                 <div className="min-w-0">
-                  <dt className="text-sm font-bold text-[var(--muted)]">인증 휴대폰</dt>
+                  <dt className="text-sm font-bold text-[var(--muted)]">전화번호 (선택)</dt>
                   <dd className="truncate text-[17px] font-extrabold">{initialUser.phoneNumber ?? "등록된 번호 없음"}</dd>
                 </div>
               </div>
@@ -193,6 +193,7 @@ export function ProfilePanel({ initialUser }: { initialUser: BackendUser }) {
                 </div>
               </div>
             </dl>
+            <Link href="/onboarding?returnTo=%2Fme" className="button-secondary mt-5">프로필 수정하기</Link>
           </div>
         </section>
 
@@ -279,7 +280,7 @@ export function ProfilePanel({ initialUser }: { initialUser: BackendUser }) {
               </div>
             ))}
           </dl>
-          <Link href="/events" className="mt-6 inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-5 py-3 text-[18px] font-extrabold text-white outline-none transition hover:bg-[var(--primary-strong)] focus-visible:ring-4 focus-visible:ring-[var(--primary)]/35">
+          <Link href="/events" className="mt-6 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-5 py-3 text-[18px] font-extrabold text-white outline-none transition hover:bg-[var(--primary-strong)] focus-visible:ring-4 focus-visible:ring-[var(--primary)]/35">
             모임 찾아보기
             <ArrowRight aria-hidden="true" className="h-5 w-5" />
           </Link>
@@ -310,7 +311,7 @@ export function ProfilePanel({ initialUser }: { initialUser: BackendUser }) {
           </p>
         ) : null}
 
-        <button type="button" disabled={isLoggingOut} onClick={logout} className="inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 text-[18px] font-bold text-[var(--muted)] outline-none transition hover:bg-[var(--surface)] hover:text-[var(--ink)] focus-visible:ring-4 focus-visible:ring-[var(--primary)]/30 disabled:cursor-wait disabled:opacity-60">
+        <button type="button" disabled={isLoggingOut} onClick={logout} className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 text-[18px] font-bold text-[var(--muted)] outline-none transition hover:bg-[var(--surface)] hover:text-[var(--ink)] focus-visible:ring-4 focus-visible:ring-[var(--primary)]/30 disabled:cursor-wait disabled:opacity-60">
           <LogOut aria-hidden="true" className="h-5 w-5" />
           {isLoggingOut ? "로그아웃 중…" : "로그아웃"}
         </button>

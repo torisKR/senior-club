@@ -1,0 +1,475 @@
+{
+  "origin": "https://senior.toris.kr",
+  "beforeObservedAt": "2026-09-30T06:31:01.362Z",
+  "afterObservedAt": "2026-09-30T06:44:23.198Z",
+  "deployment": "dpl_9fK6bmYnVLeaP9PVhbY3HCFSuYcG",
+  "method": "Chromium lab samples; local network; no load or field p75 claim",
+  "samplesPerPhase": 24,
+  "passed": true,
+  "beforeFailures": [],
+  "afterFailures": [],
+  "pageErrors": 0,
+  "imageDecodeFailures": 0,
+  "horizontalOverflows": 0,
+  "realAccountWrites": 0,
+  "groups": [
+    {
+      "scenario": "desktop",
+      "route": "/",
+      "samplesPerPhase": 3,
+      "before": {
+        "ttfbMs": 47.6,
+        "fcpMs": 228,
+        "lcpMs": 540,
+        "cls": 0,
+        "clsAfterScroll": 0,
+        "initialTransferredBytes": 307077,
+        "imageTransferredBytes": 86568,
+        "fontTransferredBytes": 0,
+        "loadedFontSubsetsMin": 0,
+        "imageCandidates": [
+          {
+            "asset": "/images/club-senior-hero.jpg",
+            "requestedWidth": 640,
+            "renderedWidth": 338
+          },
+          {
+            "asset": "/images/club-senior-hero.jpg",
+            "requestedWidth": 768,
+            "renderedWidth": 338
+          },
+          {
+            "asset": "/images/club-senior-hero.jpg",
+            "requestedWidth": 768,
+            "renderedWidth": 568
+          },
+          {
+            "asset": "/images/senior-club-mark-v3.png",
+            "requestedWidth": 48,
+            "renderedWidth": 46
+          }
+        ]
+      },
+      "after": {
+        "ttfbMs": 103.7,
+        "fcpMs": 344,
+        "lcpMs": 676,
+        "cls": 0,
+        "clsAfterScroll": 0,
+        "initialTransferredBytes": 659122,
+        "imageTransferredBytes": 82252,
+        "fontTransferredBytes": 341844,
+        "loadedFontSubsetsMin": 13,
+        "imageCandidates": [
+          {
+            "asset": "/images/club-senior-hero.jpg",
+            "requestedWidth": 640,
+            "renderedWidth": 338
+          },
+          {
+            "asset": "/images/club-senior-hero.jpg",
+            "requestedWidth": 640,
+            "renderedWidth": 568
+          },
+          {
+            "asset": "/images/senior-club-mark-v3.png",
+            "requestedWidth": 48,
+            "renderedWidth": 46
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "desktop",
+      "route": "/clubs",
+      "samplesPerPhase": 3,
+      "before": {
+        "ttfbMs": 43.5,
+        "fcpMs": 536,
+        "lcpMs": 868,
+        "cls": 0,
+        "clsAfterScroll": 0,
+        "initialTransferredBytes": 329616,
+        "imageTransferredBytes": 89473,
+        "fontTransferredBytes": 0,
+        "loadedFontSubsetsMin": 0,
+        "imageCandidates": [
+          {
+            "asset": "/images/club-senior-hero.jpg",
+            "requestedWidth": 384,
+            "renderedWidth": 378
+          },
+          {
+            "asset": "/images/event-photo.jpg",
+            "requestedWidth": 384,
+            "renderedWidth": 378
+          },
+          {
+            "asset": "/images/senior-club-mark-v3.png",
+            "requestedWidth": 48,
+            "renderedWidth": 46
+          }
+        ]
+      },
+      "after": {
+        "ttfbMs": 42.8,
+        "fcpMs": 488,
+        "lcpMs": 824,
+        "cls": 0,
+        "clsAfterScroll": 0,
+        "initialTransferredBytes": 622003,
+        "imageTransferredBytes": 89473,
+        "fontTransferredBytes": 282424,
+        "loadedFontSubsetsMin": 11,
+        "imageCandidates": [
+          {
+            "asset": "/images/club-senior-hero.jpg",
+            "requestedWidth": 384,
+            "renderedWidth": 378
+          },
+          {
+            "asset": "/images/event-photo.jpg",
+            "requestedWidth": 384,
+            "renderedWidth": 378
+          },
+          {
+            "asset": "/images/senior-club-mark-v3.png",
+            "requestedWidth": 48,
+            "renderedWidth": 46
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "desktop",
+      "route": "/events?view=past",
+      "samplesPerPhase": 3,
+      "before": {
+        "ttfbMs": 41.8,
+        "fcpMs": 344,
+        "lcpMs": 660,
+        "cls": 0,
+        "clsAfterScroll": 0,
+        "initialTransferredBytes": 348383,
+        "imageTransferredBytes": 89473,
+        "fontTransferredBytes": 0,
+        "loadedFontSubsetsMin": 0,
+        "imageCandidates": [
+          {
+            "asset": "/images/club-senior-hero.jpg",
+            "requestedWidth": 384,
+            "renderedWidth": 378
+          },
+          {
+            "asset": "/images/event-photo.jpg",
+            "requestedWidth": 384,
+            "renderedWidth": 378
+          },
+          {
+            "asset": "/images/senior-club-mark-v3.png",
+            "requestedWidth": 48,
+            "renderedWidth": 46
+          }
+        ]
+      },
+      "after": {
+        "ttfbMs": 80,
+        "fcpMs": 428,
+        "lcpMs": 744,
+        "cls": 0,
+        "clsAfterScroll": 0,
+        "initialTransferredBytes": 623492,
+        "imageTransferredBytes": 89473,
+        "fontTransferredBytes": 282424,
+        "loadedFontSubsetsMin": 11,
+        "imageCandidates": [
+          {
+            "asset": "/images/club-senior-hero.jpg",
+            "requestedWidth": 384,
+            "renderedWidth": 378
+          },
+          {
+            "asset": "/images/event-photo.jpg",
+            "requestedWidth": 384,
+            "renderedWidth": 378
+          },
+          {
+            "asset": "/images/senior-club-mark-v3.png",
+            "requestedWidth": 48,
+            "renderedWidth": 46
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "desktop",
+      "route": "/events",
+      "samplesPerPhase": 3,
+      "before": {
+        "ttfbMs": 102.1,
+        "fcpMs": 628,
+        "lcpMs": 960,
+        "cls": 0,
+        "clsAfterScroll": 0,
+        "initialTransferredBytes": 290853,
+        "imageTransferredBytes": 65654,
+        "fontTransferredBytes": 0,
+        "loadedFontSubsetsMin": 0,
+        "imageCandidates": [
+          {
+            "asset": "/images/senior-club-mark-v3.png",
+            "requestedWidth": 48,
+            "renderedWidth": 46
+          }
+        ]
+      },
+      "after": {
+        "ttfbMs": 44.9,
+        "fcpMs": 524,
+        "lcpMs": 840,
+        "cls": 0,
+        "clsAfterScroll": 0,
+        "initialTransferredBytes": 532568,
+        "imageTransferredBytes": 65654,
+        "fontTransferredBytes": 208728,
+        "loadedFontSubsetsMin": 8,
+        "imageCandidates": [
+          {
+            "asset": "/images/senior-club-mark-v3.png",
+            "requestedWidth": 48,
+            "renderedWidth": 46
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "android-width",
+      "route": "/",
+      "samplesPerPhase": 3,
+      "before": {
+        "ttfbMs": 44.2,
+        "fcpMs": 172,
+        "lcpMs": 504,
+        "cls": 0,
+        "clsAfterScroll": 0,
+        "initialTransferredBytes": 316566,
+        "imageTransferredBytes": 99450,
+        "fontTransferredBytes": 0,
+        "loadedFontSubsetsMin": 0,
+        "imageCandidates": [
+          {
+            "asset": "/images/club-senior-hero.jpg",
+            "requestedWidth": 1024,
+            "renderedWidth": 328
+          },
+          {
+            "asset": "/images/club-senior-hero.jpg",
+            "requestedWidth": 1024,
+            "renderedWidth": 370
+          },
+          {
+            "asset": "/images/senior-club-mark-v3.png",
+            "requestedWidth": 96,
+            "renderedWidth": 42
+          }
+        ]
+      },
+      "after": {
+        "ttfbMs": 39,
+        "fcpMs": 132,
+        "lcpMs": 236,
+        "cls": 0,
+        "clsAfterScroll": 0,
+        "initialTransferredBytes": 663330,
+        "imageTransferredBytes": 88583,
+        "fontTransferredBytes": 341844,
+        "loadedFontSubsetsMin": 13,
+        "imageCandidates": [
+          {
+            "asset": "/images/club-senior-hero.jpg",
+            "requestedWidth": 768,
+            "renderedWidth": 328
+          },
+          {
+            "asset": "/images/club-senior-hero.jpg",
+            "requestedWidth": 768,
+            "renderedWidth": 370
+          },
+          {
+            "asset": "/images/senior-club-mark-v3.png",
+            "requestedWidth": 96,
+            "renderedWidth": 42
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "android-width",
+      "route": "/clubs",
+      "samplesPerPhase": 3,
+      "before": {
+        "ttfbMs": 41.8,
+        "fcpMs": 384,
+        "lcpMs": 700,
+        "cls": 0,
+        "clsAfterScroll": 0,
+        "initialTransferredBytes": 382807,
+        "imageTransferredBytes": 159975,
+        "fontTransferredBytes": 0,
+        "loadedFontSubsetsMin": 0,
+        "imageCandidates": [
+          {
+            "asset": "/images/club-senior-hero.jpg",
+            "requestedWidth": 1024,
+            "renderedWidth": 368
+          },
+          {
+            "asset": "/images/event-photo.jpg",
+            "requestedWidth": 1024,
+            "renderedWidth": 368
+          },
+          {
+            "asset": "/images/senior-club-mark-v3.png",
+            "requestedWidth": 96,
+            "renderedWidth": 42
+          }
+        ]
+      },
+      "after": {
+        "ttfbMs": 78.3,
+        "fcpMs": 588,
+        "lcpMs": 692,
+        "cls": 0,
+        "clsAfterScroll": 0,
+        "initialTransferredBytes": 653075,
+        "imageTransferredBytes": 130173,
+        "fontTransferredBytes": 282424,
+        "loadedFontSubsetsMin": 11,
+        "imageCandidates": [
+          {
+            "asset": "/images/club-senior-hero.jpg",
+            "requestedWidth": 768,
+            "renderedWidth": 368
+          },
+          {
+            "asset": "/images/event-photo.jpg",
+            "requestedWidth": 768,
+            "renderedWidth": 368
+          },
+          {
+            "asset": "/images/senior-club-mark-v3.png",
+            "requestedWidth": 96,
+            "renderedWidth": 42
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "android-width",
+      "route": "/events?view=past",
+      "samplesPerPhase": 3,
+      "before": {
+        "ttfbMs": 40.3,
+        "fcpMs": 492,
+        "lcpMs": 808,
+        "cls": 0,
+        "clsAfterScroll": 0,
+        "initialTransferredBytes": 318324,
+        "imageTransferredBytes": 160575,
+        "fontTransferredBytes": 0,
+        "loadedFontSubsetsMin": 0,
+        "imageCandidates": [
+          {
+            "asset": "/images/club-senior-hero.jpg",
+            "requestedWidth": 1024,
+            "renderedWidth": 368
+          },
+          {
+            "asset": "/images/event-photo.jpg",
+            "requestedWidth": 1024,
+            "renderedWidth": 368
+          },
+          {
+            "asset": "/images/senior-club-mark-v3.png",
+            "requestedWidth": 96,
+            "renderedWidth": 42
+          }
+        ]
+      },
+      "after": {
+        "ttfbMs": 78.1,
+        "fcpMs": 372,
+        "lcpMs": 712,
+        "cls": 0,
+        "clsAfterScroll": 0,
+        "initialTransferredBytes": 605272,
+        "imageTransferredBytes": 130473,
+        "fontTransferredBytes": 282424,
+        "loadedFontSubsetsMin": 11,
+        "imageCandidates": [
+          {
+            "asset": "/images/club-senior-hero.jpg",
+            "requestedWidth": 768,
+            "renderedWidth": 368
+          },
+          {
+            "asset": "/images/event-photo.jpg",
+            "requestedWidth": 768,
+            "renderedWidth": 368
+          },
+          {
+            "asset": "/images/senior-club-mark-v3.png",
+            "requestedWidth": 96,
+            "renderedWidth": 42
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "android-width",
+      "route": "/events",
+      "samplesPerPhase": 3,
+      "before": {
+        "ttfbMs": 46.1,
+        "fcpMs": 404,
+        "lcpMs": 704,
+        "cls": 0,
+        "clsAfterScroll": 0,
+        "initialTransferredBytes": 283540,
+        "imageTransferredBytes": 66469,
+        "fontTransferredBytes": 0,
+        "loadedFontSubsetsMin": 0,
+        "imageCandidates": [
+          {
+            "asset": "/images/senior-club-mark-v3.png",
+            "requestedWidth": 96,
+            "renderedWidth": 42
+          }
+        ]
+      },
+      "after": {
+        "ttfbMs": 67.4,
+        "fcpMs": 404,
+        "lcpMs": 720,
+        "cls": 0,
+        "clsAfterScroll": 0,
+        "initialTransferredBytes": 507889,
+        "imageTransferredBytes": 66469,
+        "fontTransferredBytes": 208728,
+        "loadedFontSubsetsMin": 8,
+        "imageCandidates": [
+          {
+            "asset": "/images/senior-club-mark-v3.png",
+            "requestedWidth": 96,
+            "renderedWidth": 42
+          }
+        ]
+      }
+    }
+  ],
+  "limits": [
+    "Three local-network Chromium samples per page; no throttle, load test, field p75, or causal speed claim.",
+    "Before used a system fallback font; after adds self-hosted Pretendard. Initial transferred bytes increased and are not reported as a total-page byte reduction.",
+    "Image candidate and transfer measurements cover all visible images after bounded lazy-image scrolling."
+  ]
+}

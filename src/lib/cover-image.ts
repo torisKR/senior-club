@@ -16,7 +16,9 @@ export const DEFAULT_COVER_IMAGE = "/images/club-senior-hero.jpg";
  */
 export function getCategoryCoverImage(category?: string | null): string {
   if (!category) return DEFAULT_COVER_IMAGE;
-  return CATEGORY_COVER_IMAGES[category] ?? DEFAULT_COVER_IMAGE;
+  return Object.hasOwn(CATEGORY_COVER_IMAGES, category)
+    ? CATEGORY_COVER_IMAGES[category]
+    : DEFAULT_COVER_IMAGE;
 }
 
 /**
@@ -27,6 +29,6 @@ export function resolveCoverImage(
   image?: string | null,
   category?: string | null,
 ): string {
-  if (image && image.trim().length > 0) return image;
+  if (image && image.trim().length > 0) return image.trim();
   return getCategoryCoverImage(category);
 }

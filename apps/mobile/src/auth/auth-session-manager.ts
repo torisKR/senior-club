@@ -32,9 +32,39 @@ let accessToken: string | null = null;
 let persistedSession: StoredSession | null = null;
 let snapshot: AuthManagerSnapshot = { status: 'idle', session: null };
 let restorePromise: Promise<AuthSession | null> | null = null;
+let tokenRefreshPromise: Promise<string | null> | null = null;
 let anonymousClient: { baseUrl: string; client: HttpClient } | null = null;
 let authenticatedClient: { baseUrl: string; client: HttpClient } | null = null;
+let sessionRevision = 0;
+let storageQueue: Promise<void> = Promise.resolve();
+let localCleanup: Promise<void> = Promise.resolve();
 const listeners = new Set<AuthListener>();
+
+function serializeStorage<T>(action: () => Promise<T>): Promise<T> {
+  const next = storageQueue.then(action, action);
+  storageQueue = next.then(() => undefined, () => undefined);
+  return next;
+}
+
+function invalidateInFlightAuthentication() {
+  sessionRevision += 1;
+  restorePromise = null;
+  tokenRefreshPromise = null;
+  return sessionRevision;
+}
+
+function assertCurrentRevision(revision: number) {
+  if (revision !== sessionRevision) {
+    throw new ApiError({ status: 0, code: 'AUTH_SESSION_CHANGED', message: '로그인 상태가 바뀌었습니다. 다시 시도해 주세요.' });
+  }
+}
+
+async function revokeIssuedSession(refreshToken: string) {
+  if (typeof refreshToken !== 'string' || !refreshToken) return;
+  await getAnonymousClient().requestJson('/v1/auth/logout', {
+    method: 'POST', auth: 'none', json: { refreshToken }, timeoutMs: 5_000,
+  }).catch(() => undefined);
+}
 
 function publish(next: AuthManagerSnapshot) {
   snapshot = next;
@@ -76,7 +106,13 @@ function toPublicSession(issued: IssuedSession): AuthSession {
   };
 }
 
-async function installIssuedSession(issued: IssuedSession) {
+async function installIssuedSession(issued: IssuedSession, revision: number, newLogin = false) {
+  try {
+    assertCurrentRevision(revision);
+  } catch (error) {
+    await revokeIssuedSession(issued.refreshToken);
+    throw error;
+  }
   const refreshTokenExpiresAt = parseExpiry(
     issued.refreshTokenExpiresAt,
     'refresh token 만료 시간',
@@ -84,16 +120,26 @@ async function installIssuedSession(issued: IssuedSession) {
   parseExpiry(issued.accessTokenExpiresAt, 'access token 만료 시간');
 
   try {
-    persistedSession = await sessionStore.write({
-      userId: issued.user.id,
-      refreshToken: issued.refreshToken,
-      sessionId: issued.sessionId,
-      refreshTokenExpiresAt,
+    const saved = await serializeStorage(() => {
+      assertCurrentRevision(revision);
+      return sessionStore.write({
+        userId: issued.user.id,
+        refreshToken: issued.refreshToken,
+        sessionId: issued.sessionId,
+        refreshTokenExpiresAt,
+      });
     });
+    assertCurrentRevision(revision);
+    persistedSession = saved;
   } catch (error) {
+    if (revision !== sessionRevision) {
+      await revokeIssuedSession(issued.refreshToken);
+      assertCurrentRevision(revision);
+    }
     accessToken = null;
     persistedSession = null;
-    await sessionStore.clear().catch(() => undefined);
+    await clearLocalSession();
+    await revokeIssuedSession(issued.refreshToken);
     throw new ApiError({
       status: 0,
       code: 'SESSION_STORAGE_FAILED',
@@ -103,24 +149,35 @@ async function installIssuedSession(issued: IssuedSession) {
   }
 
   accessToken = issued.accessToken;
+  // Requests begun under the previous account cannot deliver data to this login.
+  if (newLogin) invalidateInFlightAuthentication();
   const session = toPublicSession(issued);
   publish({ status: 'authenticated', session });
   return session;
 }
 
 async function clearLocalSession(restoreError?: unknown) {
+  invalidateInFlightAuthentication();
   accessToken = null;
   persistedSession = null;
-  await sessionStore.clear().catch(() => undefined);
   publish({
     status: 'anonymous',
     session: null,
     ...(restoreError === undefined ? {} : { restoreError }),
   });
+  localCleanup = serializeStorage(async () => {
+    // Serialized before a newer login's write, including an uncancellable old write.
+    await sessionStore.clear().catch(() => undefined);
+  });
+  await localCleanup;
 }
 
-async function refreshAccessToken() {
-  persistedSession ??= await sessionStore.read();
+async function performRefreshAccessToken(revision: number) {
+  await localCleanup;
+  assertCurrentRevision(revision);
+  const stored = persistedSession ?? await serializeStorage(() => sessionStore.read());
+  assertCurrentRevision(revision);
+  persistedSession = stored;
   if (!persistedSession) {
     accessToken = null;
     return null;
@@ -131,12 +188,25 @@ async function refreshAccessToken() {
     auth: 'none',
     json: { refreshToken: persistedSession.refreshToken },
   });
-  await installIssuedSession(response.body);
+  await installIssuedSession(response.body, revision);
   return accessToken;
+}
+
+function refreshAccessToken() {
+  // Restoration and screen requests use different HTTP paths. Share rotation at
+  // the session owner so they cannot both spend the same stored refresh token.
+  if (!tokenRefreshPromise) {
+    const pending = performRefreshAccessToken(sessionRevision).finally(() => {
+      if (tokenRefreshPromise === pending) tokenRefreshPromise = null;
+    });
+    tokenRefreshPromise = pending;
+  }
+  return tokenRefreshPromise;
 }
 
 const tokenSource: AuthTokenSource = {
   getAccessToken: () => accessToken,
+  getSessionRevision: () => sessionRevision,
   refreshAccessToken,
   onAuthenticationFailure: (error) =>
     isTerminalAuthenticationFailure(error) ? clearLocalSession(error) : undefined,
@@ -171,32 +241,40 @@ export const authSessionManager = {
       return Promise.resolve(snapshot.session);
     }
 
+    const revision = sessionRevision;
     publish({ status: 'restoring', session: null });
-    restorePromise = (async () => {
+    const pending = Promise.resolve().then(async () => {
       try {
-        persistedSession = await sessionStore.read();
+        await localCleanup;
+        assertCurrentRevision(revision);
+        const stored = await serializeStorage(() => sessionStore.read());
+        assertCurrentRevision(revision);
+        persistedSession = stored;
         if (!persistedSession) {
           publish({ status: 'anonymous', session: null });
           return null;
         }
 
         await refreshAccessToken();
+        assertCurrentRevision(revision);
         return snapshot.session;
       } catch (error) {
+        if (revision !== sessionRevision) return null;
         const preserveCredential = isRetryableAuthRestoreError(error);
         accessToken = null;
         if (!preserveCredential) {
           persistedSession = null;
-          await sessionStore.clear().catch(() => undefined);
+          await serializeStorage(() => sessionStore.clear()).catch(() => undefined);
+          if (revision !== sessionRevision) return null;
         }
         publish({ status: 'anonymous', session: null, restoreError: error });
         return null;
       } finally {
-        restorePromise = null;
+        if (restorePromise === pending) restorePromise = null;
       }
-    })();
-
-    return restorePromise;
+    });
+    restorePromise = pending;
+    return pending;
   },
 
   async requestEmailCode(input: EmailCodeRequestInput) {
@@ -216,6 +294,7 @@ export const authSessionManager = {
   },
 
   async verifyEmailCode(input: EmailCodeVerificationInput) {
+    const revision = invalidateInFlightAuthentication();
     const response = await getAnonymousClient().requestJson<IssuedSession>(
       '/v1/auth/email/verify',
       {
@@ -232,10 +311,11 @@ export const authSessionManager = {
         },
       },
     );
-    return installIssuedSession(response.body);
+    return installIssuedSession(response.body, revision, true);
   },
 
   async verifyPhoneCode(input: PhoneCodeVerificationInput) {
+    const revision = invalidateInFlightAuthentication();
     const response = await getAnonymousClient().requestJson<IssuedSession>(
       '/v1/auth/phone/verify',
       {
@@ -252,10 +332,11 @@ export const authSessionManager = {
         },
       },
     );
-    return installIssuedSession(response.body);
+    return installIssuedSession(response.body, revision, true);
   },
 
   async loginWithKakao(accessToken: string, input: KakaoLoginInput) {
+    const revision = invalidateInFlightAuthentication();
     const response = await getAnonymousClient().requestJson<IssuedSession>('/v1/auth/kakao', {
       method: 'POST',
       auth: 'none',
@@ -266,27 +347,21 @@ export const authSessionManager = {
         privacyAccepted: input.privacyAccepted,
       },
     });
-    return installIssuedSession(response.body);
+    return installIssuedSession(response.body, revision, true);
   },
 
   async logout() {
-    const refreshToken = persistedSession?.refreshToken ?? (await sessionStore.read())?.refreshToken;
+    const previous = persistedSession;
+    invalidateInFlightAuthentication();
     accessToken = null;
     persistedSession = null;
     publish({ status: 'anonymous', session: null });
-    await sessionStore.clear().catch(() => undefined);
-
-    if (!refreshToken) {
-      return;
-    }
-    try {
-      await getAnonymousClient().requestJson<{ success: true }>('/v1/auth/logout', {
-        method: 'POST',
-        auth: 'none',
-        json: { refreshToken },
-      });
-    } catch {
-      // Local logout remains authoritative when the network is unavailable.
-    }
+    let refreshToken = previous?.refreshToken;
+    localCleanup = serializeStorage(async () => {
+      refreshToken ??= (await sessionStore.read().catch(() => null))?.refreshToken;
+      await sessionStore.clear().catch(() => undefined);
+    });
+    await localCleanup;
+    if (refreshToken) await revokeIssuedSession(refreshToken);
   },
 };

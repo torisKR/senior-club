@@ -1,0 +1,133 @@
+{
+  "observedAt": "2026-09-30T07:18:21.220125+00:00",
+  "database": "senior-club-db",
+  "status": "available",
+  "publiclyAccessible": false,
+  "pendingModifiedKeys": [],
+  "externalDnsResolvesVpcAddress": true,
+  "endpointUnchanged": true,
+  "securityGroupsUnchanged": true,
+  "encrypted": true,
+  "backupRetentionDays": 7,
+  "deletionProtection": true,
+  "api": {
+    "status": 200,
+    "database": "ok"
+  },
+  "ecsRunning": 1,
+  "ecsPending": 0,
+  "ecsTaskRevision": "25",
+  "passed": true,
+  "scope": "Production DB public accessibility disabled in existing VPC/subnets; no subnet migration or Multi-AZ change",
+  "newConnectionProof": {
+    "stage": "after",
+    "taskId": "59787ac1358f475bbb6bd7d6bfca6b90",
+    "lastStatus": "STOPPED",
+    "containers": [
+      {
+        "name": "api",
+        "lastStatus": "STOPPED",
+        "exitCode": 0
+      }
+    ],
+    "proof": {
+      "event": "senior-rds-private-network-proof",
+      "vpcDnsPrivate": true,
+      "socketInExpectedVpc": true,
+      "authorized": true,
+      "tlsProtocol": "TLSv1.3",
+      "databaseSsl": true,
+      "databaseTlsVersion": "TLSv1.3",
+      "incorrectHostnameRejected": true,
+      "untrustedCaRejected": true,
+      "untrustedCaErrorCode": "SELF_SIGNED_CERT_IN_CHAIN",
+      "passed": true
+    },
+    "passed": true
+  },
+  "readinessObservation": {
+    "purpose": "Readiness observation after public DB access removal",
+    "samples": [
+      {
+        "status": 200,
+        "database": "ok",
+        "elapsedMs": 43.4,
+        "observedAt": "2026-09-30T07:17:08.091184+00:00"
+      },
+      {
+        "status": 200,
+        "database": "ok",
+        "elapsedMs": 51.1,
+        "observedAt": "2026-09-30T07:17:10.147414+00:00"
+      },
+      {
+        "status": 200,
+        "database": "ok",
+        "elapsedMs": 35.6,
+        "observedAt": "2026-09-30T07:17:12.188104+00:00"
+      },
+      {
+        "status": 200,
+        "database": "ok",
+        "elapsedMs": 87.7,
+        "observedAt": "2026-09-30T07:17:14.280931+00:00"
+      },
+      {
+        "status": 200,
+        "database": "ok",
+        "elapsedMs": 197.8,
+        "observedAt": "2026-09-30T07:17:16.483791+00:00"
+      },
+      {
+        "status": 200,
+        "database": "ok",
+        "elapsedMs": 33.3,
+        "observedAt": "2026-09-30T07:17:18.519592+00:00"
+      },
+      {
+        "status": 200,
+        "database": "ok",
+        "elapsedMs": 56.8,
+        "observedAt": "2026-09-30T07:17:20.580137+00:00"
+      },
+      {
+        "status": 200,
+        "database": "ok",
+        "elapsedMs": 85.3,
+        "observedAt": "2026-09-30T07:17:22.667210+00:00"
+      },
+      {
+        "status": 200,
+        "database": "ok",
+        "elapsedMs": 91.3,
+        "observedAt": "2026-09-30T07:17:24.763627+00:00"
+      },
+      {
+        "status": 200,
+        "database": "ok",
+        "elapsedMs": 122.0,
+        "observedAt": "2026-09-30T07:17:26.890257+00:00"
+      },
+      {
+        "status": 200,
+        "database": "ok",
+        "elapsedMs": 80.6,
+        "observedAt": "2026-09-30T07:17:28.971535+00:00"
+      },
+      {
+        "status": 200,
+        "database": "ok",
+        "elapsedMs": 77.6,
+        "observedAt": "2026-09-30T07:17:31.052147+00:00"
+      }
+    ],
+    "passed": true,
+    "medianMs": 79.1,
+    "loadTest": false
+  },
+  "limitations": [
+    "Readiness samples are local-network non-load observations",
+    "Existing VPC subnet routes were unchanged",
+    "Availability/failover and business-row backup validation are not covered"
+  ]
+}

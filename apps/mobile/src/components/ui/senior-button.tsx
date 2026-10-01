@@ -2,13 +2,13 @@ import type { ReactNode } from 'react';
 import type { PressableProps, StyleProp, ViewStyle } from 'react-native';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
-import { Radius, Spacing, TouchTarget } from '@/constants/theme';
+import { ControlDimensions, getButtonAppearance, type ButtonVariant } from '@/constants/theme';
 import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
 
 import { AppText } from './app-text';
 
-export type SeniorButtonVariant = 'primary' | 'accent' | 'secondary' | 'outline' | 'ghost' | 'danger';
+export type SeniorButtonVariant = ButtonVariant;
 
 export interface SeniorButtonProps extends Omit<PressableProps, 'children' | 'style'> {
   label: string;
@@ -35,14 +35,7 @@ export function SeniorButton({
   const theme = useTheme();
   const { largeTextEnabled } = useAppState();
 
-  const palette = {
-    primary: { background: theme.primary, pressed: theme.primaryPressed, text: theme.inverseText, border: theme.primary },
-    accent: { background: theme.accent, pressed: theme.accentPressed, text: theme.inverseText, border: theme.accent },
-    secondary: { background: theme.backgroundSelected, pressed: theme.divider, text: theme.primary, border: theme.backgroundSelected },
-    outline: { background: 'transparent', pressed: theme.backgroundElement, text: theme.primary, border: theme.primary },
-    ghost: { background: 'transparent', pressed: theme.backgroundElement, text: theme.primary, border: 'transparent' },
-    danger: { background: theme.danger, pressed: theme.dangerPressed, text: theme.inverseText, border: theme.danger },
-  }[variant];
+  const palette = getButtonAppearance(theme, variant);
   const isDisabled = disabled || loading;
 
   return (
@@ -54,20 +47,20 @@ export function SeniorButton({
       hitSlop={4}
       style={({ pressed }) => [
         {
-          minHeight: largeTextEnabled ? 60 : TouchTarget.minimum,
+          minHeight: largeTextEnabled ? ControlDimensions.largeTextMinHeight : ControlDimensions.minHeight,
           width: fullWidth ? '100%' : undefined,
-          paddingHorizontal: Spacing.xl,
-          paddingVertical: Spacing.md,
-          borderRadius: Radius.md,
+          paddingHorizontal: ControlDimensions.paddingHorizontal,
+          paddingVertical: ControlDimensions.paddingVertical,
+          borderRadius: ControlDimensions.radius,
           borderCurve: 'continuous',
-          borderWidth: 2,
-          borderColor: palette.border,
+          borderWidth: palette.borderWidth,
+          borderColor: pressed ? palette.pressedBorder : palette.border,
           backgroundColor: pressed ? palette.pressed : palette.background,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: Spacing.sm,
-          opacity: isDisabled ? 0.55 : 1,
+          gap: ControlDimensions.gap,
+          opacity: isDisabled ? ControlDimensions.disabledOpacity : 1,
         },
         style,
       ]}
@@ -75,7 +68,7 @@ export function SeniorButton({
       {loading ? (
         <ActivityIndicator accessibilityLabel="처리 중" color={palette.text} size="small" />
       ) : (
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: ControlDimensions.gap }}>
           {leftAccessory}
           <AppText variant="button" color={palette.text} selectable={false}>
             {label}

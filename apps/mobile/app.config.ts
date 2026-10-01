@@ -59,6 +59,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     plugins: [
       ...(config.plugins ?? []),
+      '@react-native-firebase/app',
+      '@react-native-firebase/auth',
       [
         '@react-native-kakao/core',
         {

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 const workflow = fs.readFileSync(new URL('../../../.github/workflows/android-play-production.yml', import.meta.url), 'utf8');
 const deploy = fs.readFileSync(new URL('../../../.github/workflows/deploy-main.yml', import.meta.url), 'utf8');
+const internal = fs.readFileSync(new URL('../../../.github/workflows/android-play-internal.yml', import.meta.url), 'utf8');
 function step(name) {
   const marker = `      - name: ${name}`;
   const start = workflow.indexOf(marker);
@@ -20,12 +21,30 @@ test('reviewed main deployment retains upstream success and explicit binary upda
   assert.match(workflow, /inputs\.binary_update && 'completed' \|\| 'draft'/);
   assert.match(workflow, /env\.SUBMIT_TO_PLAY == 'true'/);
 });
-test('manual release defaults to build-only and explicitly opts into published binary validation', () => {
+test('manual release defaults to no upload and explicitly opts into published binary validation', () => {
   const dispatch = workflow.slice(workflow.indexOf('  workflow_dispatch:'), workflow.indexOf('\npermissions:'));
   assert.match(dispatch, /binary_update:[\s\S]*?default: false/);
   assert.match(dispatch, /submit_to_play:[\s\S]*?default: false/);
   assert.match(deploy, /submit_to_play: false/);
   assert.match(workflow, /SUBMIT_TO_PLAY: \$\{\{ inputs.submit_to_play \}\}/);
+});
+
+test('main caller explicitly forwards reviewed evidence with artifact read permission', () => {
+  assert.match(deploy, /github\.event_name == 'workflow_dispatch' && inputs\.screenshot_evidence_run_id != ''/);
+  assert.match(deploy, /screenshot_evidence_run_id: \$\{\{ inputs.screenshot_evidence_run_id \}\}/);
+  const android = deploy.slice(deploy.indexOf('\n  android:'));
+  assert.match(android, /permissions:\n      contents: read\n      actions: read/);
+  assert.match(android, /submit_to_play: false/);
+});
+
+test('internal caller requires and forwards exact screenshot evidence with artifact read permission', () => {
+  const input = internal.slice(internal.indexOf('      screenshot_evidence_run_id:'), internal.indexOf('      submit_to_play:'));
+  assert.match(input, /required: true/);
+  assert.match(input, /type: string/);
+  assert.match(internal, /permissions:\n  contents: read\n  actions: read\n/);
+  assert.match(internal, /uses: \.\/\.github\/workflows\/android-play-production.yml/);
+  assert.match(internal, /screenshot_evidence_run_id: \$\{\{ inputs.screenshot_evidence_run_id \}\}/);
+  assert.match(internal, /binary_update: false/);
 });
 
 test('quality, live endpoints and strict screenshot provenance remain before native build', () => {
@@ -34,9 +53,24 @@ test('quality, live endpoints and strict screenshot provenance remain before nat
     assert.ok(workflow.indexOf(gate) > 0 && workflow.indexOf(gate) < build, gate);
   }
   assert.match(step('Bind final screenshot evidence to checked-out commit'), /manifest\?\.capture\?\.commit !== process\.env\.GITHUB_SHA/);
-  assert.match(step('Bind final screenshot evidence to checked-out commit'), /!inputs\.binary_update/);
+  assert.doesNotMatch(step('Bind final screenshot evidence to checked-out commit'), /^        if:/m);
   assert.match(step('Validate published app update'), /pnpm validate:manifest/);
   assert.match(step('Verify release endpoints and Play service account'), /toris-play-uploader@toris-play-uploader/);
+});
+test('all release modes consume exact issuer evidence before preflight and Play edits', () => {
+  const receive = step('Receive exact reviewed screenshot evidence');
+  const preflight = step('Run production release preflight with final screenshot evidence');
+  assert.doesNotMatch(receive + preflight, /^        if:/m);
+  assert.match(receive, /SCREENSHOT_EVIDENCE_RUN_ID: \$\{\{ inputs.screenshot_evidence_run_id \}\}/);
+  assert.match(receive, /python3 -B .github\/scripts\/download-play-screenshot-evidence.py/);
+  assert.match(preflight, /FINAL_SCREENSHOT_MANIFEST: \$\{\{ steps.screenshot_evidence.outputs.manifest \}\}/);
+  assert.match(preflight, /steps.screenshot_evidence.outputs.provenance/);
+  assert.match(workflow, /permissions:\n  contents: read\n  actions: read\n/);
+  assert.doesNotMatch(workflow, /store-listing\/screenshots\/final\/ko-KR\/manifest.json/);
+  const playEdit = workflow.indexOf('      - name: Allocate versionCode from Play history');
+  assert.ok(workflow.indexOf(receive) < workflow.indexOf(preflight));
+  assert.ok(workflow.indexOf(preflight) < playEdit);
+  assert.match(step('Check out repository'), /persist-credentials: false/);
 });
 test('certificate evidence uses actual prebuilt keystore before bounded native build', () => {
   const build = step('Build Play production AAB directly');
@@ -53,6 +87,7 @@ test('signing is fail closed, secrets cleaned and only exact AAB evidence retain
   assert.doesNotMatch(workflow, /eas-cli|EXPO_TOKEN|--latest|set -x/);
   assert.match(step('Build Play production AAB directly'), /release-signing.gradle/);
   assert.match(step('Validate exact signed AAB'), /sha256sum --check/);
+  assert.match(step('Validate exact signed AAB'), /node scripts\/validate-merged-android-manifest\.mjs "\$EVIDENCE_DIR\/merged-manifest\.xml"/);
   assert.match(step('Submit exact validated artifact to Play'), /direct-play-release.py upload/);
   assert.match(step('Upload release evidence'), /retention-days: 30/);
   assert.match(step('Remove temporary release configuration'), /always\(\)/);

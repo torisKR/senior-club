@@ -20,6 +20,8 @@ describe("cover-image helpers", () => {
     expect(getCategoryCoverImage(undefined)).toBe(DEFAULT_COVER_IMAGE);
     expect(getCategoryCoverImage(null)).toBe(DEFAULT_COVER_IMAGE);
     expect(getCategoryCoverImage("unknown-category")).toBe(DEFAULT_COVER_IMAGE);
+    expect(getCategoryCoverImage("constructor")).toBe(DEFAULT_COVER_IMAGE);
+    expect(getCategoryCoverImage("__proto__")).toBe(DEFAULT_COVER_IMAGE);
   });
 
   it("prioritizes item image over fallback", () => {
@@ -27,6 +29,8 @@ describe("cover-image helpers", () => {
       "/custom/path.jpg",
     );
     expect(resolveCoverImage("", "photo")).toBe("/images/event-photo.jpg");
+    expect(resolveCoverImage("   ", "photo")).toBe("/images/event-photo.jpg");
+    expect(resolveCoverImage(" /custom/path.jpg ", "photo")).toBe("/custom/path.jpg");
     expect(resolveCoverImage(undefined, "history")).toBe(
       "/images/event-history.jpg",
     );

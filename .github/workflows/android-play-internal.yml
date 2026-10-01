@@ -3,6 +3,10 @@ name: Android Play internal release
 on:
   workflow_dispatch:
     inputs:
+      screenshot_evidence_run_id:
+        description: 동일 main SHA의 검토 완료된 screenshot issuer workflow run ID
+        required: true
+        type: string
       submit_to_play:
         description: 검증된 AAB를 Google Play 내부 트랙 draft로 제출
         required: true
@@ -11,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build:
@@ -18,5 +23,6 @@ jobs:
     with:
       internal_release: true
       binary_update: false
+      screenshot_evidence_run_id: ${{ inputs.screenshot_evidence_run_id }}
       submit_to_play: ${{ inputs.submit_to_play }}
     secrets: inherit

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import { CoverImage } from "@/components/cover-image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -15,7 +15,6 @@ import {
 
 import { PurposeJourney } from "@/components/purpose-journey";
 import { JsonLd } from "@/components/json-ld";
-import { resolveCoverImage } from "@/lib/cover-image";
 import {
   getPublicClubCatalog,
   isSafePublicClubCursor,
@@ -211,14 +210,14 @@ export default async function ClubsPage({ searchParams }: ClubsPageProps) {
                     className="relative block aspect-[16/9] overflow-hidden bg-[var(--canvas-deep)]"
                     href={`/clubs/${club.slug}`}
                   >
-                    <Image
+                    <CoverImage
                       alt={club.image ? `${club.title} 커뮤니티 대표 이미지` : "시니어클럽 공용 대표 이미지"}
                       className="object-cover transition duration-500 group-hover:scale-[1.025]"
                       fill
                       priority={index === 0}
-                      sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 380px"
-                      src={resolveCoverImage(club.image, club.interest.slug)}
-                      unoptimized={Boolean(club.image?.startsWith("https://"))}
+                      sizes="(max-width: 720px) calc(100vw - 1.25rem), (max-width: 767px) calc(100vw - 2rem), (max-width: 1279px) calc(50vw - 1.625rem), 380px"
+                      image={club.image} category={club.interest.slug}
+
                     />
                     <span className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1 text-sm font-black text-[var(--primary-strong)]">
                       <span aria-hidden="true">{interestEmoji(club.interest.slug)} </span>
@@ -228,7 +227,7 @@ export default async function ClubsPage({ searchParams }: ClubsPageProps) {
 
                   <div className="flex flex-1 flex-col p-5 sm:p-6">
                     <h3 className="text-[1.35rem] font-black tracking-[-0.035em]">
-                      <Link className="no-underline" href={`/clubs/${club.slug}`}>{club.title}</Link>
+                      <Link className="inline-flex min-h-14 items-center no-underline" href={`/clubs/${club.slug}`}>{club.title}</Link>
                     </h3>
                     <p className="mt-2 line-clamp-3 text-[0.95rem] leading-relaxed text-[var(--muted)]">{club.description}</p>
                     {club.region ? <p className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[var(--muted)]"><MapPin aria-hidden="true" size={17} /> {club.region}</p> : null}
@@ -259,7 +258,7 @@ export default async function ClubsPage({ searchParams }: ClubsPageProps) {
                         <MessageCircleMore aria-hidden="true" size={19} />
                         리더 {club.leaderName}
                       </span>
-                      <Link className="inline-flex items-center gap-1 font-black text-[var(--primary)] no-underline" href={`/clubs/${club.slug}`}>
+                      <Link className="inline-flex min-h-14 items-center gap-1 font-black text-[var(--primary)] no-underline" href={`/clubs/${club.slug}`}>
                         둘러보기 <ArrowRight aria-hidden="true" size={20} />
                       </Link>
                     </div>

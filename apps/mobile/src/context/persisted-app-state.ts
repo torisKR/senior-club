@@ -194,3 +194,23 @@ export function normalizePersistedAppState(value: unknown): PersistedAppState {
       : [],
   };
 }
+
+/** Keep presentation metadata in step with a profile received for this account. */
+export function updateCachedProfile(
+  current: PersistedAppState,
+  updates: Partial<User>,
+): PersistedAppState {
+  if (!current.session || current.user.id !== current.session.userId ||
+      (updates.id !== undefined && updates.id !== current.session.userId)) return current;
+  const user = { ...current.user, ...updates };
+  return {
+    ...current,
+    session: {
+      ...current.session,
+      displayName: user.name,
+      phoneNumber: user.phoneNumber ?? null,
+    },
+    user,
+    selectedInterestIds: updates.interestIds ? [...updates.interestIds] : current.selectedInterestIds,
+  };
+}

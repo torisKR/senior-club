@@ -28,6 +28,8 @@ import {
 } from "@/lib/profile-cache";
 import type { Event, InterestId } from "@/lib/types";
 import type { PublicClub } from "@/lib/clubs/server";
+import { SeniorHobbyCourseGuide } from "@/components/senior-hobby-course-guide";
+import { CoverImage } from "@/components/cover-image";
 
 type HomeEvent = {
   id: string;
@@ -36,7 +38,8 @@ type HomeEvent = {
   date: string;
   location: string;
   seats: number;
-  image: string;
+  image?: string;
+  category: string;
   alt: string;
   accent: string;
 };
@@ -79,7 +82,8 @@ export function getHomeEventPreviews(featuredEvents: readonly Event[]): HomeEven
         date: `${event.date} · ${formatEventStartTime(event.startAt)}`,
         location: event.location,
         seats: Math.max(0, event.capacity - event.participantCount),
-        image: event.image ?? style.fallbackImage,
+        image: event.image,
+        category: event.category,
         alt: `${event.location}에서 진행하는 ${event.title} 모임`,
         accent: style.accent,
       },
@@ -108,14 +112,11 @@ export function getHomeThemeCards(
 }
 
 function formatEventStartTime(startAt: string): string {
-  const match = /T(\d{2}):(\d{2})/.exec(startAt);
-  if (!match) return "시간 확인 필요";
-
-  const hour = Number(match[1]);
-  const minute = Number(match[2]);
-  const period = hour < 12 ? "오전" : "오후";
-  const hour12 = hour % 12 || 12;
-  return `${period} ${hour12}시${minute === 0 ? "" : ` ${minute}분`}`;
+  const date = new Date(startAt);
+  if (!Number.isFinite(date.getTime())) return "시간 확인 필요";
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul", hour: "numeric", minute: "2-digit", hour12: true,
+  }).format(date);
 }
 
 export function parseHomeProfile(storedProfile: string | null | undefined): HomeProfile | null {
@@ -180,13 +181,13 @@ function EventPreview({ event }: { event: HomeEvent }) {
         aria-label={`${event.title} 상세 보기`}
       >
         <div className="relative aspect-[16/10] overflow-hidden" style={{ background: event.accent }}>
-          <Image
-            src={event.image}
+          <CoverImage
+            image={event.image}
+            category={event.category}
             alt={event.alt}
             fill
-            sizes="(max-width: 720px) 100vw, (max-width: 1100px) 50vw, 33vw"
+            sizes="(max-width: 720px) calc(100vw - 1.25rem), (max-width: 767px) calc(100vw - 2rem), (max-width: 1279px) calc(50vw - 1.625rem), 380px"
             className="object-cover transition-transform duration-500 group-hover:scale-[1.025]"
-            unoptimized={event.image.startsWith("https://")}
           />
           <div className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1.5 text-[0.85rem] font-black text-[var(--primary-strong)] shadow-sm">
             {event.theme}
@@ -277,7 +278,7 @@ export function HomeDashboard({
       <section className="page-container grid gap-5 pb-10 pt-5 lg:grid-cols-[1.02fr_0.98fr] lg:items-stretch lg:pb-16 lg:pt-8">
         <div className="relative z-10 flex min-h-[31rem] flex-col justify-center overflow-hidden rounded-[1.8rem] bg-[var(--ink)] px-6 py-9 text-white sm:px-10 lg:px-12">
           <div aria-hidden="true" className="absolute -right-20 -top-24 h-72 w-72 rounded-full border-[42px] border-[var(--sky)]/25" />
-          <p className="eyebrow !text-[#a9dbea]" aria-live="polite">
+          <p className="eyebrow !text-[#d0e0bb]" aria-live="polite">
             <Sparkles aria-hidden="true" size={19} /> {memberLabel} · 저장한 정보: {recommendationContext}
           </p>
           <h1 className="display-title relative max-w-[11ch]">오늘 들어오면, 다음 약속이 생깁니다.</h1>
@@ -303,7 +304,7 @@ export function HomeDashboard({
             alt="서울 산책길에서 지도를 함께 보며 다음 활동을 계획하는 시니어 다섯 명"
             fill
             priority
-            sizes="(max-width: 1024px) 100vw, 50vw"
+            sizes="(max-width: 720px) calc(100vw - 1.25rem), (max-width: 1023px) calc(100vw - 2rem), (max-width: 1212px) calc(49vw - 1.5925rem), 569px"
             className="object-cover"
           />
           <figcaption className="absolute bottom-3 right-3 max-w-[calc(100%-1.5rem)] rounded-2xl bg-white/95 px-3.5 py-2.5 text-[0.82rem] font-bold leading-relaxed text-[var(--ink)] shadow-lg backdrop-blur sm:bottom-4 sm:right-4 sm:max-w-[17rem] sm:px-4 sm:py-3 sm:text-[0.86rem]">
@@ -350,7 +351,7 @@ export function HomeDashboard({
             <p className="eyebrow" aria-live="polite">{memberLabel} · 공개된 최신 일정</p>
             <h2 id="recommended-title" className="page-title">다가오는 일정에서 무엇을 해볼까요?</h2>
           </div>
-          <Link className="inline-flex min-h-12 items-center gap-1 self-start font-black text-[var(--primary)]" href="/events">
+          <Link className="inline-flex min-h-14 items-center gap-1 self-start font-black text-[var(--primary)]" href="/events">
             전체 모임 보기 <ArrowRight aria-hidden="true" size={21} />
           </Link>
         </div>
@@ -378,11 +379,17 @@ export function HomeDashboard({
         ) : null}
       </section>
 
+      <section className="border-t border-[var(--line)] bg-[var(--surface-soft)]/50 py-16 sm:py-20">
+        <div className="page-container">
+          <SeniorHobbyCourseGuide />
+        </div>
+      </section>
+
       <section aria-labelledby="themes-title" className="bg-[var(--ink)] py-16 text-white sm:py-20">
         <div className="page-container">
           <div className="grid gap-8 lg:grid-cols-[0.7fr_1.3fr] lg:items-end">
             <div>
-              <p className="eyebrow !text-[#a9dbea]">관심 테마 둘러보기</p>
+              <p className="eyebrow !text-[#d0e0bb]">관심 테마 둘러보기</p>
               <h2 id="themes-title" className="page-title max-w-[11ch]">좋아하는 일에서 대화가 시작됩니다.</h2>
               <p className="mt-4 max-w-md text-[#cadbd6]">실제 공개 커뮤니티에서 관심 있는 주제를 고르고 다음 일정을 확인해 보세요.</p>
             </div>

@@ -28,7 +28,7 @@ import {
 import { safetyApi } from '@/api/safety-api';
 import { ContentSafetyActions } from '@/components/safety';
 import { AppText, Card, EmptyState, Screen, SectionHeader, SeniorButton } from '@/components/ui';
-import { Radius, Spacing, TouchTarget } from '@/constants/theme';
+import { FontSizes, FontWeights, LineHeights, Radius, Spacing, TouchTarget } from '@/constants/theme';
 import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -46,7 +46,7 @@ const EMPTY_PAGE: CursorPage = { hasNextPage: false, nextCursor: null };
 export function PostDetailScreen({ slug, postId }: { slug?: string; postId?: string }) {
   const router = useRouter();
   const theme = useTheme();
-  const { session } = useAppState();
+  const { session, largeTextEnabled } = useAppState();
   const sessionUserId = session?.userId;
   const blockedUserIds = useBlockedUserIds(sessionUserId);
   const safeSlug = isSafePostClubSlug(slug) ? slug : null;
@@ -603,6 +603,8 @@ export function PostDetailScreen({ slug, postId }: { slug?: string; postId?: str
                   maxLength={POST_TITLE_MAX_LENGTH}
                   style={[
                     styles.input,
+
+                    { fontSize: FontSizes[largeTextEnabled ? 'large' : 'standard'].body, lineHeight: LineHeights[largeTextEnabled ? 'large' : 'standard'].body },
                     { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border },
                   ]}
                   accessibilityLabel="수정할 게시글 제목"
@@ -622,6 +624,8 @@ export function PostDetailScreen({ slug, postId }: { slug?: string; postId?: str
                   textAlignVertical="top"
                   style={[
                     styles.input,
+
+                    { fontSize: FontSizes[largeTextEnabled ? 'large' : 'standard'].body, lineHeight: LineHeights[largeTextEnabled ? 'large' : 'standard'].body },
                     styles.postContentInput,
                     { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border },
                   ]}
@@ -654,7 +658,7 @@ export function PostDetailScreen({ slug, postId }: { slug?: string; postId?: str
           ) : (
             <>
               <AppText variant="title">{visiblePost.title}</AppText>
-              <AppText variant="body" style={{ lineHeight: 30 }}>
+              <AppText variant="body">
                 {visiblePost.content}
               </AppText>
             </>
@@ -836,8 +840,9 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    fontSize: 18,
-    lineHeight: 27,
+    fontSize: FontSizes.standard.body,
+    lineHeight: LineHeights.standard.body,
+    fontFamily: FontWeights.body,
   },
   postContentInput: { minHeight: 220 },
   buttonRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: Spacing.sm },

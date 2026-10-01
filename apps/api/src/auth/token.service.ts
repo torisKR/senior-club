@@ -4,6 +4,7 @@ import {
   createHmac,
   createHash,
   randomBytes,
+  randomInt,
   timingSafeEqual,
 } from "node:crypto";
 
@@ -91,7 +92,7 @@ export class TokenService {
   }
 
   createOtpCode() {
-    const value = randomBytes(4).readUInt32BE(0) % 1_000_000;
+    const value = randomInt(0, 1_000_000);
     return value.toString().padStart(6, "0");
   }
 

@@ -1,4 +1,4 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,16 +12,19 @@ import {
 import { HomeBannerAd } from '@/ads/HomeBannerAd';
 import { mergeEventPages } from '@/api/events-api';
 import { AppText, EmptyState, EventCard, SeniorButton } from '@/components/ui';
-import { Layout, Radius, Spacing, TouchTarget } from '@/constants/theme';
+import { FontWeights, Layout, Radius, Spacing, TouchTarget } from '@/constants/theme';
 import { useAppState } from '@/hooks/use-app-state';
 import { useEffectiveSafeAreaInsets } from '@/hooks/use-effective-safe-area-insets';
 import { useTheme } from '@/hooks/use-theme';
 import type { EventListView } from '@/types';
 
-import { matchesEventQuery } from './discovery-utils';
+import {
+  filterDiscoveryEvents,
+  isEventSearchComplete,
+  normalizeEventCategory,
+  type EventFilter,
+} from './event-discovery-filters';
 import { FilterChip } from './filter-chip';
-
-type EventFilter = 'all' | 'upcoming' | 'completed';
 
 const eventFilters: { id: EventFilter; label: string }[] = [
   { id: 'all', label: '전체' },
@@ -31,10 +34,13 @@ const eventFilters: { id: EventFilter; label: string }[] = [
 
 export function EventsScreen() {
   const router = useRouter();
+  const { category: categoryParam } = useLocalSearchParams<{ category?: string | string[] }>();
+  const category = normalizeEventCategory(categoryParam);
   const theme = useTheme();
   const insets = useEffectiveSafeAreaInsets();
   const {
     participations,
+    interests,
     largeTextEnabled,
     eventFeeds,
     ensureEventView,
@@ -44,7 +50,18 @@ export function EventsScreen() {
   const { width } = useWindowDimensions();
   const [activeFilter, setActiveFilter] = useState<EventFilter>('upcoming');
   const [query, setQuery] = useState('');
+  const [previousCategory, setPreviousCategory] = useState(category);
   const columns = width >= 760 ? 2 : 1;
+  const selectedInterest = interests.find((interest) => interest.id === category);
+
+  // A retained tab must not apply the previous hobby's search to a new recommendation.
+  if (previousCategory !== category) {
+    setPreviousCategory(category);
+    if (category) {
+      setQuery('');
+      setActiveFilter('upcoming');
+    }
+  }
 
   useEffect(() => {
     if (activeFilter !== 'upcoming') {
@@ -63,25 +80,11 @@ export function EventsScreen() {
     return mergeEventPages(eventFeeds.upcoming.events, eventFeeds.past.events);
   }, [activeFilter, eventFeeds.past.events, eventFeeds.upcoming.events]);
 
-  const visibleEvents = useMemo(() => {
-    return sourceEvents
-      .filter((event) => {
-        const lifecycleMatches =
-          activeFilter === 'all' ||
-          (activeFilter === 'upcoming'
-            ? event.lifecycle === 'upcoming' || event.lifecycle === 'full'
-            : event.lifecycle === 'completed' || event.lifecycle === 'cancelled');
-        return lifecycleMatches && matchesEventQuery(event, query, event.clubTitle);
-      })
-      .sort((left, right) => {
-        const leftPast = left.lifecycle === 'completed' || left.lifecycle === 'cancelled';
-        const rightPast = right.lifecycle === 'completed' || right.lifecycle === 'cancelled';
-        if (leftPast !== rightPast) return leftPast ? 1 : -1;
-        return leftPast
-          ? new Date(right.startsAt).getTime() - new Date(left.startsAt).getTime()
-          : new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime();
-      });
-  }, [activeFilter, query, sourceEvents]);
+  const visibleEvents = useMemo(
+    () => filterDiscoveryEvents(sourceEvents, { lifecycle: activeFilter, category, query }),
+    [activeFilter, category, query, sourceEvents],
+  );
+  const searchComplete = isEventSearchComplete(visibleFeedViews.map((view) => eventFeeds[view]));
 
   const hasRelevantData = sourceEvents.length > 0;
   const initialLoading = visibleFeedViews.some(
@@ -180,7 +183,7 @@ export function EventsScreen() {
   });
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: theme.background, paddingTop: insets.top }}>
       <Stack.Screen options={{ title: '모임', headerBackTitle: '뒤로' }} />
       <FlatList
         key={`event-grid-${columns}`}
@@ -191,14 +194,14 @@ export function EventsScreen() {
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={false}
-        style={{ flex: 1, backgroundColor: theme.background }}
+        style={{ flex: 1, backgroundColor: theme.background, overflow: 'hidden' }}
         contentContainerStyle={{
           width: '100%',
           maxWidth: 980,
           alignSelf: 'center',
           paddingHorizontal: width < 360 ? Spacing.lg : Layout.screenPadding,
-          paddingTop: insets.top + Spacing.lg,
-          paddingBottom: 120,
+          paddingTop: Spacing.lg,
+          paddingBottom: Spacing.xxxl,
           gap: Spacing.lg,
         }}
         columnWrapperStyle={columns > 1 ? { gap: Spacing.lg, alignItems: 'flex-start' } : undefined}
@@ -232,8 +235,9 @@ export function EventsScreen() {
                   borderRadius: Radius.md,
                   backgroundColor: theme.surface,
                   color: theme.text,
-                  fontSize: largeTextEnabled ? 20 : 18,
-                  lineHeight: largeTextEnabled ? 30 : 26,
+                  fontFamily: FontWeights.body,
+                  fontSize: largeTextEnabled ? 18 : 16,
+                  lineHeight: largeTextEnabled ? 28 : 24,
                   paddingHorizontal: Spacing.lg,
                   paddingVertical: Spacing.md,
                 }}
@@ -251,14 +255,54 @@ export function EventsScreen() {
                   label={filter.label}
                   selected={activeFilter === filter.id}
                   onPress={() => setActiveFilter(filter.id)}
-                  accessibilityLabel={`${filter.label} 모임만 보기`}
+                  accessibilityLabel={`${filter.label}${filter.label.endsWith('모임') ? '' : ' 모임'}만 보기`}
                 />
               ))}
             </ScrollView>
 
+            <View style={{ gap: Spacing.md }}>
+              <AppText variant="bodyStrong">관심사별로 보기</AppText>
+              <ScrollView
+                horizontal
+                contentInsetAdjustmentBehavior="automatic"
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: Spacing.sm, paddingRight: Spacing.xl }}>
+                <FilterChip
+                  label="전체 관심사"
+                  selected={!category}
+                  onPress={() => router.setParams({ category: '' })}
+                  accessibilityLabel="모든 관심사의 모임 보기"
+                />
+                {category && !selectedInterest ? (
+                  <FilterChip
+                    label="선택한 관심사"
+                    selected
+                    onPress={() => router.setParams({ category: '' })}
+                    accessibilityLabel="선택한 관심사 필터 해제"
+                  />
+                ) : null}
+                {interests.map((interest) => (
+                  <FilterChip
+                    key={interest.id}
+                    label={`${interest.emoji} ${interest.name}`}
+                    selected={category === interest.id}
+                    onPress={() => router.setParams({ category: interest.id })}
+                    accessibilityLabel={`${interest.name} 모임만 보기`}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: Spacing.sm }}>
-              <AppText variant="sectionTitle">모임 {visibleEvents.length}개</AppText>
+              <AppText variant="sectionTitle">
+                {searchComplete ? '모임' : '현재까지 찾은 모임'} {visibleEvents.length}개
+              </AppText>
               <AppText variant="caption" color="textSecondary">카드를 눌러 자세한 일정과 신청 방법을 확인하세요.</AppText>
+              {category ? (
+                <AppText variant="caption" color="textSecondary">
+                  {selectedInterest?.name ?? '선택한 관심사'} 모임만 보고 있어요
+                </AppText>
+              ) : null}
               {query.trim() ? (
                 <AppText variant="caption" color="textSecondary">
                   ‘{query.trim()}’ 검색 결과
@@ -271,7 +315,7 @@ export function EventsScreen() {
         renderItem={({ item }) => {
           const status = participations.find((participation) => participation.eventId === item.id)?.status;
           return (
-            <View style={{ flex: 1, minWidth: 0, paddingBottom: columns > 1 ? 0 : Spacing.xs }}>
+            <View style={{ flex: columns > 1 ? 1 : undefined, minWidth: 0, paddingBottom: columns > 1 ? 0 : Spacing.xs }}>
               <EventCard
                 event={item}
                 participationStatus={status}
@@ -302,12 +346,15 @@ export function EventsScreen() {
           ) : (
             <EmptyState
               emoji="🗓️"
-              title="조건에 맞는 모임이 없어요"
-              description="검색어를 지우거나 전체 모임에서 다시 찾아보세요."
+              title={searchComplete ? '조건에 맞는 모임이 없어요' : '불러온 목록에는 조건에 맞는 모임이 없어요'}
+              description={searchComplete
+                ? '검색 조건을 지우거나 전체 모임에서 다시 찾아보세요.'
+                : '아래에서 남은 목록을 불러오거나 오류를 다시 시도해 보세요. 검색 조건을 지워도 좋아요.'}
               actionLabel="검색 조건 지우기"
               onActionPress={() => {
                 setQuery('');
                 setActiveFilter('all');
+                router.setParams({ category: '' });
               }}
             />
           )
@@ -321,6 +368,6 @@ export function EventsScreen() {
         }
         keyExtractor={(item) => item.id}
       />
-    </>
+    </View>
   );
 }

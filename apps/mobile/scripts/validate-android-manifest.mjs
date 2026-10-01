@@ -60,7 +60,7 @@ function readIntrospectedConfig() {
     throw new Error('Expo CLI가 없습니다. apps/mobile에서 의존성을 먼저 설치하세요.');
   }
 
-  const result = spawnSync(process.execPath, [expoCli, 'config', '--type', 'introspect', '--json'], {
+  const result = spawnSync(process.execPath, [path.join(root, 'scripts/introspect-android.mjs')], {
     cwd: root,
     encoding: 'utf8',
     env: { ...process.env, CI: '1' },
@@ -89,7 +89,7 @@ function validateProductionFcmClient(config) {
 
   const configuredPath = config.android?.googleServicesFile;
   if (typeof configuredPath !== 'string' || configuredPath.trim().length === 0) {
-    fail('production 빌드에는 EAS file secret GOOGLE_SERVICES_JSON이 필요합니다.');
+    fail('production 빌드에는 package와 일치하는 Firebase Android client 파일의 경로 GOOGLE_SERVICES_JSON이 필요합니다.');
     return;
   }
 

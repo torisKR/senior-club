@@ -14,7 +14,8 @@
     "start:prod": "node dist/main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "test:e2e:db": "NODE_ENV=test AUTH_DEV_OTP_EXPOSE=true OUTBOX_WORKER_ENABLED=false RUN_DATABASE_E2E=true vitest run src/auth/auth-events.e2e.spec.ts",
+    "test:e2e:db": "node scripts/database-qa.mjs",
+    "test:e2e:db:guard": "node --test scripts/database-qa.test.mjs",
     "test:watch": "vitest",
     "seed": "tsx ../../prisma/seed.ts",
     "prisma:generate": "prisma generate --config ../../prisma.config.ts"

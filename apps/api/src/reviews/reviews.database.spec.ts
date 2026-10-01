@@ -1,6 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { databaseTestUrl } from "../../scripts/database-qa.mjs";
 import type { AuthenticatedPrincipal } from "../auth/auth.contracts";
 import {
   ContentStatus,
@@ -15,11 +16,8 @@ import {
 } from "./reviews.contracts";
 import { ReviewsService } from "./reviews.service";
 
-const databaseUrl = process.env.DATABASE_URL;
-const describeWithDatabase =
-  process.env.RUN_DATABASE_E2E === "true" && databaseUrl
-    ? describe
-    : describe.skip;
+const databaseUrl = databaseTestUrl();
+const describeWithDatabase = databaseUrl ? describe : describe.skip;
 
 describeWithDatabase("ReviewsService PostgreSQL lifecycle", () => {
   const eventId = "event-spring-photo-archive";

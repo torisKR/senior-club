@@ -25,7 +25,7 @@ export default async function OnboardingPage({
         <header className="mb-7 flex items-center justify-between gap-4">
           <Link
             href={`/login?returnTo=${encodeURIComponent(returnTo)}`}
-            className="inline-flex min-h-13 items-center gap-2 rounded-xl px-3 text-[18px] font-bold text-[var(--muted)] outline-none transition hover:bg-[var(--surface)] hover:text-[var(--ink)] focus-visible:ring-4 focus-visible:ring-[var(--primary)]/30"
+            className="inline-flex min-h-14 items-center gap-2 rounded-xl px-3 text-[18px] font-bold text-[var(--muted)] outline-none transition hover:bg-[var(--surface)] hover:text-[var(--ink)] focus-visible:ring-4 focus-visible:ring-[var(--primary)]/30"
           >
             <ArrowLeft aria-hidden="true" className="h-6 w-6" />
             처음으로
