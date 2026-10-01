@@ -145,11 +145,11 @@ export function createDefaultAppState(): PersistedAppState {
 }
 
 /**
- * Treats the authenticated session as the owner of all persisted member data.
+ * Treats the authenticated session as the owner of in-memory member data.
  * Anonymous state never exposes a previously signed-in member, and a different
- * account never inherits another account's offline profile or participation cache.
+ * account never inherits another account's profile or participation snapshot.
  */
-export function normalizePersistedAppState(value: unknown): PersistedAppState {
+export function normalizeInMemoryAppState(value: unknown): PersistedAppState {
   if (!isRecord(value)) return createDefaultAppState();
 
   const largeTextEnabled = value.largeTextEnabled === true;

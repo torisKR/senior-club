@@ -20,6 +20,7 @@ WORKDIR /workspace
 FROM base AS dependencies
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY patches ./patches
 COPY apps/api/package.json apps/api/package.json
 
 RUN --mount=type=cache,id=senior-club-pnpm,target=/pnpm/store \
@@ -35,7 +36,7 @@ COPY apps/api ./apps/api
 
 # Prisma CLI needs a syntactically valid URL while generating the client, but
 # generation does not connect to this address. Runtime DATABASE_URL is injected
-# by Railway and is never baked into the image.
+# by ECS and is never baked into the image.
 RUN DATABASE_URL='postgresql://generate:generate@127.0.0.1:5432/senior_club?schema=public' \
     pnpm exec prisma generate
 RUN pnpm --dir apps/api build
