@@ -59,6 +59,9 @@ jobs:
       - name: Validate Prisma schema
         run: pnpm prisma:validate
 
+      - name: Verify security dependency compatibility
+        run: node --test scripts/security-dependency-compatibility.test.mjs
+
       - name: Check web
         run: |
           pnpm lint

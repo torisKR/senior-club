@@ -26,9 +26,9 @@ import {
 import { requestKakaoAccessToken } from '@/auth/kakao-login';
 import { authSessionManager } from '@/auth/auth-session-manager';
 import { unregisterCurrentAndroidDevice } from '@/notifications/push-registration';
+import { createAppStateStore } from '@/context/app-state-store';
 import {
   createDefaultAppState,
-  normalizePersistedAppState,
   updateCachedProfile,
 } from '@/context/persisted-app-state';
 import type {
@@ -47,10 +47,6 @@ import type {
   PhoneCodeVerificationInput,
   User,
 } from '@/types';
-import { storage } from '@/utils/storage';
-
-// Legacy fixture notification/review/chat fields are ignored while server APIs remain authoritative.
-export const APP_STATE_STORAGE_KEY = 'senior-club.app-state.v4';
 
 function userForSession(session: AuthSession): User {
   return {
@@ -67,7 +63,6 @@ function userForSession(session: AuthSession): User {
 }
 
 const defaultState = createDefaultAppState();
-const defaultSnapshot = JSON.stringify(defaultState);
 
 type EventFeeds = Record<EventListView, EventFeedState>;
 type EventLoadMode = 'replace' | 'append';
@@ -106,18 +101,6 @@ function releaseApprovedSeat(feed: EventFeedState, eventId: EntityId): EventFeed
   return changed ? { ...feed, events } : feed;
 }
 
-function parseSnapshot(snapshot: string | null): PersistedAppState {
-  if (!snapshot) {
-    return createDefaultAppState();
-  }
-
-  try {
-    return normalizePersistedAppState(JSON.parse(snapshot) as unknown);
-  } catch {
-    return createDefaultAppState();
-  }
-}
-
 export const AppStateContext = createContext<AppStateContextValue | undefined>(undefined);
 
 export function AppStateProvider({ children }: PropsWithChildren) {
@@ -127,13 +110,14 @@ export function AppStateProvider({ children }: PropsWithChildren) {
   const [availableInterests, setAvailableInterests] = useState<Interest[]>([]);
   const [interestsLoading, setInterestsLoading] = useState(true);
   const [interestsError, setInterestsError] = useState<string | null>(null);
-  const snapshot = useSyncExternalStore(
-    useCallback((listener: () => void) => storage.subscribe(APP_STATE_STORAGE_KEY, listener), []),
-    useCallback(() => storage.getRaw(APP_STATE_STORAGE_KEY), []),
-    useCallback(() => defaultSnapshot, []),
+  const [stateStore] = useState(() => createAppStateStore());
+  const state = useSyncExternalStore(
+    stateStore.subscribe,
+    stateStore.getSnapshot,
+    useCallback(() => defaultState, []),
   );
-  const state = useMemo(() => parseSnapshot(snapshot), [snapshot]);
   const authenticatedUserId = state.session?.userId;
+  const localSignOutsInFlight = useRef(0);
   const profileMutationVersion = useRef(0);
   const participationMutationVersion = useRef(0);
   const interestsLoadInFlight = useRef<Promise<void> | null>(null);
@@ -158,14 +142,15 @@ export function AppStateProvider({ children }: PropsWithChildren) {
 
   const updateState = useCallback(
     (updater: (current: PersistedAppState) => PersistedAppState) =>
-      storage.update(APP_STATE_STORAGE_KEY, createDefaultAppState(), (current) =>
-        normalizePersistedAppState(updater(normalizePersistedAppState(current))),
-      ),
-    [],
+      stateStore.update(updater),
+    [stateStore],
   );
 
   const syncAuthenticatedSession = useCallback(
     (session: AuthSession) => {
+      // Push cleanup may await an authenticated request. A concurrent rotation must not
+      // repopulate the profile after the user has already requested local logout.
+      if (localSignOutsInFlight.current > 0) return;
       updateState((current) => ({
         ...current,
         session,
@@ -546,7 +531,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       })
       .catch(() => {
         // The authenticated client clears invalid credentials on 401. Retryable failures keep
-        // the last server-backed local profile as an offline UI cache.
+        // the last server-backed profile in memory for this app run.
       });
 
     return () => controller.abort();
@@ -591,19 +576,22 @@ export function AppStateProvider({ children }: PropsWithChildren) {
   );
 
   const signOut = useCallback(async () => {
-    const unregisterDevice = unregisterCurrentAndroidDevice();
+    localSignOutsInFlight.current += 1;
     updateState((current) => ({ ...current, session: null }));
-    await unregisterDevice.catch(() => undefined);
-    await authSessionManager.logout();
+    try {
+      await unregisterCurrentAndroidDevice().catch(() => undefined);
+      await authSessionManager.logout();
+    } finally {
+      updateState((current) => ({ ...current, session: null }));
+      localSignOutsInFlight.current -= 1;
+    }
   }, [updateState]);
 
   const deleteAccount = useCallback(async (reason?: string) => {
     const deletionRequest = await accountApi.requestDeletion(reason);
-    await unregisterCurrentAndroidDevice().catch(() => undefined);
-    await authSessionManager.logout();
-    storage.remove(APP_STATE_STORAGE_KEY);
+    await signOut();
     return deletionRequest;
-  }, []);
+  }, [signOut]);
 
   const setLargeTextEnabled = useCallback(
     (enabled: boolean) => updateState((current) => ({ ...current, largeTextEnabled: enabled })),

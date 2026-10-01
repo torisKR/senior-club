@@ -5,12 +5,27 @@ Railway 배포와 EAS release 절차를 현재 출시 지침으로 사용하지 
 
 ## 현재 결론과 고정 소스
 
+2026-10-01 [PR #39](https://github.com/torisKR/senior-club/pull/39)를 main
+`4f024c9defc657cae45bc3a8bd6fbdcfbf4bf616`에 병합했다. 필수 CI·CodeQL·리뷰 항목을 모두
+해결했고 [main 운영 배포](https://github.com/torisKR/senior-club/actions/runs/36845686601)가 성공했다.
+API task27의 실제 image·설정 보존·안정화, 경계8개·신규 로그 오류0개와 Vercel production
+`dpl_FrVMQSneXB6GoVTH3F8EdX2Xb8mN`의 Playwright CLI53개·페이지 오류0개를 확인했다.
+[해당 소스의 정확한 배포·후보 증거](qa-evidence/20261001/production-pr39-main.json).
+
+이 소스에서 upload-signed AAB `3ad5e6…`와 QA APK `a18ec8…`를 생성하고 실제 서명·manifest·사진·글꼴·운영
+주소를 확인했다. 새 QA APK는 아직 설치하지 않았고 기존 `3c52bb…`가 기기에 남아 있다. 실기기 인수와
+실제 provider 검증·Play 제출은 완료되지 않았다. 이 증거 이후 의존성 보안 패치·앱 개인정보 캐시 보완을
+추가했다. 일반 저장소에는 글자 크기만 남기고 회원 데이터는 메모리·서버에서 관리한다.
+모바일403개·실제 의존성 호환4개와 전체 workspace 의존성 감사 경고0개를 확인했다.
+[후속 수정의 검사 범위](qa-evidence/20261001/privacy-security-followup.json). 이 변경의 hosted CI·CodeQL과
+배포 결과를 별도로 확인하며, 제출 binary는 다시 고정한 main 소스에서 빌드해야 한다.
+
 로그인은 웹과 Android 모두 **카카오만** 제공한다. 이름·별명과 휴대폰 연락처는 프로필에서 설정하며,
 휴대폰 번호는 인증 없이 저장·삭제할 수 있다. Firebase 번호 인증은 선택 기능이고 카카오 로그인이나
 모임 이용의 필수 조건이 아니다. 선택 기능 자체의 공급자 설정과 실제 성공 검증은 아직 남아 있다.
 모임 신청에는 로그인과 서버 온보딩 완료가 필요하다. UGC는 게시글·댓글·후기·채팅의 텍스트 범위다.
 
-현재 Native 제품 수정 소스는 `ba5f83b8f60c6f2c458e48c7e254b03ab2fbb8da`다. 인증 소스
+실기기에서 발견한 카드 높이 문제의 수정 소스는 `ba5f83b8f60c6f2c458e48c7e254b03ab2fbb8da`다. 인증 소스
 `948c232…`의 QA APK `d0c861…`를 실제 설치해 세션 복원·5개 탭·스크롤·선택 상태와 통신 오류0개를
 확인했지만 별도 사진 검사에서 단일 열 모임 카드가 2–3px로 눌리는 문제를 찾았다.
 [관찰한 이전 APK 증거](qa-evidence/20261001/native-auth-session-live.json). 모임·커뮤니티 카드의
@@ -53,10 +68,10 @@ full SHA 계약이 바뀐다. `capture.commit`을 새 SHA로 덮어써 기존 �
 
 | 대상 | 현재 증거 | 증거의 한계 |
 | --- | --- | --- |
-| API | 서울 AWS ECS `senior-club-api:26`, running 1 / pending 0 / rollout COMPLETED, 공개 HTTPS 진입점은 CloudFront. 새 image·readiness·익명 경계/legacy 차단 8개와 관찰 로그 오류0개 확인 | 실제 Kakao provider 로그인은 앞선 task24에서 확인했다. task26의 운영 smoke가 provider·자동 예약 삭제 결과를 대신하지 않는다. |
+| API | 서울 AWS ECS `senior-club-api:27`, source `4f024c9…`, running 1 / pending 0 / rollout COMPLETED, 공개 HTTPS 진입점은 CloudFront. 새 image·readiness·익명 경계/legacy 차단 8개와 관찰 로그 오류0개 확인 | 실제 Kakao provider 로그인은 앞선 task24에서 확인했다. task27의 운영 smoke가 provider·자동 예약 삭제 결과를 대신하지 않는다. |
 | DB | Amazon RDS PostgreSQL 18.3, 공개 접근 해제, encrypted, 7일 backup, deletion protection. task 25 새 연결의 TLS 1.3·인증서 검증과 migration 10개 / 테이블 35개 일치 | private subnet 이전·Multi-AZ·전체 업무 row 검증은 완료하지 않았다. PITR 훈련은 복구 DB의 read-only migration/catalog 비교와 임시 자원 정리까지다. |
-| 웹 | `https://senior.toris.kr`, Vercel `dpl_FumS2oKgsfdmRXbSCESNJrtRPRet`. 공개 페이지·인증 경계·자체 호스팅 Pretendard·사진 검사 통과 | 로컬 역할 UI E2E는 외부 Kakao verifier를 대체했다. 운영 웹의 실제 provider callback·HttpOnly cookie·로그아웃 E2E는 별도다. |
-| Native 정적 검사 | mobile 361 tests / 46 files, TypeScript·scoped ESLint 통과. 기본/큰 글씨 토큰, 하단 탐색·inset·image slot과 고정 스크롤 viewport 검사 | 테스트 계산과 mocked 컴포넌트 결과는 실제 기기 렌더링·공급자 동작·Play 승인 증거가 아니다. |
+| 웹 | `https://senior.toris.kr`, Vercel `dpl_FrVMQSneXB6GoVTH3F8EdX2Xb8mN`, source `4f024c9…`. Playwright CLI 공개27개·익명 경계15개·continuation11개와 페이지 오류0개 확인 | 로컬 역할 UI E2E는 외부 Kakao verifier를 대체했다. 운영 웹의 실제 provider callback·HttpOnly cookie·로그아웃 E2E는 별도다. |
+| Native 정적 검사 | PR39 hosted mobile 385 tests / 48 files, TypeScript·ESLint 통과. 기본/큰 글씨 토큰, 하단 탐색·inset·image slot과 고정 스크롤 viewport 검사 | 테스트 계산과 mocked 컴포넌트 결과는 실제 기기 렌더링·공급자 동작·Play 승인 증거가 아니다. |
 | 앞선 실기기 QA APK | SHA-256 `8d117e63324d4de82c4550f2c2ced5e283a528704b07459bec80b7ae2014bad5`, 0.1.1 / versionCode 212215980 / target API 36 / arm64. 설치 base APK hash 일치 | standalone release 모드지만 기존 기기 데이터를 보존하기 위한 debug certificate 서명이다. 새 상태 표시줄 수정의 runtime 검증이나 Play upload/signing AAB가 아니다. |
 | 실기기 Native | Galaxy M33 / Android 16, core 8개와 기본/큰 글씨 × 시스템 배율 1.0 / 1.3 / 2.0의 6개 조합 통과. 확대 탭 icon 정렬·5개 selected 상태, 홈/목록 16:9와 상세 3:2 실제 사진 측정·픽셀 검토 | 임시 글자 설정 원복. 실제 앱 dark palette, 전체 화면·스토어 screenshot 승인, 최신 APK의 provider 재로그인·SMS·FCM·Plus 구매를 포괄하지 않는다. |
 
