@@ -92,7 +92,7 @@ async function layout(width: number) {
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal('__DEV__', true);
-  vi.stubEnv('EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID', 'ca-app-pub-5744832247312120/1234567890');
+  vi.stubEnv('EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID', 'ca-app-pub-3004906966180197/1234567890');
   Object.assign(native, { focused: true, consent: true, requests: [], unmounts: 0 });
   native.platform.OS = 'android';
   native.dimensions = { width: 393, height: 852 };
@@ -239,11 +239,11 @@ describe('Android content banner requests and accessibility', () => {
     expect(native.requests).toHaveLength(2);
     await act(async () => first.onAdFailedToLoad!(new Error('late failure')));
     expect(container.querySelector('[data-testid="native-banner"]')).not.toBeNull();
-    vi.stubEnv('EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID', 'ca-app-pub-5744832247312120/9876543210');
+    vi.stubEnv('EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID', 'ca-app-pub-3004906966180197/9876543210');
     await render();
     expect(container.querySelector('[data-testid="native-banner"]')).toBeNull();
     await layout(340);
-    expect(native.requests.at(-1)!.unitId).toBe('ca-app-pub-5744832247312120/9876543210');
+    expect(native.requests.at(-1)!.unitId).toBe('ca-app-pub-3004906966180197/9876543210');
     await act(async () => native.requests.at(-1)!.onAdFailedToLoad!(new Error('no fill')));
     native.focused = false;
     await render();

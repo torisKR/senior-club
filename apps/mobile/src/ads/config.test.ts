@@ -7,7 +7,7 @@ describe('resolveAndroidBannerId', () => {
   it('uses Google test inventory in development', () => {
     expect(
       resolveAndroidBannerId({
-        configuredId: 'ca-app-pub-5744832247312120/1234567890',
+        configuredId: 'ca-app-pub-3004906966180197/1234567890',
         isDevelopment: true,
       }),
     ).toBe(GOOGLE_ANDROID_TEST_BANNER_ID);
@@ -16,15 +16,15 @@ describe('resolveAndroidBannerId', () => {
   it('accepts a well-formed production unit id', () => {
     expect(
       resolveAndroidBannerId({
-        configuredId: 'ca-app-pub-5744832247312120/1234567890',
+        configuredId: 'ca-app-pub-3004906966180197/1234567890',
         isDevelopment: false,
       }),
-    ).toBe('ca-app-pub-5744832247312120/1234567890');
+    ).toBe('ca-app-pub-3004906966180197/1234567890');
   });
 
   it('falls back to the production banner id when none is configured', () => {
     expect(resolveAndroidBannerId({ configuredId: undefined, isDevelopment: false })).toBe(
-      'ca-app-pub-5744832247312120/1610421489',
+      'ca-app-pub-3004906966180197/2894786837',
     );
   });
 

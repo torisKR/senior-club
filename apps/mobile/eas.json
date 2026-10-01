@@ -21,8 +21,8 @@
         "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://d33totqtaqpyfs.cloudfront.net",
         "EXPO_PUBLIC_WEB_URL": "https://senior.toris.kr",
-        "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "ca-app-pub-5744832247312120~3966489068",
-        "EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID": "ca-app-pub-5744832247312120/1610421489"
+        "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "ca-app-pub-3004906966180197~9575830978",
+        "EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID": "ca-app-pub-3004906966180197/2894786837"
       }
     },
     "qaInternalLocal": {
@@ -34,8 +34,8 @@
         "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://d33totqtaqpyfs.cloudfront.net",
         "EXPO_PUBLIC_WEB_URL": "https://senior.toris.kr",
-        "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "ca-app-pub-5744832247312120~3966489068",
-        "EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID": "ca-app-pub-5744832247312120/1610421489"
+        "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "ca-app-pub-3004906966180197~9575830978",
+        "EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID": "ca-app-pub-3004906966180197/2894786837"
       },
       "android": {
         "buildType": "apk"
@@ -61,8 +61,8 @@
       "environment": "production",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
-        "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "ca-app-pub-5744832247312120~3966489068",
-        "EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID": "ca-app-pub-5744832247312120/1610421489"
+        "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "ca-app-pub-3004906966180197~9575830978",
+        "EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID": "ca-app-pub-3004906966180197/2894786837"
       },
       "android": {
         "buildType": "app-bundle"
@@ -87,8 +87,8 @@
         "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://d33totqtaqpyfs.cloudfront.net",
         "EXPO_PUBLIC_WEB_URL": "https://senior.toris.kr",
-        "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "ca-app-pub-5744832247312120~3966489068",
-        "EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID": "ca-app-pub-5744832247312120/1610421489"
+        "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "ca-app-pub-3004906966180197~9575830978",
+        "EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID": "ca-app-pub-3004906966180197/2894786837"
       },
       "android": {
         "buildType": "app-bundle"
