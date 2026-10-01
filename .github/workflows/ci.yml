@@ -70,6 +70,7 @@ jobs:
       - name: Check API
         run: |
           node --test .github/scripts/prepare-api-task.test.mjs
+          node --test apps/api/test/qa-role-ui/web-trace.test.cjs
           pnpm --filter @senior-club/api test:e2e:db:guard
           pnpm --filter @senior-club/api typecheck
           pnpm --filter @senior-club/api test

@@ -1,0 +1,48 @@
+{
+  "scope": "QA tooling regression; disposable local HTTPS Next/Nest/Prisma with external verifier fixture only",
+  "startedAt": "2026-10-01T09:24:21.468Z",
+  "finishedAt": "2026-10-01T09:24:23.571Z",
+  "phase": "logout-only",
+  "checks": [
+    {
+      "name": "member-ui-logout-cookie-clear-session-revoke-and-denial",
+      "passed": true,
+      "backendSessionsRevoked": true,
+      "browserAuthCookiesAbsent": true,
+      "protectedDestination": "/login"
+    },
+    {
+      "name": "real-migrations-provider-disabled-and-no-external-requests",
+      "passed": true,
+      "migrations": 10,
+      "externalFetchAttempts": 0,
+      "externalBrowserRequests": 0
+    }
+  ],
+  "passed": true,
+  "pageErrorCount": 0,
+  "externalBrowserRequestCount": 0,
+  "cleanup": {
+    "browserSessionClosed": true,
+    "apiExited": true,
+    "webExited": true,
+    "databaseAbsent": true
+  },
+  "productSourceUnchanged": true,
+  "tracePrivacyHttpRegressionPassed": true,
+  "callbackActionsAndSemanticsVerifiedBy": "playwright-cli run-code --filename, module callback serialized with toString",
+  "files": {
+    "apps/api/test/qa-role-ui/browser.cjs": "8821a897bc5666ce7bfbdb8ca26c28d3947ac27a95bbe4e325bc66b17fb8f73d",
+    "apps/api/test/qa-role-ui/browser-logout-only.cjs": "03635252c5db04ca5e7218da75e89cb4718f7be735d3040e5fd699cd34eae679",
+    "apps/api/test/qa-role-ui/browser-refresh-diagnosis.cjs": "60a48e9e9e96228c31715eb69213e46bf2024a30dd3a5f1556a569fc6ebfab47",
+    "apps/api/test/qa-role-ui/browser-two-tabs.cjs": "609b7cf853731209588f395e5c7094629ffd4208d62b39f1b021d3a139c78c06",
+    "apps/api/test/qa-role-ui/run.mjs": "3bba7287d5187f8c35d7e074f1ecc62d44747bc06882ed804129501d11753c38",
+    "apps/api/test/qa-role-ui/web-trace.cjs": "2b5063eae69b9054ddb01107d1e228c5465e97bd7385180e2803597eaa2502e9",
+    "apps/api/test/qa-role-ui/web-trace.test.cjs": "ee753fc67ccc77384d478a0bdb6f21d1d3e79727e22875e633eb2a70707f9cf3"
+  },
+  "limitations": [
+    "Provider verification uses a fixture; this is not production provider login.",
+    "CodeQL uploaded analysis of this patch is still required.",
+    "Current Android card-fix APK visual/provider QA awaits device handoff."
+  ]
+}

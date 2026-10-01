@@ -1,4 +1,4 @@
-async (page) => {
+module.exports = async (page) => {
   const config = __ROLE_UI_CONFIG__;
   const context = page.context();
   const checks = [];

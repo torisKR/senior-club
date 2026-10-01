@@ -1,6 +1,6 @@
 # 시니어클럽 Android 출시 준비 상태
 
-기준일: 2026-09-30. 이 문서는 현재 출시 범위와 남은 수용 조건을 기록한다. 과거 SMS OTP 로그인,
+기준일: 2026-10-01. 이 문서는 현재 출시 범위와 남은 수용 조건을 기록한다. 과거 SMS OTP 로그인,
 Railway 배포와 EAS release 절차를 현재 출시 지침으로 사용하지 않는다.
 
 ## 현재 결론과 고정 소스
@@ -10,18 +10,24 @@ Railway 배포와 EAS release 절차를 현재 출시 지침으로 사용하지 
 모임 이용의 필수 조건이 아니다. 선택 기능 자체의 공급자 설정과 실제 성공 검증은 아직 남아 있다.
 모임 신청에는 로그인과 서버 온보딩 완료가 필요하다. UGC는 게시글·댓글·후기·채팅의 텍스트 범위다.
 
-최신 Native 인증 소스는 `948c2327c70eaf42b997dd11ae384e1258bfc63f`다. 늦은 인증/보호 응답의
-계정 간 전달과 로그아웃 후 복원을 차단했고 mobile 361 tests / 46 files와 정적 검사가 통과했다.
-새 QA APK `d0c861…`는 빌드와 artifact 검증만 완료됐으며 기기 설치·runtime/provider 수용은 남았다.
-기존 `3fa88a…` 설치 APK와 아래 `968066…` 서명 AAB에는 이 인증 수정이 없다.
-[인증 회귀 및 새 APK](QA_PRODUCTION_20260930.md#추가-모바일-인증-회귀-수정).
+현재 Native 제품 수정 소스는 `ba5f83b8f60c6f2c458e48c7e254b03ab2fbb8da`다. 인증 소스
+`948c232…`의 QA APK `d0c861…`를 실제 설치해 세션 복원·5개 탭·스크롤·선택 상태와 통신 오류0개를
+확인했지만 별도 사진 검사에서 단일 열 모임 카드가 2–3px로 눌리는 문제를 찾았다.
+[관찰한 이전 APK 증거](qa-evidence/20261001/native-auth-session-live.json). 모임·커뮤니티 카드의
+`flex: 1`은 2열에서만 적용하도록 수정했다. 관련 테스트29개·TypeScript·scoped ESLint와
+[해당 소스의 hosted CI](https://github.com/torisKR/senior-club/actions/runs/36840945470)가 통과했다.
 
-최신 Native source `948c2327c70eaf42b997dd11ae384e1258bfc63f`에서 새 upload-signed AAB 후보를 생성했다.
+새 QA APK `3c52bb…`는 manifest·기존 QA 서명·운영 주소·사진/글꼴 검증과 실제 설치 해시가
+일치했다. 앱 프로세스의 crash/JS 오류0개를 확인했으나 다른 앱이 전면이라 사진 비율·카카오 재로그인
+재검사는 기기 인수를 기다린다. [새 APK의 검증 한계](qa-evidence/20261001/native-list-card-candidate.json).
+
+이전 Native source `948c2327c70eaf42b997dd11ae384e1258bfc63f`에서 upload-signed AAB 후보를 생성했다.
 파일은 `apps/mobile/build-output/signed-candidate-948c2327c70e/app-release.aab`, SHA-256
 `0a1a15f6a29bd1808a1b24013293c67f83bcae5f656909ff573ad0f2c02596f3`, 93,681,400 bytes다. 4개 ABI·target36·pinned bundletool·전체
 서명·실제 manifest·운영 주소/광고 설정·7개 사진/Material font·SDK property metadata 검증이 통과했다.
 [새 서명 후보 증거](qa-evidence/20260930/android-auth-session-signed-candidate.json).
-기기 설치/provider 검증·Play version/signing 대조·최종 screenshot·hosted run·업로드는 남았다.
+이 AAB에는 최신 카드 높이 수정이 없다. 출시 binary는 고정한 최신 소스에서 다시 빌드해야 한다.
+Play version/signing 대조·최종 screenshot·hosted release run·업로드와 실제 provider 검증은 남았다.
 이후 API·증거·문서 변경은 이 AAB의 full source SHA에 포함되지 않는다.
 
 서명 후보 정적 검증과 production 제출 완료를 구분한다. 앞선 상태 표시줄 수정 소스
@@ -39,7 +45,7 @@ full SHA 계약이 바뀐다. `capture.commit`을 새 SHA로 덮어써 기존 �
 제출할 소스를 고정한 뒤 실제 캡처·검토·발급·빌드 절차를 따른다.
 
 2026-10-01 사용자가 공개 저장소 `torisKR/senior-club`에 소스·공유 이미지 에셋·정제된 배포/QA
-증거를 게시하는 데 동의했다. 브랜치 게시와 PR 검토를 진행하며 비밀키·자격 증명·기기 원본 캡처는
+증거를 게시하는 데 동의했다. [PR #39](https://github.com/torisKR/senior-club/pull/39)에 브랜치를 게시했으며 비밀키·자격 증명·기기 원본 캡처는
 포함하지 않는다. hosted workflow의 실제 결과, 최종 스크린샷 검토·증거 발급과 Play 공개 제출은
 각 단계의 별도 증거가 확인될 때만 완료로 기록한다.
 

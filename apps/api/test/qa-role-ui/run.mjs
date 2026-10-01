@@ -162,7 +162,9 @@ app.prepare().then(()=>{const handler=require(${JSON.stringify(join(fixtureRoot,
   if (open.error || open.status !== 0) throw new Error("Owned Playwright CLI open failed; inspect private browser-open.json");
   const ready = JSON.parse(readFileSync(join(tempRoot, "api-ready.json")));
   const browserEntry = phase === "full" ? "browser.cjs" : `browser-${phase}.cjs`;
-  const browserCode = readFileSync(join(fixtureRoot, browserEntry), "utf8").replace("__ROLE_UI_CONFIG__", JSON.stringify({ ...ready, base, control }));
+  const browserCallback = require(join(fixtureRoot, browserEntry));
+  if (typeof browserCallback !== "function") throw new Error("Bounded role UI browser entry must export a callback");
+  const browserCode = browserCallback.toString().replace("__ROLE_UI_CONFIG__", JSON.stringify({ ...ready, base, control }));
   const browserFile = join(tempRoot, "browser-private.cjs");
   writeFileSync(browserFile, browserCode, { mode: 0o600 });
   console.log(JSON.stringify({ phase: "browser-running", tempRoot }));
