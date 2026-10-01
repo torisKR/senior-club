@@ -54,7 +54,7 @@ export default function PrivacyPage() {
             <span className="tag">
               <Clock3 aria-hidden="true" className="size-4" /> 시행일 2026년 7월 30일
             </span>
-            <span className="tag">최종 수정 2026년 10월 1일</span>
+            <span className="tag">최종 수정 2026년 10월 2일</span>
           </div>
         </header>
 
@@ -134,10 +134,43 @@ export default function PrivacyPage() {
               시니어클럽을 대신해 필요한 정보를 처리할 수 있습니다.
             </p>
             <p className="mt-4 text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
-              실제 수탁자, 처리 국가, 항목과 기간은 공급자 계약을 확정한 뒤 이
-              페이지에 공개합니다. Android 앱의 배너 광고는 Google AdMob이 광고
-              게재와 측정에 필요한 기기 식별자를 처리할 수 있습니다. 개인정보를
-              광고 사업자에게 판매하지 않습니다.
+              AWS(Amazon Web Services)는 대한민국 서울 리전에서 API와 회원·프로필·활동
+              데이터베이스를 운영합니다. 회원 데이터는 계정 유지와 삭제 처리에 필요한 기간 동안
+              보관하며, 데이터베이스의 순환 백업은 7일입니다. CloudFront는 요청 전달을 위해
+              전 세계 엣지 서버를 사용할 수 있습니다.
+            </p>
+            <p className="mt-4 text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
+              Vercel Inc.는 웹 호스팅과 웹 로그인 요청 전달을 위해 접속 정보와 요청 데이터를
+              처리합니다. Vercel의 미국 및 글로벌 인프라에서 처리될 수 있으며, 서비스 제공과
+              보안에 필요한 기간 및 공급자의 보관·삭제 정책에 따라 처리합니다.
+              {" "}<a className="underline" href="https://vercel.com/legal/privacy-notice" target="_blank" rel="noreferrer">Vercel 개인정보 안내</a>
+            </p>
+            <p className="mt-4 text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
+              카카오(Kakao Corp.)는 이용자가 선택한 카카오 로그인을 처리하고 계정 식별자와
+              제공된 닉네임을 전달합니다. 카카오 비밀번호는 카카오에 입력하며 시니어클럽에
+              저장하지 않습니다. 카카오 서비스의 보관·삭제 기준은
+              {" "}<a className="underline" href="https://www.kakao.com/policy/privacy" target="_blank" rel="noreferrer">카카오 개인정보 처리방침</a>에 따릅니다.
+            </p>
+            <p className="mt-4 text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
+              Google LLC의 Firebase는 선택한 휴대폰 인증의 전화번호·인증 정보와 기기·접속
+              정보를 처리합니다. Google Analytics는 이용 분석에 동의한 경우 화면·세션·설치
+              식별자를 처리하며, 분석 이벤트 보관 기간은 2개월입니다. Google AdMob은 광고
+              제공·측정·부정 이용 방지를 위해 IP 기반 대략적 지역, 광고·앱 설치 식별자,
+              광고 상호작용과 SDK 성능 정보를 처리할 수 있습니다. 개인정보를 광고 사업자에게
+              판매하지 않습니다.
+            </p>
+            <p className="mt-4 text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
+              Firebase Cloud Messaging과 Firebase Installations는 알림 등록·수신을 위해
+              푸시 토큰, 설치 식별자와 앱·기기 정보를 처리합니다. 시니어클럽 서버의 푸시 등록은
+              로그아웃이나 계정 삭제 요청 시 해제합니다. Google 측의 설치·알림 정보는
+              Firebase의 서비스별 보관·삭제 정책에 따릅니다.
+            </p>
+            <p className="mt-4 text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
+              Google 서비스는 미국을 포함한 글로벌 서버에서 처리될 수 있습니다. 인증과 광고
+              정보는 해당 서비스의 보관·삭제 기준에 따르며, Google Play는 앱 내 구매·복원과
+              결제를 처리합니다. 시니어클럽은 카드 번호를 수집하지 않습니다.
+              {" "}<a className="underline" href="https://policies.google.com/privacy?hl=ko" target="_blank" rel="noreferrer">Google 개인정보 처리방침</a>
+              {" "}<a className="underline" href="https://firebase.google.com/support/privacy" target="_blank" rel="noreferrer">Firebase 개인정보 안내</a>
             </p>
           </div>
         </section>
@@ -231,9 +264,9 @@ export default function PrivacyPage() {
             <p className="mt-4 text-xl font-black">시니어클럽 개인정보 담당자</p>
             <a
               className="mt-4 inline-flex min-h-14 items-center rounded-xl bg-white px-5 py-3 text-[18px] font-black text-[var(--ink)]"
-              href="mailto:privacy@clubsenior.kr"
+              href="mailto:korea@toris.kr"
             >
-              privacy@clubsenior.kr
+              korea@toris.kr
             </a>
             <p className="mt-4 text-[16px] leading-7 text-white/85 sm:text-[17px]">
               개인정보 관련 문의는 이 이메일로 받습니다.
