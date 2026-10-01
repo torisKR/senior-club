@@ -61,6 +61,7 @@ export function HomeScreen() {
   const {
     user,
     upcomingEvents,
+    eventFeeds,
     interests: availableInterests,
     selectedInterestIds,
     participations,
@@ -125,6 +126,9 @@ export function HomeScreen() {
   const selectedInterests = availableInterests.filter((interest) =>
     selectedInterestIds.includes(interest.id),
   );
+  const recommendationFeed = eventFeeds.upcoming;
+  const showBanner = recommendedEvents.length > 0 && recommendationFeed.loaded &&
+    !recommendationFeed.loading && !recommendationFeed.loadingMore && !recommendationFeed.error;
 
   const openEvent = (eventId: string) => {
     router.push({ pathname: '/event/[id]', params: { id: eventId } });
@@ -248,7 +252,6 @@ export function HomeScreen() {
             </View>
           </Card>
         )}
-        <HomeBannerAd />
       </View>
 
       <View style={{ minWidth: 0, gap: Spacing.lg }}>
@@ -287,6 +290,8 @@ export function HomeScreen() {
           ) : null}
         </View>
       </View>
+
+      {showBanner ? <HomeBannerAd /> : null}
 
       <SeniorHobbyCourseSection />
 

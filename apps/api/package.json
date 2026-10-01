@@ -8,7 +8,8 @@
     "node": "24.x"
   },
   "scripts": {
-    "build": "nest build",
+    "build": "nest build && tsc --ignoreConfig --target ES2023 --module Node16 --moduleResolution Node16 --strict --skipLibCheck --outDir dist/phone-credential src/auth/firebase-wif.probe.ts",
+    "probe:firebase-phone-wif": "node dist/phone-credential/auth/firebase-wif.probe.js",
     "dev": "nest start --watch",
     "start": "nest start",
     "start:prod": "node dist/main.js",
@@ -21,6 +22,7 @@
     "prisma:generate": "prisma generate --config ../../prisma.config.ts"
   },
   "dependencies": {
+    "@aws-sdk/credential-providers": "3.984.0",
     "@nestjs/common": "^11.2.5",
     "@nestjs/core": "^11.2.5",
     "@nestjs/platform-express": "^11.2.5",
@@ -30,6 +32,7 @@
     "@prisma/client": "7.8.0",
     "dotenv": "^17.2.0",
     "firebase-admin": "14.2.0",
+    "google-auth-library": "10.9.1",
     "helmet": "^8.1.0",
     "jose": "6.2.4",
     "pg": "^8.16.0",
