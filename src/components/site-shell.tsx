@@ -13,6 +13,7 @@ import { Brand } from "@/components/brand";
 import { AuthNav } from "@/components/auth-nav";
 import { FontSizeControl } from "@/components/font-size-control";
 import { ProfileSessionSync } from "@/components/profile-session-sync";
+import { AnalyticsSettings } from "@/components/analytics-provider";
 
 type NavigationItem = {
   href: "/" | "/clubs" | "/events" | "/chat" | "/me";
@@ -183,6 +184,7 @@ export function SiteShell({ children }: Readonly<{ children: ReactNode }>) {
         id="main-content"
         tabIndex={-1}
       >
+        {pathname === "/" && <div className="page-container pt-5"><AnalyticsSettings prompt /></div>}
         {children}
       </main>
 
