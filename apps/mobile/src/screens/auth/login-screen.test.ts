@@ -14,6 +14,9 @@ const mocks = vi.hoisted(() => ({
   kakao: vi.fn(), reviewer: vi.fn(), replace: vi.fn(),
 }));
 function box({ children }: { children?: ReactNode }) { return createElement('div', null, children); }
+// RN platform typings differ on hover; a structural fixture supports both.
+const pressableState = { pressed: false, hovered: false };
+
 vi.mock('react-native', () => ({
   Platform: mocks.platform, StyleSheet: { create: (styles: unknown) => styles },
   Linking: { openURL: vi.fn() }, ActivityIndicator: () => createElement('span', null, 'loading'),
@@ -22,7 +25,7 @@ vi.mock('react-native', () => ({
     disabled: props.disabled, 'aria-label': props.accessibilityLabel,
     'aria-checked': props.accessibilityState?.checked,
     onClick: () => props.onPress?.({} as Parameters<NonNullable<PressableProps['onPress']>>[0]),
-  }, typeof props.children === 'function' ? props.children({ pressed: false, hovered: false }) : props.children),
+  }, typeof props.children === 'function' ? props.children(pressableState) : props.children),
   TextInput: (props: TextInputProps) => {
     mocks.inputs[props.accessibilityLabel!] = props;
     return createElement('input', {

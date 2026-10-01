@@ -10,6 +10,9 @@ const rendered = vi.hoisted(() => ({
   inputs: {} as Record<string, TextInputProps>,
   pressables: {} as Record<string, PressableProps>,
 }));
+// RN platform typings differ on hover; a structural fixture supports both.
+const pressableState = { pressed: false, hovered: false };
+
 vi.mock('react-native', () => ({
   Platform: { select: (options: { default: unknown }) => options.default },
   StyleSheet: { create: (styles: unknown) => styles },
@@ -22,7 +25,7 @@ vi.mock('react-native', () => ({
       'aria-expanded': props.accessibilityState?.expanded,
       'aria-busy': props.accessibilityState?.busy,
       onClick: () => props.onPress?.({} as Parameters<NonNullable<PressableProps['onPress']>>[0]),
-    }, typeof props.children === 'function' ? props.children({ pressed: false, hovered: false }) : props.children);
+    }, typeof props.children === 'function' ? props.children(pressableState) : props.children);
   },
   TextInput: (props: TextInputProps) => {
     rendered.inputs[props.accessibilityLabel!] = props;
