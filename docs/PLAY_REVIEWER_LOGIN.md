@@ -13,7 +13,8 @@ ECS WIF 권한을 유지한다. 설정이 없으면 경로는 닫힌다. 클라�
 프로젝트, 만료, 계정 비활성화 및 토큰 철회를 확인한다. 지정 UID, password 제공자,
 이메일 identity 및 5분 이내의 실제 로그인도 확인한다. 다른 Firebase 사용자나 custom/phone/
 Google 토큰으로 앱 회원을 만들 수 없다. Firebase의 비밀번호 시도 제한에 더해 API 인스턴스마다
-토큰 교환 요청을 분당 60회로 제한한다. 이 추가 제한은 분산 rate limiter가 아니다.
+검증된 심사 토큰 교환을 요청자별 분당 60회로 제한한다. 거절된 인증은 이 한도를 소모하지 않는다.
+이 추가 제한은 분산 rate limiter가 아니며 ALB 뒤에서는 요청자 주소가 공유될 수 있다.
 
 전용 identity는 기존 EMAIL provider의 `firebase-reviewer:<UID>` 이름공간으로 기록한다.
 동시 로그인은 PostgreSQL transaction advisory lock으로 하나의 MEMBER 계정을 만든다.

@@ -55,7 +55,7 @@ type VerificationResult =
 
 @Injectable()
 export class AuthService {
-  private reviewerWindow = { startedAt: 0, attempts: 0 };
+  private readonly reviewerWindows = new Map<string, { startedAt: number; attempts: number }>();
   constructor(
     private readonly prisma: PrismaService,
     private readonly tokens: TokenService,
@@ -664,16 +664,23 @@ export class AuthService {
     input: ReviewerLoginInput,
     device: { userAgent?: string; ipAddress?: string },
   ): Promise<IssuedSession> {
-    // Firebase limits password attempts. Also cap this token exchange endpoint
-    // per API instance without trusting caller-provided forwarding headers.
+    // Rejected proofs never consume a legitimate reviewer's quota. Firebase
+    // owns password throttling; verified token exchanges are caller-scoped.
+    const identity = await this.reviewerTokens.verify(input.idToken);
     const timestamp = Date.now();
-    if (timestamp - this.reviewerWindow.startedAt >= 60_000) {
-      this.reviewerWindow = { startedAt: timestamp, attempts: 0 };
+    for (const [key, value] of this.reviewerWindows) {
+      if (timestamp - value.startedAt >= 60_000) this.reviewerWindows.delete(key);
     }
-    if (++this.reviewerWindow.attempts > 60) {
+    const key = this.tokens.hashIpAddress(device.ipAddress ?? identity.uid);
+    let window = this.reviewerWindows.get(key);
+    if (!window) {
+      if (this.reviewerWindows.size >= 1000) this.reviewerWindows.delete(this.reviewerWindows.keys().next().value!);
+      window = { startedAt: timestamp, attempts: 0 };
+      this.reviewerWindows.set(key, window);
+    }
+    if (++window.attempts > 60) {
       throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "REVIEWER_RATE_LIMITED", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.");
     }
-    const identity = await this.reviewerTokens.verify(input.idToken);
     const now = new Date();
     const refresh = this.tokens.createRefreshToken();
     const refreshTokenExpiresAt = new Date(

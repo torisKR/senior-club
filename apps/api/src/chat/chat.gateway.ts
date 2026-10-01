@@ -166,12 +166,12 @@ export class ChatGateway implements OnGatewayInit {
           expiresAt: { gt: new Date() },
           user: { status: UserStatus.ACTIVE },
         },
-        select: { id: true, userId: true },
+        select: { id: true, userId: true, user: { select: { role: true } } },
       }),
       this.chat.blockedInteractionUserIds(senderId, socketUserIds),
     ]);
     const activeSessionUsers = new Map(
-      activeSessions.map((session) => [session.id, session.userId]),
+      activeSessions.map((session) => [session.id, { userId: session.userId, role: session.user?.role }]),
     );
 
     await Promise.all(
@@ -179,11 +179,12 @@ export class ChatGateway implements OnGatewayInit {
         const principal = principals[index];
         const hasActiveSession =
           principal &&
-          activeSessionUsers.get(principal.sessionId) === principal.userId;
+          activeSessionUsers.get(principal.sessionId)?.userId === principal.userId;
         if (
           !principal ||
           !hasActiveSession ||
-          !entitledMemberIds.has(principal.userId)
+          !entitledMemberIds.has(principal.userId) ||
+          (principal.reviewer && activeSessionUsers.get(principal.sessionId)?.role !== UserRole.MEMBER)
         ) {
           await socket.leave(roomName);
           return;
