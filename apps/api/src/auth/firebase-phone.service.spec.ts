@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Logger } from "@nestjs/common";
 import { FirebasePhoneService } from "./firebase-phone.service";
 import { parseApiEnv } from "../config/env";
 
@@ -29,7 +30,7 @@ describe("FirebasePhoneService", () => {
     firebase.initializeApp.mockReturnValue({ name: "senior-club-phone-auth-clubsenior-app" });
     firebase.verifyIdToken.mockResolvedValue(validClaims);
   });
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 
   it("verifies revocation with Admin ADC independently of FCM and reuses its app", async () => {
     const service = new FirebasePhoneService(env);
@@ -40,6 +41,21 @@ describe("FirebasePhoneService", () => {
     expect(firebase.initializeApp).toHaveBeenCalledWith(
       { projectId: "clubsenior-app", credential: { runtimeCredential: true } }, "senior-club-phone-auth-clubsenior-app",
     );
+  });
+
+  it("uses the ECS WIF credential and keeps revocation verification enabled", async () => {
+    const service = new FirebasePhoneService(parseApiEnv({
+      NODE_ENV: "test", DATABASE_URL: "postgresql://localhost/test", FIREBASE_PROJECT_ID: "clubsenior-app",
+      AWS_REGION: "ap-northeast-2",
+      FIREBASE_WIF_AUDIENCE: "//iam.googleapis.com/projects/982568561637/locations/global/workloadIdentityPools/senior-club-prod/providers/aws-ecs",
+      FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL: "senior-phone-verifier@clubsenior-app.iam.gserviceaccount.com",
+    }));
+    await expect(service.verifyPhoneIdToken("valid-id-token")).resolves.toEqual({ uid: validClaims.uid, phoneNumber: validClaims.phone_number });
+    expect(firebase.initializeApp).toHaveBeenCalledWith(
+      { projectId: "clubsenior-app", credential: { getAccessToken: expect.any(Function) } }, "senior-club-phone-auth-clubsenior-app",
+    );
+    expect(firebase.applicationDefault).not.toHaveBeenCalled();
+    expect(firebase.verifyIdToken).toHaveBeenCalledWith("valid-id-token", true);
   });
 
   it.each([
@@ -70,6 +86,17 @@ describe("FirebasePhoneService", () => {
   it("fails closed with a service error when ADC or revocation lookup is unavailable", async () => {
     firebase.verifyIdToken.mockRejectedValueOnce({ code: "auth/insufficient-permission" });
     await expect(new FirebasePhoneService(env).verifyPhoneIdToken("token")).rejects.toMatchObject({ status: 503, response: { error: { code: "FIREBASE_UNAVAILABLE" } } });
+  });
+
+  it("returns unavailable and logs only a safe code when WIF token retrieval fails", async () => {
+    const warning = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => {});
+    firebase.verifyIdToken.mockRejectedValueOnce(new Error("private AWS credentials and bearer token"));
+    await expect(new FirebasePhoneService({
+      ...env, AWS_REGION: "ap-northeast-2",
+      FIREBASE_WIF_AUDIENCE: "//iam.googleapis.com/projects/982568561637/locations/global/workloadIdentityPools/senior-club-prod/providers/aws-ecs",
+      FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL: "senior-phone-verifier@clubsenior-app.iam.gserviceaccount.com",
+    }).verifyPhoneIdToken("token")).rejects.toMatchObject({ status: 503, response: { error: { code: "FIREBASE_UNAVAILABLE" } } });
+    expect(warning).toHaveBeenCalledWith("Firebase phone verification failed: unknown");
   });
 
   it("requires explicit project configuration", async () => {

@@ -14,6 +14,11 @@ const DEVELOPMENT_OTP_PEPPER =
 const DEVELOPMENT_OTP_ENCRYPTION_KEY =
   "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=";
 
+// Accept resource names and service account emails, never caller-supplied URLs.
+export const FIREBASE_WIF_AUDIENCE_PATTERN = /^\/\/iam\.googleapis\.com\/projects\/[1-9]\d{0,19}\/locations\/global\/workloadIdentityPools\/[a-z][a-z0-9-]{2,30}[a-z0-9]\/providers\/[a-z][a-z0-9-]{2,30}[a-z0-9]$/;
+export const FIREBASE_WIF_SERVICE_ACCOUNT_PATTERN = /^[a-z][a-z0-9-]{4,28}[a-z0-9]@[a-z][a-z0-9-]{4,28}[a-z0-9]\.iam\.gserviceaccount\.com$/;
+export const FIREBASE_WIF_REGION_PATTERN = /^[a-z]{2}-[a-z]+(?:-[a-z]+)?-[1-9]\d?$/;
+
 const databaseUrlSchema = z
   .string()
   .trim()
@@ -53,8 +58,11 @@ const rawApiEnvSchema = z.object({
   AUTH_DEV_OTP_EXPOSE: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
   KAKAO_APP_ID: z.coerce.number().int().positive().optional(),
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
-  // Phone verification uses Firebase Admin with ADC, independently of FCM.
+  // Phone verification uses ECS WIF when configured, otherwise local ADC.
   FIREBASE_PROJECT_ID: z.string().regex(/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/).optional(),
+  FIREBASE_WIF_AUDIENCE: z.string().regex(FIREBASE_WIF_AUDIENCE_PATTERN).optional(),
+  FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL: z.string().regex(FIREBASE_WIF_SERVICE_ACCOUNT_PATTERN).optional(),
+  AWS_REGION: z.string().regex(FIREBASE_WIF_REGION_PATTERN).optional(),
   CONSENT_DOCUMENT_VERSION: z.string().min(1).max(40).default("2026-07-01"),
   EMAIL_PROVIDER: z.enum(["disabled", "console", "resend"]).default("console"),
   EMAIL_FROM: z.string().min(3).max(320).default("시니어클럽 <no-reply@localhost>"),
@@ -92,6 +100,9 @@ export interface ApiEnv {
   readonly KAKAO_APP_ID: number | undefined;
   readonly GOOGLE_CLIENT_ID: string | undefined;
   readonly FIREBASE_PROJECT_ID: string | undefined;
+  readonly FIREBASE_WIF_AUDIENCE: string | undefined;
+  readonly FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL: string | undefined;
+  readonly AWS_REGION: string | undefined;
   readonly CONSENT_DOCUMENT_VERSION: string;
   readonly EMAIL_PROVIDER: "disabled" | "console" | "resend";
   readonly EMAIL_FROM: string;
@@ -226,6 +237,17 @@ export function parseApiEnv(input: NodeJS.ProcessEnv = process.env): ApiEnv {
     parsed.data.NODE_ENV,
   );
 
+  if (parsed.data.FIREBASE_WIF_AUDIENCE || parsed.data.FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL) {
+    if (
+      !parsed.data.FIREBASE_PROJECT_ID || !parsed.data.FIREBASE_WIF_AUDIENCE ||
+      !parsed.data.FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL || !parsed.data.AWS_REGION
+    ) {
+      throw new EnvValidationError([
+        "Firebase WIF requires FIREBASE_PROJECT_ID, FIREBASE_WIF_AUDIENCE, FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL, and AWS_REGION together",
+      ]);
+    }
+  }
+
   if (parsed.data.DATABASE_CONNECT_TIMEOUT_MS > parsed.data.READINESS_TIMEOUT_MS) {
     throw new EnvValidationError([
       "DATABASE_CONNECT_TIMEOUT_MS must not exceed READINESS_TIMEOUT_MS",
@@ -356,6 +378,9 @@ export function parseApiEnv(input: NodeJS.ProcessEnv = process.env): ApiEnv {
     KAKAO_APP_ID: parsed.data.KAKAO_APP_ID,
     GOOGLE_CLIENT_ID: parsed.data.GOOGLE_CLIENT_ID,
     FIREBASE_PROJECT_ID: parsed.data.FIREBASE_PROJECT_ID,
+    FIREBASE_WIF_AUDIENCE: parsed.data.FIREBASE_WIF_AUDIENCE,
+    FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL: parsed.data.FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL,
+    AWS_REGION: parsed.data.AWS_REGION,
     RESEND_API_KEY: parsed.data.RESEND_API_KEY,
     SMS_PROVIDER: parsed.data.SMS_PROVIDER,
     TWILIO_ACCOUNT_SID: parsed.data.TWILIO_ACCOUNT_SID,
