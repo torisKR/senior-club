@@ -413,7 +413,13 @@ export function ClubsScreen() {
           </View>
         }
         renderItem={({ item }) => (
-          <View style={{ flex: 1, minWidth: 0, paddingBottom: columns > 1 ? 0 : Spacing.xs }}>
+          <View
+            style={{
+              // Only horizontal grid rows need flex; vertical cards retain their content height.
+              flex: columns > 1 ? 1 : undefined,
+              minWidth: 0,
+              paddingBottom: columns > 1 ? 0 : Spacing.xs,
+            }}>
             <ClubCard
               club={item}
               recommended={selectedInterestIds.includes(item.interest.slug)}

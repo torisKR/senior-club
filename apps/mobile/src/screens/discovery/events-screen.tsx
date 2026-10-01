@@ -272,7 +272,7 @@ export function EventsScreen() {
         renderItem={({ item }) => {
           const status = participations.find((participation) => participation.eventId === item.id)?.status;
           return (
-            <View style={{ flex: 1, minWidth: 0, paddingBottom: columns > 1 ? 0 : Spacing.xs }}>
+            <View style={{ flex: columns > 1 ? 1 : undefined, minWidth: 0, paddingBottom: columns > 1 ? 0 : Spacing.xs }}>
               <EventCard
                 event={item}
                 participationStatus={status}

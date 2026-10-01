@@ -80,9 +80,10 @@ describe('Android bottom navigation interactions and readability', () => {
     await render();
     expect(container.querySelectorAll('button')).toHaveLength(5);
     expect(container.querySelector('[data-testid="tab-home"]')?.getAttribute('aria-selected')).toBe('true');
+    const pressState = { pressed: false, hovered: false };
     for (const button of ui.buttons) {
       expect(button.accessibilityRole).toBe('tab');
-      const style = typeof button.style === 'function' ? button.style({ pressed: false, hovered: false }) : button.style;
+      const style = typeof button.style === 'function' ? button.style(pressState) : button.style;
       expect(style).toMatchObject({ flex: 1, minWidth: 48, minHeight: 48 });
       expect(style).not.toHaveProperty('backgroundColor');
     }
