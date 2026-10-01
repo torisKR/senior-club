@@ -7,7 +7,7 @@ import {
 import type { Request } from "express";
 
 import { ApiException } from "../common/http/api.exception";
-import { UserStatus } from "../generated/prisma/client";
+import { UserRole, UserStatus } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import type { AuthenticatedPrincipal } from "./auth.contracts";
 import { TokenService } from "./token.service";
@@ -51,7 +51,8 @@ export class AccessTokenGuard implements CanActivate {
         session.userId !== principal.userId ||
         session.revokedAt ||
         session.expiresAt <= new Date() ||
-        session.user.status !== UserStatus.ACTIVE
+        session.user.status !== UserStatus.ACTIVE ||
+        (principal.reviewer && session.user.role !== UserRole.MEMBER)
       ) {
         throw new Error("Inactive session");
       }

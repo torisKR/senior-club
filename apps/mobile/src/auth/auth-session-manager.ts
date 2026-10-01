@@ -18,6 +18,7 @@ import type {
   PhoneCodeChallenge,
   PhoneCodeRequestInput,
   PhoneCodeVerificationInput,
+  ReviewerLoginInput,
 } from '@/types';
 
 export interface AuthManagerSnapshot {
@@ -228,6 +229,11 @@ export const authSessionManager = {
     return snapshot;
   },
 
+  captureSessionGuard() {
+    const revision = sessionRevision;
+    return () => assertCurrentRevision(revision);
+  },
+
   subscribe(listener: AuthListener) {
     listeners.add(listener);
     return () => listeners.delete(listener);
@@ -342,6 +348,24 @@ export const authSessionManager = {
       auth: 'none',
       json: {
         accessToken,
+        clientType: 'ANDROID',
+        termsAccepted: input.termsAccepted,
+        privacyAccepted: input.privacyAccepted,
+      },
+    });
+    return installIssuedSession(response.body, revision, true);
+  },
+
+  async loginWithReviewer(idToken: string, input: ReviewerLoginInput) {
+    if (input.termsAccepted !== true || input.privacyAccepted !== true) {
+      throw new ApiError({ status: 0, code: 'CONSENT_REQUIRED', message: '필수 약관에 모두 동의해 주세요.' });
+    }
+    const revision = invalidateInFlightAuthentication();
+    const response = await getAnonymousClient().requestJson<IssuedSession>('/v1/auth/reviewer', {
+      method: 'POST',
+      auth: 'none',
+      json: {
+        idToken,
         clientType: 'ANDROID',
         termsAccepted: input.termsAccepted,
         privacyAccepted: input.privacyAccepted,

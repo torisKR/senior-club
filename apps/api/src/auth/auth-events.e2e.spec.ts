@@ -16,6 +16,7 @@ import { ConfiguredIoAdapter } from "../config/socket-io.adapter";
 import { AuthProvider, UserRole } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { KakaoTokenVerifier, type KakaoIdentity } from "./kakao-token-verifier";
+import { FirebaseReviewerService } from "./firebase-reviewer.service";
 
 const databaseUrl = databaseTestUrl();
 
@@ -26,6 +27,7 @@ describe.skipIf(!databaseUrl)("Kakao auth and event application (database e2e)",
   let applicationId = "";
   let memberId = "";
   let outsiderId = "";
+  let reviewerId = "";
   let existingRoomIds: string[] = [];
   let existingRoleConsentIds: string[] = [];
   let existingRolePreferenceIds: string[] = [];
@@ -47,6 +49,7 @@ describe.skipIf(!databaseUrl)("Kakao auth and event application (database e2e)",
       return identity;
     }),
   };
+  const reviewerVerifier = { verify: vi.fn(async () => ({ uid: `${runId}-reviewer` })) };
   const externalFetch = vi.fn(() => { throw new Error("External providers are forbidden in DB QA"); });
   const login = (token: string) => request(app.getHttpServer())
     .post("/v1/auth/kakao")
@@ -58,7 +61,8 @@ describe.skipIf(!databaseUrl)("Kakao auth and event application (database e2e)",
     vi.stubGlobal("fetch", externalFetch);
     const { AppModule } = await import("../app.module");
     const module = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideProvider(KakaoTokenVerifier).useValue(kakaoVerifier).compile();
+      .overrideProvider(KakaoTokenVerifier).useValue(kakaoVerifier)
+      .overrideProvider(FirebaseReviewerService).useValue(reviewerVerifier).compile();
     app = module.createNestApplication();
     const env = app.get<ApiEnv>(API_ENV);
     expect(env.DATABASE_URL).toBe(databaseUrl);
@@ -100,7 +104,7 @@ describe.skipIf(!databaseUrl)("Kakao auth and event application (database e2e)",
     try {
       if (!app || !fixturesStarted) return;
       const prisma = app.get(PrismaService);
-      const userIds = [memberId, outsiderId].filter(Boolean);
+      const userIds = [memberId, outsiderId, reviewerId].filter(Boolean);
       const sessions = await prisma.authSession.findMany({
         where: { user: { authIdentities: { some: { providerAccountId: { startsWith: runId } } } } },
         select: { id: true },
@@ -133,6 +137,32 @@ describe.skipIf(!databaseUrl)("Kakao auth and event application (database e2e)",
       if (app) await app.close();
       vi.unstubAllGlobals();
     }
+  });
+
+  it("creates one ordinary reviewer member during concurrent logins and uses real member/session guards", async () => {
+    const loginReviewer = () => request(app.getHttpServer()).post("/v1/auth/reviewer")
+      .send({ idToken: "fixture-reviewer-token-proof", clientType: "ANDROID", termsAccepted: true, privacyAccepted: true });
+    const [first, second] = await Promise.all([loginReviewer(), loginReviewer()]);
+    expect(first.status).toBe(201); expect(second.status).toBe(201);
+    reviewerId = first.body.user.id;
+    expect(second.body.user.id).toBe(reviewerId);
+    expect(first.body.user.role).toBe("MEMBER");
+    const prisma = app.get(PrismaService);
+    expect(await prisma.authIdentity.count({ where: { provider: AuthProvider.EMAIL, providerAccountId: `firebase-reviewer:${runId}-reviewer` } })).toBe(1);
+    expect(await prisma.consentRecord.count({ where: { userId: reviewerId, granted: true } })).toBe(2);
+    await request(app.getHttpServer()).get("/v1/me").set("Authorization", `Bearer ${first.body.accessToken}`).expect(200);
+    await request(app.getHttpServer()).get("/v1/admin/reports").set("Authorization", `Bearer ${first.body.accessToken}`).expect(403);
+    await request(app.getHttpServer()).post("/v1/auth/logout").send({ refreshToken: first.body.refreshToken }).expect(201);
+    await request(app.getHttpServer()).post("/v1/auth/refresh").send({ refreshToken: first.body.refreshToken }).expect(401);
+    const refreshed = await request(app.getHttpServer()).post("/v1/auth/refresh").send({ refreshToken: second.body.refreshToken }).expect(201);
+    expect(refreshed.body.user).not.toHaveProperty("authIdentities");
+    await prisma.user.update({ where: { id: reviewerId }, data: { role: UserRole.ADMIN } });
+    await request(app.getHttpServer()).get("/v1/admin/reports").set("Authorization", `Bearer ${refreshed.body.accessToken}`).expect(401);
+    await request(app.getHttpServer()).post("/v1/auth/refresh").send({ refreshToken: refreshed.body.refreshToken }).expect(401);
+    await loginReviewer().expect(403);
+    await prisma.user.update({ where: { id: reviewerId }, data: { role: UserRole.MEMBER, status: "SUSPENDED" } });
+    await loginReviewer().expect(403);
+    await prisma.user.update({ where: { id: reviewerId }, data: { status: "ACTIVE" } });
   });
 
   it("probes the real database", async () => {

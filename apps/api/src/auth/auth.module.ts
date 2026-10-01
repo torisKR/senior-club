@@ -6,6 +6,7 @@ import { AuthService } from "./auth.service";
 import { GoogleTokenVerifier } from "./google-token-verifier";
 import { KakaoTokenVerifier } from "./kakao-token-verifier";
 import { FirebasePhoneService } from "./firebase-phone.service";
+import { FirebaseReviewerService } from "./firebase-reviewer.service";
 import { TokenService } from "./token.service";
 import { DisabledLoginGuard } from "./login-policy";
 
@@ -17,6 +18,7 @@ import { DisabledLoginGuard } from "./login-policy";
     KakaoTokenVerifier,
     GoogleTokenVerifier,
     FirebasePhoneService,
+    FirebaseReviewerService,
     AccessTokenGuard,
     DisabledLoginGuard,
   ],

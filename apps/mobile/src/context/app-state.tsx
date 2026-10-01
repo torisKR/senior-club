@@ -24,6 +24,8 @@ import {
   isRetryableAuthRestoreError,
 } from '@/auth/auth-restore-retry';
 import { requestKakaoAccessToken } from '@/auth/kakao-login';
+import { requestReviewerIdToken } from '@/auth/reviewer-login';
+import { ReviewerLoginError } from '@/auth/reviewer-error-message';
 import { authSessionManager } from '@/auth/auth-session-manager';
 import { unregisterCurrentAndroidDevice } from '@/notifications/push-registration';
 import { createAppStateStore } from '@/context/app-state-store';
@@ -45,6 +47,7 @@ import type {
   PersistedAppState,
   PhoneCodeRequestInput,
   PhoneCodeVerificationInput,
+  ReviewerLoginInput,
   User,
 } from '@/types';
 
@@ -118,6 +121,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
   );
   const authenticatedUserId = state.session?.userId;
   const localSignOutsInFlight = useRef(0);
+  const localSignOutRevision = useRef(0);
   const profileMutationVersion = useRef(0);
   const participationMutationVersion = useRef(0);
   const interestsLoadInFlight = useRef<Promise<void> | null>(null);
@@ -575,7 +579,37 @@ export function AppStateProvider({ children }: PropsWithChildren) {
     [syncAuthenticatedSession],
   );
 
+  const signInWithReviewer = useCallback(
+    async (email: string, password: string, input: ReviewerLoginInput) => {
+      if (input.termsAccepted !== true || input.privacyAccepted !== true) {
+        throw new ReviewerLoginError('CONSENT_REQUIRED');
+      }
+      const signOutRevision = localSignOutRevision.current;
+      const assertCurrentSession = authSessionManager.captureSessionGuard();
+      const assertNoLocalSignOut = () => {
+        if (localSignOutsInFlight.current > 0 || localSignOutRevision.current !== signOutRevision) {
+          throw new ReviewerLoginError('AUTH_SESSION_CHANGED');
+        }
+      };
+      assertNoLocalSignOut();
+      const idToken = await requestReviewerIdToken(email, password);
+      // Firebase cleanup has completed before this point. A logout or account
+      // change during native authentication must cancel the server exchange.
+      assertNoLocalSignOut();
+      assertCurrentSession();
+      const session = await authSessionManager.loginWithReviewer(idToken, input);
+      assertNoLocalSignOut();
+      if (authSessionManager.getSnapshot().session?.sessionId !== session.sessionId) {
+        throw new ReviewerLoginError('AUTH_SESSION_CHANGED');
+      }
+      syncAuthenticatedSession(session);
+      return session;
+    },
+    [syncAuthenticatedSession],
+  );
+
   const signOut = useCallback(async () => {
+    localSignOutRevision.current += 1;
     localSignOutsInFlight.current += 1;
     updateState((current) => ({ ...current, session: null }));
     try {
@@ -935,6 +969,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       requestPhoneCode,
       signIn,
       signInWithKakao,
+      signInWithReviewer,
       signInWithPhone,
       signOut,
       deleteAccount,
@@ -975,6 +1010,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       requestPhoneCode,
       signIn,
       signInWithKakao,
+      signInWithReviewer,
       signInWithPhone,
       signOut,
       deleteAccount,

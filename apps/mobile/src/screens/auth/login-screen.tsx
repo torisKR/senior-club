@@ -14,6 +14,8 @@ import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { kakaoErrorMessage } from '@/auth/kakao-error-message';
+import { reviewerErrorMessage } from '@/auth/reviewer-error-message';
+import { ReviewerLoginForm } from '@/screens/auth/reviewer-login-form';
 import { AnalyticsSettingsEntry } from '@/analytics/consent-card';
 import { Layout, Radius, Spacing, TouchTarget } from '@/constants/theme';
 import { getPublicWebPageUrl } from '@/config/public-web-links';
@@ -34,10 +36,12 @@ export function LoginScreen() {
   const theme = useTheme();
   const {
     authRestoreError,
+    largeTextEnabled,
     onboardingCompleted,
     profile,
     session,
     signInWithKakao,
+    signInWithReviewer,
   } = useAppState();
   const params = useLocalSearchParams<{
     intent?: string | string[];
@@ -47,10 +51,12 @@ export function LoginScreen() {
   const intent = sanitizeAuthIntent(params.intent);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingProvider, setPendingProvider] = useState<'kakao' | 'reviewer' | null>(null);
+  const isSubmitting = pendingProvider !== null;
   const [notice, setNotice] = useState('');
   const displayedNotice = notice || authRestoreError;
   const manualSignInOwnsNavigation = useRef(false);
+  const submissionPending = useRef(false);
 
   useEffect(() => {
     if (!session || manualSignInOwnsNavigation.current) return;
@@ -65,21 +71,23 @@ export function LoginScreen() {
     );
   }, [intent, onboardingCompleted, profile.id, returnTo, session]);
 
-  const handleKakaoSignIn = async () => {
-    if (isSubmitting) return;
+  const handleSignIn = async (request: { provider: 'kakao' } | { provider: 'reviewer'; email: string; password: string }) => {
+    const { provider } = request;
+    if (submissionPending.current) return;
     if (!termsAccepted || !privacyAccepted) {
       setNotice('서비스 이용약관과 개인정보 처리방침에 모두 동의해 주세요.');
       return;
     }
 
-    setIsSubmitting(true);
+    submissionPending.current = true;
+    setPendingProvider(provider);
     setNotice('');
     manualSignInOwnsNavigation.current = true;
     try {
-      const session = await signInWithKakao({
-        termsAccepted: true,
-        privacyAccepted: true,
-      });
+      const input = { termsAccepted: true, privacyAccepted: true } as const;
+      const session = request.provider === 'reviewer'
+        ? await signInWithReviewer(request.email, request.password, input)
+        : await signInWithKakao(input);
       const hasCompletedProfile =
         session.onboardingCompletedAt !== null ||
         (onboardingCompleted && profile.id === session.userId);
@@ -90,9 +98,10 @@ export function LoginScreen() {
       );
     } catch (error) {
       manualSignInOwnsNavigation.current = false;
-      setNotice(kakaoErrorMessage(error));
+      setNotice(provider === 'reviewer' ? reviewerErrorMessage(error) : kakaoErrorMessage(error));
     } finally {
-      setIsSubmitting(false);
+      submissionPending.current = false;
+      setPendingProvider(null);
     }
   };
 
@@ -151,6 +160,7 @@ export function LoginScreen() {
                   setNotice('');
                 }}
                 theme={theme}
+                disabled={isSubmitting}
               />
               <ConsentCheckbox
                 checked={privacyAccepted}
@@ -160,6 +170,7 @@ export function LoginScreen() {
                   setNotice('');
                 }}
                 theme={theme}
+                disabled={isSubmitting}
               />
             </View>
 
@@ -176,23 +187,34 @@ export function LoginScreen() {
 
             <Pressable
               disabled={isSubmitting}
-              onPress={handleKakaoSignIn}
+              onPress={() => { void handleSignIn({ provider: 'kakao' }); }}
               style={({ pressed }) => [
                 styles.kakaoButton,
                 { opacity: isSubmitting ? 0.55 : pressed ? 0.78 : 1 },
               ]}
               accessibilityRole="button"
-              accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
+              accessibilityState={{ disabled: isSubmitting, busy: pendingProvider === 'kakao' }}
               accessibilityLabel="카카오로 간편 로그인">
-              {isSubmitting ? (
+              {pendingProvider === 'kakao' ? (
                 <ActivityIndicator color="#191919" size="small" />
               ) : (
                 <AppIcon name="chat" color="#191919" />
               )}
               <AppText variant="button" selectable={false} style={styles.kakaoButtonText}>
-                {isSubmitting ? '카카오 로그인을 확인하고 있어요…' : '카카오로 간편하게 시작하기'}
+                {pendingProvider === 'kakao' ? '카카오 로그인을 확인하고 있어요…' : '카카오로 간편하게 시작하기'}
               </AppText>
             </Pressable>
+
+            {Platform.OS === 'android' ? (
+              <ReviewerLoginForm
+                disabled={isSubmitting}
+                termsAccepted={termsAccepted}
+                privacyAccepted={privacyAccepted}
+                largeTextEnabled={largeTextEnabled}
+                onSignIn={(email, password) => handleSignIn({ provider: 'reviewer', email, password })}
+                onNotice={setNotice}
+              />
+            ) : null}
 
             <View style={[styles.productionNotice, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
               <AppText variant="bodyStrong" style={{ color: theme.text }}>내 정보 설정 안내</AppText>
@@ -240,24 +262,27 @@ function ConsentCheckbox({
   label,
   onPress,
   theme,
+  disabled,
 }: {
   checked: boolean;
   label: string;
   onPress: () => void;
   theme: ReturnType<typeof useTheme>;
+  disabled: boolean;
 }) {
   return (
     <Pressable
+      disabled={disabled}
       onPress={onPress}
       accessibilityRole="checkbox"
-      accessibilityState={{ checked }}
+      accessibilityState={{ checked, disabled }}
       accessibilityLabel={label}
       style={({ pressed }) => [
         styles.consentRow,
         {
           borderColor: checked ? theme.primary : theme.border,
           backgroundColor: checked ? theme.backgroundSelected : theme.surface,
-          opacity: pressed ? 0.7 : 1,
+          opacity: disabled ? 0.55 : pressed ? 0.7 : 1,
         },
       ]}>
       <View

@@ -14,6 +14,7 @@ import type {
   PhoneCodeChallenge,
   PhoneCodeRequestInput,
   PhoneCodeVerificationInput,
+  ReviewerLoginInput,
   User,
 } from '@/types/domain';
 import type { AccountDeletionRequest } from '@/api/account-api';
@@ -62,6 +63,7 @@ export interface AppStateContextValue extends PersistedAppState {
   signIn: (input: EmailCodeVerificationInput) => Promise<AuthSession>;
   signInWithPhone: (input: PhoneCodeVerificationInput) => Promise<AuthSession>;
   signInWithKakao: (input: KakaoLoginInput) => Promise<AuthSession>;
+  signInWithReviewer: (email: string, password: string, input: ReviewerLoginInput) => Promise<AuthSession>;
   signOut: () => Promise<void>;
   deleteAccount: (reason?: string) => Promise<AccountDeletionRequest>;
   applyEvent: (eventId: EntityId) => Promise<ParticipationStatus>;
