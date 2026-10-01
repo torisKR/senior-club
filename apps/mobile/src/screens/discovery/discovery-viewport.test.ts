@@ -40,6 +40,7 @@ vi.mock('react-native', () => ({
 }));
 vi.mock('expo-router', () => ({
   Stack: { Screen: 'StackScreen' },
+  useLocalSearchParams: () => ({}),
   useRouter: () => ({ push: vi.fn() }),
 }));
 vi.mock('@/hooks/use-theme', () => ({ useTheme: () => ({ background: state.background }) }));

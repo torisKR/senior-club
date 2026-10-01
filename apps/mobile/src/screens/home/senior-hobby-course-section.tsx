@@ -148,7 +148,7 @@ export function SeniorHobbyCourseSection() {
                   if (course.recommendedEventId) {
                     router.push({ pathname: '/event/[id]', params: { id: course.recommendedEventId } });
                   } else {
-                    router.push('/events');
+                    router.push({ pathname: '/events', params: { category: course.relatedInterestId } });
                   }
                 }}
               />
@@ -207,7 +207,7 @@ export function SeniorHobbyCourseSection() {
                 label={hobby.actionText}
                 variant="primary"
                 onPress={() => {
-                  router.push('/events');
+                  router.push({ pathname: '/events', params: { category: hobby.interestId } });
                 }}
               />
             </Card>

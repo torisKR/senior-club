@@ -256,20 +256,41 @@ export class OutboxWorker
           where: { userId: payload.recipientUserId },
           select: { emailEventUpdates: true },
         });
+        const deliveries: Promise<void>[] = [];
         if (payload.email && (preference?.emailEventUpdates ?? true)) {
-          await this.email.sendApplicationUpdate({
-            email: payload.email,
+          deliveries.push(
+            this.email.sendApplicationUpdate({
+              email: payload.email,
+              eventTitle: payload.eventTitle,
+              status: payload.status,
+              idempotencyKey: event.dedupKey,
+            }),
+          );
+        }
+        deliveries.push(
+          this.push.sendApplicationUpdate({
+            userId: payload.recipientUserId,
+            eventId: payload.eventId,
             eventTitle: payload.eventTitle,
             status: payload.status,
-            idempotencyKey: event.dedupKey,
-          });
+          }),
+        );
+
+        // A disabled channel must not block another channel or exhaust its
+        // retries. Genuine provider failures still retry the legacy event;
+        // only an event with no available channel is terminally disabled.
+        let completedChannel = false;
+        let disabledError: DisabledChannelError | undefined;
+        for (const result of await Promise.allSettled(deliveries)) {
+          if (result.status === "fulfilled") {
+            completedChannel = true;
+          } else if (result.reason instanceof DisabledChannelError) {
+            disabledError ??= result.reason;
+          } else {
+            throw result.reason;
+          }
         }
-        await this.push.sendApplicationUpdate({
-          userId: payload.recipientUserId,
-          eventId: payload.eventId,
-          eventTitle: payload.eventTitle,
-          status: payload.status,
-        });
+        if (!completedChannel && disabledError) throw disabledError;
       } else if (event.type === "EVENT_REVIEW_REQUEST_READY") {
         const payload = reviewRequestPayloadSchema.parse(event.payload);
         const preparation = await this.prepareReviewRequest(

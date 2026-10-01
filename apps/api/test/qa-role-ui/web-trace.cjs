@@ -38,6 +38,33 @@ const traceOrigin = (origin) => {
   }
 };
 const traceMethod = (method) => method === 'GET' ? 'GET' : method === 'POST' ? 'POST' : 'OTHER';
+const traceStatus = (status) => {
+  switch (status) {
+    case 200: return 200;
+    case 201: return 201;
+    case 204: return 204;
+    case 301: return 301;
+    case 302: return 302;
+    case 303: return 303;
+    case 304: return 304;
+    case 307: return 307;
+    case 308: return 308;
+    case 400: return 400;
+    case 401: return 401;
+    case 403: return 403;
+    case 404: return 404;
+    case 405: return 405;
+    case 409: return 409;
+    case 410: return 410;
+    case 422: return 422;
+    case 429: return 429;
+    case 500: return 500;
+    case 502: return 502;
+    case 503: return 503;
+    case 504: return 504;
+    default: return null;
+  }
+};
 const locationPath = (location) => {
   if (location === undefined || location === null) return null;
   try { return tracePath(new URL(String(location), 'https://localhost:43132').pathname); }
@@ -58,7 +85,7 @@ exports.installTracing = (tempRoot) => {
     write({ event: 'nest-refresh-fetch-start', at: timestamp(), id, parent, origin: traceOrigin(url.origin), path: '/v1/auth/refresh' });
     try {
       const response = await originalFetch(input, options);
-      write({ event: 'nest-refresh-fetch-response', at: timestamp(), id, parent, status: response.status });
+      write({ event: 'nest-refresh-fetch-response', at: timestamp(), id, parent, status: traceStatus(response.status) });
       return response;
     } catch (error) {
       write({ event: 'nest-refresh-fetch-error', at: timestamp(), id, parent });
@@ -78,7 +105,7 @@ exports.traceHandler = (handler) => (request, response) => {
     write({ event: 'web-request', at: timestamp(), ...parent, method: traceMethod(request.method), cookiePresence: cookiePresence(headers.cookie), headerPresence });
     response.once('finish', () => {
       const setCookies = String(response.getHeader('set-cookie') ?? '');
-      write({ event: 'web-response', at: timestamp(), ...parent, status: response.statusCode, locationPath: locationPath(response.getHeader('location')), setCookiePresence: { access: setCookies.includes('__Host-senior_club_access='), refresh: setCookies.includes('__Host-senior_club_session=') } });
+      write({ event: 'web-response', at: timestamp(), ...parent, status: traceStatus(response.statusCode), locationPath: locationPath(response.getHeader('location')), setCookiePresence: { access: setCookies.includes('__Host-senior_club_access='), refresh: setCookies.includes('__Host-senior_club_session=') } });
     });
   }
   return requestScope.run(parent, () => handler(request, response));

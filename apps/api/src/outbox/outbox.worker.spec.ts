@@ -25,15 +25,16 @@ const NOW = new Date("2026-07-29T12:00:00.000Z");
 function createHarness(
   sendError?: Error,
   type = "ACCOUNT_DELETION_REQUESTED",
+  payload: unknown = {
+    email: "member@example.com",
+    scheduledFor: "2026-08-05T00:00:00.000Z",
+  },
 ) {
   const claimedEvent = {
     id: "outbox-1",
     type,
     dedupKey: "account-deletion:request-1:requested",
-    payload: {
-      email: "member@example.com",
-      scheduledFor: "2026-08-05T00:00:00.000Z",
-    },
+    payload,
     attempts: 2,
     maxAttempts: 5,
   };
@@ -46,12 +47,14 @@ function createHarness(
     },
   };
   const finalUpdate = vi.fn().mockResolvedValue({ count: 1 });
+  const preferenceLookup = vi.fn().mockResolvedValue({ emailEventUpdates: true });
   const prisma = {
     $transaction: vi.fn(
       async (callback: (client: typeof transaction) => Promise<unknown>) =>
         callback(transaction),
     ),
     outboxEvent: { updateMany: finalUpdate },
+    notificationPreference: { findUnique: preferenceLookup },
   } as unknown as PrismaService;
   const email = {
     sendOtp: vi.fn().mockResolvedValue(undefined),
@@ -78,6 +81,9 @@ function createHarness(
     transaction,
     finalUpdate,
     email,
+    push,
+    preferenceLookup,
+    claimedEvent,
     tokens,
   };
 }
@@ -200,6 +206,209 @@ describe("OutboxWorker", () => {
       vi.useRealTimers();
     }
   });
+});
+
+const applicationPayload = {
+  notificationId: "notification-1",
+  recipientUserId: "member-1",
+  email: "member@example.com",
+  eventId: "event-1",
+  eventTitle: "봄날 사진 산책",
+  status: "APPROVED",
+};
+
+function createApplicationUpdateHarness(
+  emailError?: Error,
+  pushError?: Error,
+  type = "EVENT_APPLICATION_CHANGED",
+) {
+  const harness = createHarness(undefined, type, { ...applicationPayload });
+  harness.claimedEvent.dedupKey = "application:application-1:APPROVED";
+  if (emailError) harness.email.sendApplicationUpdate.mockRejectedValue(emailError);
+  if (pushError) harness.push.sendApplicationUpdate.mockRejectedValue(pushError);
+  return harness;
+}
+
+describe("OutboxWorker legacy application delivery", () => {
+  it.each([
+    { emailDisabled: false, pushDisabled: false },
+    { emailDisabled: true, pushDisabled: false },
+    { emailDisabled: false, pushDisabled: true },
+    { emailDisabled: true, pushDisabled: true },
+  ])(
+    "isolates disabled channels (email=$emailDisabled, push=$pushDisabled)",
+    async ({ emailDisabled, pushDisabled }) => {
+      const harness = createApplicationUpdateHarness(
+        emailDisabled ? new DisabledChannelError("EMAIL_PROVIDER") : undefined,
+        pushDisabled ? new DisabledChannelError("PUSH_PROVIDER") : undefined,
+      );
+
+      await expect(harness.worker.drainOnce()).resolves.toBe(1);
+
+      expect(harness.email.sendApplicationUpdate).toHaveBeenCalledExactlyOnceWith({
+        email: applicationPayload.email,
+        eventTitle: applicationPayload.eventTitle,
+        status: applicationPayload.status,
+        idempotencyKey: harness.claimedEvent.dedupKey,
+      });
+      expect(harness.push.sendApplicationUpdate).toHaveBeenCalledExactlyOnceWith({
+        userId: applicationPayload.recipientUserId,
+        eventId: applicationPayload.eventId,
+        eventTitle: applicationPayload.eventTitle,
+        status: applicationPayload.status,
+      });
+      expect(harness.finalUpdate).toHaveBeenCalledOnce();
+      const update = harness.finalUpdate.mock.calls[0]![0];
+      expect(update.where).toEqual({
+        id: harness.claimedEvent.id,
+        status: OutboxStatus.PROCESSING,
+        lockedBy: expect.stringMatching(/^api-\d+-/),
+      });
+      expect(update.data).toMatchObject({ lockedAt: null, lockedBy: null });
+      if (emailDisabled && pushDisabled) {
+        expect(update.data).toMatchObject({
+          status: OutboxStatus.FAILED,
+          attempts: harness.claimedEvent.maxAttempts,
+          lastError: "EMAIL_PROVIDER=disabled: delivery unavailable",
+        });
+        expect(update.data).not.toHaveProperty("processedAt");
+      } else {
+        expect(update.data).toMatchObject({
+          status: OutboxStatus.PROCESSED,
+          lastError: null,
+          processedAt: expect.any(Date),
+        });
+        expect(update.data).not.toHaveProperty("attempts");
+      }
+    },
+  );
+
+  it.each([
+    { failedChannel: "push", otherDisabled: true },
+    { failedChannel: "email", otherDisabled: true },
+    { failedChannel: "push", otherDisabled: false },
+    { failedChannel: "email", otherDisabled: false },
+  ] as const)(
+    "retries $failedChannel provider failures when the other channel disabled=$otherDisabled",
+    async ({ failedChannel, otherDisabled }) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(NOW);
+      try {
+        const providerError = new Error(`${failedChannel} provider unavailable`);
+        const harness = createApplicationUpdateHarness(
+          failedChannel === "email"
+            ? providerError
+            : otherDisabled
+              ? new DisabledChannelError("EMAIL_PROVIDER")
+              : undefined,
+          failedChannel === "push"
+            ? providerError
+            : otherDisabled
+              ? new DisabledChannelError("PUSH_PROVIDER")
+              : undefined,
+        );
+
+        await expect(harness.worker.drainOnce()).resolves.toBe(1);
+
+        expect(harness.email.sendApplicationUpdate).toHaveBeenCalledOnce();
+        expect(harness.push.sendApplicationUpdate).toHaveBeenCalledOnce();
+        const update = harness.finalUpdate.mock.calls[0]![0];
+        expect(update.data).toMatchObject({
+          status: OutboxStatus.FAILED,
+          availableAt: new Date(NOW.getTime() + 60_000),
+          lastError: providerError.message,
+          lockedAt: null,
+          lockedBy: null,
+        });
+        expect(update.data).not.toHaveProperty("attempts");
+        expect(update.data).not.toHaveProperty("processedAt");
+
+        const retryingSender = failedChannel === "email"
+          ? harness.email.sendApplicationUpdate
+          : harness.push.sendApplicationUpdate;
+        retryingSender.mockResolvedValue(undefined);
+        harness.claimedEvent.attempts += 1;
+        vi.setSystemTime(new Date(NOW.getTime() + 60_000));
+
+        await expect(harness.worker.drainOnce()).resolves.toBe(1);
+
+        expect(harness.finalUpdate).toHaveBeenCalledTimes(2);
+        expect(harness.finalUpdate.mock.calls[1]![0].data).toMatchObject({
+          status: OutboxStatus.PROCESSED,
+          lastError: null,
+        });
+        expect(harness.transaction.outboxEvent.updateMany).toHaveBeenCalledTimes(2);
+        for (const [claim] of harness.transaction.outboxEvent.updateMany.mock.calls) {
+          expect(claim.data.attempts).toEqual({ increment: 1 });
+        }
+        expect(harness.email.sendApplicationUpdate.mock.calls[1]![0]).toMatchObject({
+          idempotencyKey: harness.claimedEvent.dedupKey,
+        });
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+
+  it.each([
+    { reason: "no email address", noEmail: true, pushDisabled: false },
+    { reason: "email opt-out", noEmail: false, pushDisabled: false },
+    { reason: "no email address", noEmail: true, pushDisabled: true },
+    { reason: "email opt-out", noEmail: false, pushDisabled: true },
+  ])(
+    "respects $reason with push disabled=$pushDisabled",
+    async ({ noEmail, pushDisabled }) => {
+      const harness = createApplicationUpdateHarness(
+        new DisabledChannelError("EMAIL_PROVIDER"),
+        pushDisabled ? new DisabledChannelError("PUSH_PROVIDER") : undefined,
+      );
+      if (noEmail) {
+        harness.claimedEvent.payload = { ...applicationPayload, email: null };
+      } else {
+        harness.preferenceLookup.mockResolvedValue({ emailEventUpdates: false });
+      }
+
+      await expect(harness.worker.drainOnce()).resolves.toBe(1);
+
+      expect(harness.email.sendApplicationUpdate).not.toHaveBeenCalled();
+      expect(harness.push.sendApplicationUpdate).toHaveBeenCalledOnce();
+      const update = harness.finalUpdate.mock.calls[0]![0];
+      if (pushDisabled) {
+        expect(update.data).toMatchObject({
+          status: OutboxStatus.FAILED,
+          attempts: harness.claimedEvent.maxAttempts,
+          lastError: "PUSH_PROVIDER=disabled: delivery unavailable",
+        });
+      } else {
+        expect(update.data).toMatchObject({
+          status: OutboxStatus.PROCESSED,
+          lastError: null,
+        });
+      }
+    },
+  );
+
+  it.each(["EVENT_APPLICATION_EMAIL", "EVENT_APPLICATION_PUSH"])(
+    "keeps split %s failures independent and terminal when disabled",
+    async (type) => {
+      const emailOnly = type === "EVENT_APPLICATION_EMAIL";
+      const harness = createApplicationUpdateHarness(
+        emailOnly ? new DisabledChannelError("EMAIL_PROVIDER") : undefined,
+        emailOnly ? undefined : new DisabledChannelError("PUSH_PROVIDER"),
+        type,
+      );
+
+      await expect(harness.worker.drainOnce()).resolves.toBe(1);
+
+      expect(harness.email.sendApplicationUpdate).toHaveBeenCalledTimes(emailOnly ? 1 : 0);
+      expect(harness.push.sendApplicationUpdate).toHaveBeenCalledTimes(emailOnly ? 0 : 1);
+      expect(harness.finalUpdate.mock.calls[0]![0].data).toMatchObject({
+        status: OutboxStatus.FAILED,
+        attempts: harness.claimedEvent.maxAttempts,
+        lastError: `${emailOnly ? "EMAIL" : "PUSH"}_PROVIDER=disabled: delivery unavailable`,
+      });
+    },
+  );
 });
 
 function createReviewRequestHarness(

@@ -44,5 +44,18 @@
     "Provider verification uses a fixture; this is not production provider login.",
     "CodeQL uploaded analysis of this patch is still required.",
     "Current Android card-fix APK visual/provider QA awaits device handoff."
-  ]
+  ],
+  "followUpHttpStatusRegression": {
+    "passed": true,
+    "loopbackTestCount": 1,
+    "standardStatusRetained": true,
+    "nonstandard299DeliveredToClient": true,
+    "nonstandardStatusLoggedAsNull": true,
+    "cookieUrlBodyAndRedirectSentinelAbsentFromLogs": true,
+    "files": {
+      "apps/api/test/qa-role-ui/web-trace.cjs": "5818a3737bfb0a9badc38ff9bccb7cf153a6184d663181c1419c1da3b1358b3a",
+      "apps/api/test/qa-role-ui/web-trace.test.cjs": "43f510a6fd810a8c7d01485fdce608b6a8f33ec34d9ea641697a7ec9786ad474"
+    },
+    "scope": "Real loopback HTTP only; earlier full logout callback smoke is retained separately in this record."
+  }
 }
