@@ -3,7 +3,7 @@
     "name": "시니어클럽",
     "slug": "club-senior",
     "description": "같은 관심사를 가진 사람들과 모임을 만들고 관계를 이어가는 시니어 커뮤니티",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "orientation": "portrait",
     "icon": "./assets/images/senior-club-icon-v2.png",
     "scheme": "clubsenior",
@@ -11,7 +11,7 @@
     "primaryColor": "#0E5142",
     "android": {
       "package": "com.toris.seniorclub",
-      "versionCode": 212215980,
+      "versionCode": 213033825,
       "allowBackup": false,
       "predictiveBackGestureEnabled": true,
       "permissions": [],

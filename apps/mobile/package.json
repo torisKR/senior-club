@@ -2,7 +2,7 @@
   "name": "mobile",
   "packageManager": "pnpm@9.14.2",
   "main": "expo-router/entry",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",
     "@expo/ui": "~57.0.19",
