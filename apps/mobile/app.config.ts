@@ -2,7 +2,7 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 
 const GOOGLE_ANDROID_TEST_APP_ID = 'ca-app-pub-3940256099942544~3347511713';
 const GOOGLE_IOS_TEST_APP_ID = 'ca-app-pub-3940256099942544~1458002511';
-const PRODUCTION_ADMOB_ANDROID_APP_ID = 'ca-app-pub-5744832247312120~3966489068';
+const PRODUCTION_ADMOB_ANDROID_APP_ID = 'ca-app-pub-3004906966180197~9575830978';
 const ADMOB_APP_ID = /^ca-app-pub-\d{16}~\d{10}$/;
 
 function configuredAndroidAppId(): string {
