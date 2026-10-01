@@ -40,7 +40,7 @@
 `https://senior.toris.kr/app-ads.txt`는 Play 스토어 웹사이트 origin과 같아야 AdMob 앱 인증이 통과한다.
 현재 판매자 행은 사용자 요청에 따라 `google.com, pub-3004906966180197, DIRECT, f08c47fec0942fa0`이다.
 AdMob 콘솔에서 `com.toris.seniorclub` 앱과 배너 단위를 확인했다. 앱 ID는 `ca-app-pub-3004906966180197~9575830978`, 배너 단위는 `ca-app-pub-3004906966180197/2894786837`이다. 확인 시점의 앱은 검토 필요/광고 게재 제한 상태이며, 판매자 행을 배포한 뒤 콘솔에서 다시 확인해야 한다.
-QA APK는 Google 테스트 배너를 사용한다. 실제 광고를 클릭하거나 테스트 노출을 수익으로 계산하지 않는다.
+`internal`, `qaInternalLocal`, `kakaoQaLocal`, `preview` QA 프로필에는 Google 테스트 앱·배너 ID를 명시한다. 독립 실행형 release APK에서도 실제 게시자의 광고를 요청하지 않도록 검사한다. 실제 광고를 클릭하거나 테스트 노출을 수익으로 계산하지 않는다.
 
 ## 5. Play Console 순서
 
