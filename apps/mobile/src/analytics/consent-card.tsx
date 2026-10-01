@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Alert, Linking, Switch, View } from 'react-native';
 
 import { AppText, Card, SeniorButton } from '@/components/ui';
@@ -49,4 +50,3 @@ export function AnalyticsSettingsEntry() {
     </View>
   );
 }
-import { useState } from 'react';
