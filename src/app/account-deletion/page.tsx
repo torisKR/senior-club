@@ -79,12 +79,12 @@ export default function AccountDeletionPage() {
             </p>
             <a
               className="mt-6 inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-white px-5 py-3 text-center text-[18px] font-black text-[var(--ink)] sm:w-auto"
-              href="mailto:privacy@clubsenior.kr?subject=%EC%8B%9C%EB%8B%88%EC%96%B4%ED%81%B4%EB%9F%BD%20%EA%B3%84%EC%A0%95%20%EC%82%AD%EC%A0%9C%20%EC%9A%94%EC%B2%AD"
+              href="mailto:korea@toris.kr?subject=%EC%8B%9C%EB%8B%88%EC%96%B4%ED%81%B4%EB%9F%BD%20%EA%B3%84%EC%A0%95%20%EC%82%AD%EC%A0%9C%20%EC%9A%94%EC%B2%AD"
             >
               계정 접근 지원 이메일 작성
             </a>
             <p className="mt-4 text-[16px] leading-7 text-white/80 sm:text-[17px]">
-              문의 이메일: privacy@clubsenior.kr
+              문의 이메일: korea@toris.kr
             </p>
           </div>
         </section>

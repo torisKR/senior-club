@@ -111,7 +111,7 @@ export default function TermsPage() {
 
         <p className="mt-10 text-[16px] leading-7 text-[var(--muted)] sm:text-[17px]">
           시행일 및 최종 수정일: 2026년 9월 9일 · 문의:
-          {" "}<a className="font-bold text-[var(--primary)] underline" href="mailto:privacy@clubsenior.kr">privacy@clubsenior.kr</a>
+          {" "}<a className="font-bold text-[var(--primary)] underline" href="mailto:korea@toris.kr">korea@toris.kr</a>
         </p>
       </article>
     </div>
