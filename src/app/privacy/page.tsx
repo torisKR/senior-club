@@ -160,6 +160,12 @@ export default function PrivacyPage() {
               판매하지 않습니다.
             </p>
             <p className="mt-4 text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
+              Firebase Cloud Messaging과 Firebase Installations는 알림 등록·수신을 위해
+              푸시 토큰, 설치 식별자와 앱·기기 정보를 처리합니다. 시니어클럽 서버의 푸시 등록은
+              로그아웃이나 계정 삭제 요청 시 해제합니다. Google 측의 설치·알림 정보는
+              Firebase의 서비스별 보관·삭제 정책에 따릅니다.
+            </p>
+            <p className="mt-4 text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
               Google 서비스는 미국을 포함한 글로벌 서버에서 처리될 수 있습니다. 인증과 광고
               정보는 해당 서비스의 보관·삭제 기준에 따르며, Google Play는 앱 내 구매·복원과
               결제를 처리합니다. 시니어클럽은 카드 번호를 수집하지 않습니다.
