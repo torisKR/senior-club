@@ -3,7 +3,7 @@
 - `ko-KR/title.txt`: 앱 이름
 - `ko-KR/short-description.txt`: 짧은 설명
 - `ko-KR/full-description.txt`: 전체 설명
-- `ko-KR/release-notes-0.1.1.txt`: 현재 카카오 전용 로그인·프로필·Android 디자인 수정 안내
+- `ko-KR/release-notes-0.1.2.txt`: 현재 카카오 전용 로그인·프로필·Android 디자인 수정 안내
 - `ko-KR/release-notes-0.1.0.txt`: 과거 첫 릴리스 기록
 - `icon-512-v2.png`: Play Console용 512×512 RGBA 앱 아이콘
 - `feature-graphic-1024x500-v2.png`: Play Console용 1024×500 RGB 피처 그래픽
@@ -42,3 +42,9 @@ production manifest와 모든 스토어 검사를 포함한 단일 출시 gate�
 Console 반영·정책 확정·사람의 검토 완료로 취급하지 않는다. 최신 디자인의 실기기 QA는
 [디자인 보고서](../../../docs/MOBILE_DESIGN_REVISION_20260930.md), 실제 제출 절차는
 [현재 Play 인수 문서](../../../docs/PLAY_UPLOAD_HANDOFF.md)를 따른다.
+
+## 0.1.2 바이너리 업데이트 패치노트
+
+현재 사용자용 패치노트는 [한국어 0.1.2 출시 노트](ko-KR/release-notes-0.1.2.txt)입니다.
+Aside Browser로 Play Console의 새 프로덕션 릴리스를 만들 때 해당 파일의 전문을 한국어(ko-KR) 출시 노트에 입력하고, 저장 후 화면에 같은 내용이 나타나는지 확인합니다.
+`direct-play-release.py`의 현재 track payload는 출시 노트를 넣지 않으므로, 이 스크립트로 업로드한 경우에도 콘솔에서 이 파일의 내용을 입력하고 확인한 뒤 출시합니다.
