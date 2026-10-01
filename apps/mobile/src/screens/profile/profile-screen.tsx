@@ -3,6 +3,7 @@ import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { Alert, Linking, Pressable, Switch, TextInput, View } from 'react-native';
 
 import { ApiError } from '@/api/api-error';
+import { AnalyticsConsentCard } from '@/analytics/consent-card';
 import { apiErrorMessage } from '@/api/error-message';
 import { profileApi } from '@/api/profile-api';
 import type { ProfileStateSnapshot } from '@/api/profile-api-core';
@@ -523,6 +524,7 @@ export function ProfileScreen() {
       </View>
 
       <View style={{ gap: Spacing.md }}>
+        <AnalyticsConsentCard />
         <SectionHeader title="개인정보와 계정" />
         <Card padded={false}>
           <Pressable

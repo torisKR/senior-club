@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, Switch, View, useWindowDimensions } from 'react-native';
 
 import { HomeBannerAd } from '@/ads/HomeBannerAd';
+import { AnalyticsConsentCard } from '@/analytics/consent-card';
 import { notificationsApi } from '@/api/notifications-api';
 import {
   AppText,
@@ -136,6 +137,7 @@ export function HomeScreen() {
 
   return (
     <Screen testID="home-screen" contentContainerStyle={{ paddingTop: Spacing.lg }}>
+      <AnalyticsConsentCard prompt />
       <View style={{ minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
         <View style={{ minWidth: 0, flex: 1, gap: Spacing.xs }}>
           <AppText variant="caption" color="textSecondary">{user.region} · 시니어클럽</AppText>

@@ -18,6 +18,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import type { BackendUser } from "@/lib/auth/server";
+import { AnalyticsSettings } from "@/components/analytics-provider";
 import {
   PROFILE_SESSION_SYNC_KEY,
   clearServerProfileCache,
@@ -162,6 +163,7 @@ export function ProfilePanel({ initialUser }: { initialUser: BackendUser }) {
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
       <div className="space-y-6">
+        <AnalyticsSettings />
         <section className="overflow-hidden rounded-[2rem] border border-[var(--line)] bg-[var(--surface)] shadow-[0_20px_60px_rgba(34,49,39,0.07)]">
           <div className="h-24 bg-[linear-gradient(110deg,var(--primary),var(--primary-strong))] sm:h-32" />
           <div className="px-6 pb-7 sm:px-8 sm:pb-9">

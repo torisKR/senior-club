@@ -135,6 +135,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Sites Worker
+        env:
+          # Public configuration must be embedded when Next.js builds the client.
+          NEXT_PUBLIC_GA_MEASUREMENT_ID: ${{ vars.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-3DYGB4B3XL' }}
         run: pnpm build:sites
 
       - name: Package Sites Worker

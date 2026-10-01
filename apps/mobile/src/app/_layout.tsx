@@ -7,6 +7,7 @@ import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AdsProvider } from '@/ads/AdsProvider';
+import { AnalyticsProvider } from '@/analytics/analytics-provider';
 import { AppBillingProvider } from '@/billing/AppBillingProvider';
 import { AppStateProvider } from '@/context/app-state';
 import { BrandColors, Colors, FontWeights } from '@/constants/theme';
@@ -67,7 +68,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AppStateProvider>
         <AppBillingProvider>
-          <AdsProvider>
+          <AnalyticsProvider><AdsProvider>
             <PendingAuthIntentCoordinator />
             <PushNotificationCoordinator />
             <ThemeProvider value={colorScheme === 'dark' ? darkNavigationTheme : lightNavigationTheme}>
@@ -94,7 +95,7 @@ export default function RootLayout() {
               </Stack>
               <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
             </ThemeProvider>
-          </AdsProvider>
+          </AdsProvider></AnalyticsProvider>
         </AppBillingProvider>
       </AppStateProvider>
     </GestureHandlerRootView>

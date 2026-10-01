@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Clock3, Database, LockKeyhole, Mail, ShieldCheck, Trash2 } from "lucide-react";
 
 import { createPublicPageMetadata } from "@/lib/seo";
+import { AnalyticsSettings } from "@/components/analytics-provider";
 
 export const metadata: Metadata = createPublicPageMetadata({
   title: "개인정보 처리방침",
@@ -53,7 +54,7 @@ export default function PrivacyPage() {
             <span className="tag">
               <Clock3 aria-hidden="true" className="size-4" /> 시행일 2026년 7월 30일
             </span>
-            <span className="tag">최종 수정 2026년 9월 30일</span>
+            <span className="tag">최종 수정 2026년 10월 1일</span>
           </div>
         </header>
 
@@ -80,6 +81,24 @@ export default function PrivacyPage() {
             결제 정보를 처리합니다. 기능이나 외부 SDK가 추가되면 수집 항목과 이
             방침도 함께 바뀝니다.
           </p>
+        </section>
+
+        <section id="analytics" aria-labelledby="privacy-analytics" className="mt-10 space-y-5">
+          <h2 id="privacy-analytics" className="section-title">선택적 서비스 이용 분석</h2>
+          <p className="text-[17px] leading-8 text-[var(--muted)]">
+            동의한 기기에 한해 Google Analytics(Google LLC)로 페이지·화면 조회, 세션과 이용 시간을
+            분석합니다. 웹 쿠키와 앱 설치 식별자, 기기·브라우저 정보가 처리될 수 있으며 Google 서버로
+            전송됩니다. 이름, 전화번호, 회원 ID, 채팅·게시글 내용과 로그인 인증 값은 보내지 않습니다.
+            광고 개인화와 Google Signals에는 이용하지 않습니다.
+          </p>
+          <p className="text-[17px] leading-8 text-[var(--muted)]">
+            동의하지 않아도 서비스를 이용할 수 있습니다. 아래 설정 또는 앱의 내 정보에서 언제든
+            끌 수 있습니다. 끄면 이후 분석 수집을 중단하고 이 기기의 분석 식별자를 초기화합니다.
+            이미 전송된 통계가 즉시 삭제되는 것은 아닙니다. 삭제 관련 문의는 이 방침의 문의처로 보내 주세요.
+            웹과 앱의 설정은 각각 저장합니다.
+          </p>
+          <a className="text-[var(--primary-strong)] underline" href="https://policies.google.com/privacy?hl=ko" target="_blank" rel="noreferrer">Google 개인정보 처리방침</a>
+          <AnalyticsSettings />
         </section>
 
         <section aria-labelledby="privacy-purpose" className="mt-10">

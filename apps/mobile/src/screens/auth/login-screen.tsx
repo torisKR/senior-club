@@ -14,6 +14,7 @@ import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { kakaoErrorMessage } from '@/auth/kakao-error-message';
+import { AnalyticsSettingsEntry } from '@/analytics/consent-card';
 import { Layout, Radius, Spacing, TouchTarget } from '@/constants/theme';
 import { getPublicWebPageUrl } from '@/config/public-web-links';
 import { AppText } from '@/components/ui/app-text';
@@ -200,6 +201,7 @@ export function LoginScreen() {
               </AppText>
             </View>
 
+            <AnalyticsSettingsEntry />
             <View style={styles.legalBlock}>
               <AppText variant="caption" style={[styles.legal, { color: theme.textMuted }]}>로그인하기 전에 아래 내용을 확인해 주세요.</AppText>
               <View style={styles.legalLinks}>
