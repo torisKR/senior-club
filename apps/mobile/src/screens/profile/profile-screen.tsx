@@ -243,7 +243,7 @@ export function ProfileScreen() {
               <AppText variant="sectionTitle">{profile.name}</AppText>
               <AppText color="textSecondary">{profile.ageGroup} · {profile.region}</AppText>
               <AppText variant="caption" color="textMuted">
-                카카오 로그인 회원
+                로그인 회원
               </AppText>
             </View>
           </View>
