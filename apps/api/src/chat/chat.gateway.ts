@@ -13,7 +13,7 @@ import type { Server, Socket } from "socket.io";
 import type { AuthenticatedPrincipal } from "../auth/auth.contracts";
 import { TokenService } from "../auth/token.service";
 import { ApiException } from "../common/http/api.exception";
-import { UserStatus } from "../generated/prisma/client";
+import { UserRole, UserStatus } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   joinChatRoomSchema,
@@ -56,7 +56,8 @@ export class ChatGateway implements OnGatewayInit {
           session.userId !== principal.userId ||
           session.revokedAt ||
           session.expiresAt <= new Date() ||
-          session.user.status !== UserStatus.ACTIVE
+          session.user.status !== UserStatus.ACTIVE ||
+          (principal.reviewer && session.user.role !== UserRole.MEMBER)
         ) throw new Error("Inactive session");
         socket.data.auth = { ...principal, role: session.user.role };
         next();
@@ -115,7 +116,7 @@ export class ChatGateway implements OnGatewayInit {
         userId: principal.userId,
         revokedAt: null,
         expiresAt: { gt: new Date() },
-        user: { status: UserStatus.ACTIVE },
+        user: { status: UserStatus.ACTIVE, ...(principal.reviewer ? { role: UserRole.MEMBER } : {}) },
       },
       select: { id: true },
     });
@@ -165,12 +166,12 @@ export class ChatGateway implements OnGatewayInit {
           expiresAt: { gt: new Date() },
           user: { status: UserStatus.ACTIVE },
         },
-        select: { id: true, userId: true },
+        select: { id: true, userId: true, user: { select: { role: true } } },
       }),
       this.chat.blockedInteractionUserIds(senderId, socketUserIds),
     ]);
     const activeSessionUsers = new Map(
-      activeSessions.map((session) => [session.id, session.userId]),
+      activeSessions.map((session) => [session.id, { userId: session.userId, role: session.user?.role }]),
     );
 
     await Promise.all(
@@ -178,11 +179,12 @@ export class ChatGateway implements OnGatewayInit {
         const principal = principals[index];
         const hasActiveSession =
           principal &&
-          activeSessionUsers.get(principal.sessionId) === principal.userId;
+          activeSessionUsers.get(principal.sessionId)?.userId === principal.userId;
         if (
           !principal ||
           !hasActiveSession ||
-          !entitledMemberIds.has(principal.userId)
+          !entitledMemberIds.has(principal.userId) ||
+          (principal.reviewer && activeSessionUsers.get(principal.sessionId)?.role !== UserRole.MEMBER)
         ) {
           await socket.leave(roomName);
           return;

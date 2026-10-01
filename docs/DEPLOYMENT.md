@@ -25,7 +25,7 @@ API health 경로는 `/healthz`, DB readiness는 `/readyz`다. `/v1/readyz`를 �
 
 ## 인증과 환경변수
 
-카카오만 로그인 수단으로 제공한다. 이전 phone/email/Google 로그인 경로는 차단한다. 휴대폰 번호는 프로필에서 인증 없이 저장·삭제할 수 있고, Firebase 번호 인증은 선택 사항이다.
+일반 회원은 카카오만 로그인 수단으로 제공한다. 이전 phone/email/Google 로그인 경로는 차단한다. Android 앱 심사자는 별도로 발급한 Firebase 심사 계정만 사용할 수 있으며 설정·회원 권한 제한은 [심사 계정 안내](PLAY_REVIEWER_LOGIN.md)를 따른다. 휴대폰 번호는 프로필에서 인증 없이 저장·삭제할 수 있고, Firebase 번호 인증은 선택 사항이다.
 
 | 위치 | 설정 |
 | --- | --- |

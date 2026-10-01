@@ -60,6 +60,7 @@ const rawApiEnvSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
   // Phone verification uses ECS WIF when configured, otherwise local ADC.
   FIREBASE_PROJECT_ID: z.string().regex(/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/).optional(),
+  AUTH_REVIEWER_FIREBASE_UID: z.string().min(8).max(128).regex(/^[A-Za-z0-9_-]+$/).optional(),
   FIREBASE_WIF_AUDIENCE: z.string().regex(FIREBASE_WIF_AUDIENCE_PATTERN).optional(),
   FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL: z.string().regex(FIREBASE_WIF_SERVICE_ACCOUNT_PATTERN).optional(),
   AWS_REGION: z.string().regex(FIREBASE_WIF_REGION_PATTERN).optional(),
@@ -100,6 +101,7 @@ export interface ApiEnv {
   readonly KAKAO_APP_ID: number | undefined;
   readonly GOOGLE_CLIENT_ID: string | undefined;
   readonly FIREBASE_PROJECT_ID: string | undefined;
+  readonly AUTH_REVIEWER_FIREBASE_UID: string | undefined;
   readonly FIREBASE_WIF_AUDIENCE: string | undefined;
   readonly FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL: string | undefined;
   readonly AWS_REGION: string | undefined;
@@ -236,6 +238,10 @@ export function parseApiEnv(input: NodeJS.ProcessEnv = process.env): ApiEnv {
     parsed.data.CORS_ORIGINS,
     parsed.data.NODE_ENV,
   );
+
+  if (parsed.data.AUTH_REVIEWER_FIREBASE_UID && !parsed.data.FIREBASE_PROJECT_ID) {
+    throw new EnvValidationError(["Reviewer login requires FIREBASE_PROJECT_ID"]);
+  }
 
   if (parsed.data.FIREBASE_WIF_AUDIENCE || parsed.data.FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL) {
     if (
@@ -378,6 +384,7 @@ export function parseApiEnv(input: NodeJS.ProcessEnv = process.env): ApiEnv {
     KAKAO_APP_ID: parsed.data.KAKAO_APP_ID,
     GOOGLE_CLIENT_ID: parsed.data.GOOGLE_CLIENT_ID,
     FIREBASE_PROJECT_ID: parsed.data.FIREBASE_PROJECT_ID,
+    AUTH_REVIEWER_FIREBASE_UID: parsed.data.AUTH_REVIEWER_FIREBASE_UID,
     FIREBASE_WIF_AUDIENCE: parsed.data.FIREBASE_WIF_AUDIENCE,
     FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL: parsed.data.FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL,
     AWS_REGION: parsed.data.AWS_REGION,

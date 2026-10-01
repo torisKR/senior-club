@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   secure: new Map<string, string>(),
   getSecure: vi.fn(), setSecure: vi.fn(), deleteSecure: vi.fn(), fetch: vi.fn(),
   unregister: vi.fn(),
+  reviewerToken: vi.fn(),
   profile: {} as ApiProfile,
   applications: [] as unknown[],
   profileResponse: null as (() => Promise<Response>) | null,
@@ -30,6 +31,7 @@ vi.mock('@/api/idempotency-key', () => ({
   createNativeIdempotencyKey: () => '00000000-0000-4000-8000-000000000000',
 }));
 vi.mock('@/auth/kakao-login', () => ({ requestKakaoAccessToken: vi.fn() }));
+vi.mock('@/auth/reviewer-login', () => ({ requestReviewerIdToken: mocks.reviewerToken }));
 vi.mock('@/notifications/push-registration', () => ({
   unregisterCurrentAndroidDevice: mocks.unregister,
 }));
@@ -122,6 +124,7 @@ beforeEach(() => {
   mocks.setSecure.mockReset().mockImplementation(async (key: string, value: string) => { mocks.secure.set(key, value); });
   mocks.deleteSecure.mockReset().mockImplementation(async (key: string) => { mocks.secure.delete(key); });
   mocks.unregister.mockReset().mockResolvedValue(undefined);
+  mocks.reviewerToken.mockReset().mockResolvedValue('fixture-reviewer-proof');
   mocks.profileResponse = null;
   mocks.profile = {
     id: 'fresh-member', email: `${SENTINEL}@example.org`, phoneNumber: '+821055551234',
@@ -142,6 +145,7 @@ beforeEach(() => {
   mocks.fetch.mockReset().mockImplementation(async (url: string | URL, options: RequestInit) => {
     const path = new URL(String(url)).pathname;
     if (path === '/v1/auth/refresh') return Response.json(issued());
+    if (path === '/v1/auth/reviewer') return Response.json(issued());
     if (path === '/v1/me') return mocks.profileResponse?.() ?? Response.json(mocks.profile);
     if (path === '/v1/me/profile' && options.method === 'PATCH') {
       mocks.profile = { ...mocks.profile, onboardingCompletedAt: '2026-10-01T00:00:00Z' };
@@ -172,6 +176,96 @@ beforeEach(() => {
   document.body.append(container);
   current = undefined;
   observed = [];
+});
+
+describe('reviewer app-state integration', () => {
+  const consent = { termsAccepted: true, privacyAccepted: true } as const;
+  const reviewerRequests = () => mocks.fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname === '/v1/auth/reviewer');
+
+  it('publishes the ordinary member session without persisting Firebase proof or password', async () => {
+    mocks.secure.clear();
+    await mount();
+    await settle(() => state().isHydrated);
+    await act(async () => { await state().signInWithReviewer('fixture@example.test', 'private-fixture-password', consent); });
+    await settle(() => state().profile.birthYear === 1951);
+    expect(mocks.reviewerToken).toHaveBeenCalledWith('fixture@example.test', 'private-fixture-password');
+    expect(state().session).toMatchObject({ userId: 'fresh-member', role: 'member' });
+    expect(reviewerRequests()).toHaveLength(1);
+    expect(JSON.parse(reviewerRequests()[0][1].body as string)).toEqual({
+      idToken: 'fixture-reviewer-proof', clientType: 'ANDROID', termsAccepted: true, privacyAccepted: true,
+    });
+    expect(mocks.secure.get(SECURE_KEY)).toContain(`${SENTINEL}-rotated-refresh`);
+    expect(mocks.secure.get(SECURE_KEY)).not.toContain('fixture-reviewer-proof');
+    expect(JSON.stringify([...mocks.secure.values()])).not.toContain('private-fixture-password');
+    expectPreferenceOnlyBytes();
+  });
+
+  it('does not exchange a proof when native authentication or cleanup fails', async () => {
+    mocks.secure.clear();
+    await mount();
+    await settle(() => state().isHydrated);
+    mocks.reviewerToken.mockRejectedValueOnce({ code: 'REVIEWER_AUTH_CLEANUP_FAILED' });
+    await act(async () => {
+      await expect(state().signInWithReviewer('fixture@example.test', 'fixture-password', consent))
+        .rejects.toMatchObject({ code: 'REVIEWER_AUTH_CLEANUP_FAILED' });
+    });
+    expect(reviewerRequests()).toHaveLength(0);
+    expect(state().session).toBeNull();
+    expect(mocks.secure.has(SECURE_KEY)).toBe(false);
+  });
+
+  it.each([false, true])('cancels proof preparation when logout starts (push cleanup pending: %s)', async (pendingCleanup) => {
+    mocks.secure.clear();
+    await mount();
+    await settle(() => state().isHydrated);
+    const proof = deferred<string>();
+    const cleanup = deferred<void>();
+    mocks.reviewerToken.mockImplementationOnce(() => proof.promise);
+    if (pendingCleanup) mocks.unregister.mockImplementationOnce(() => cleanup.promise);
+    const login = state().signInWithReviewer('fixture@example.test', 'fixture-password', consent);
+    const rejection = expect(login).rejects.toMatchObject({ code: 'AUTH_SESSION_CHANGED' });
+    let logout!: Promise<void>;
+    await act(async () => { logout = state().signOut(); });
+    if (!pendingCleanup) await act(async () => { await logout; });
+    await act(async () => { proof.resolve('late-fixture-proof'); await rejection; });
+    expect(reviewerRequests()).toHaveLength(0);
+    expect(state().session).toBeNull();
+    if (pendingCleanup) await act(async () => { cleanup.resolve(); await logout; });
+    expect(mocks.secure.has(SECURE_KEY)).toBe(false);
+  });
+
+  it('rejects navigation ownership when logout begins while the reviewer exchange is in flight', async () => {
+    mocks.secure.clear();
+    await mount();
+    await settle(() => state().isHydrated);
+    const exchange = deferred<Response>();
+    const cleanup = deferred<void>();
+    const defaultFetch = mocks.fetch.getMockImplementation()!;
+    mocks.fetch.mockImplementation((url: string | URL, options: RequestInit) =>
+      new URL(String(url)).pathname === '/v1/auth/reviewer' ? exchange.promise : defaultFetch(url, options));
+    mocks.unregister.mockImplementationOnce(() => cleanup.promise);
+    const login = state().signInWithReviewer('fixture@example.test', 'fixture-password', consent);
+    const rejection = expect(login).rejects.toMatchObject({ code: 'AUTH_SESSION_CHANGED' });
+    await settle(() => reviewerRequests().length === 1);
+    let logout!: Promise<void>;
+    await act(async () => { logout = state().signOut(); });
+    await act(async () => { exchange.resolve(Response.json(issued())); await rejection; });
+    expect(state().session).toBeNull();
+    expect(state().profile.id).toBe('anonymous');
+    await act(async () => { cleanup.resolve(); await logout; });
+    expect(mocks.secure.has(SECURE_KEY)).toBe(false);
+  });
+
+  it('enforces both mandatory consents before calling Firebase', async () => {
+    mocks.secure.clear();
+    await mount();
+    await settle(() => state().isHydrated);
+    await expect(state().signInWithReviewer('fixture@example.test', 'fixture-password', {
+      termsAccepted: true, privacyAccepted: false,
+    } as unknown as typeof consent)).rejects.toMatchObject({ code: 'CONSENT_REQUIRED' });
+    expect(mocks.reviewerToken).not.toHaveBeenCalled();
+    expect(reviewerRequests()).toHaveLength(0);
+  });
 });
 
 afterEach(async () => {

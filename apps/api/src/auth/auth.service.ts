@@ -10,6 +10,7 @@ import {
   Prisma,
   ConsentDocumentType,
   UserStatus,
+  UserRole,
   VerificationPurpose,
 } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
@@ -18,6 +19,7 @@ import type {
   GoogleLoginInput,
   IssuedSession,
   KakaoLoginInput,
+  ReviewerLoginInput,
   RequestEmailCodeInput,
   RequestPhoneCodeInput,
   VerifyEmailCodeInput,
@@ -26,6 +28,7 @@ import type {
 import { GoogleTokenVerifier } from "./google-token-verifier";
 import { KakaoTokenVerifier } from "./kakao-token-verifier";
 import { FirebasePhoneService } from "./firebase-phone.service";
+import { FirebaseReviewerService } from "./firebase-reviewer.service";
 import { TokenService } from "./token.service";
 import { loginPolicy } from "./login-policy";
 
@@ -52,6 +55,7 @@ type VerificationResult =
 
 @Injectable()
 export class AuthService {
+  private readonly reviewerWindows = new Map<string, { startedAt: number; attempts: number }>();
   constructor(
     private readonly prisma: PrismaService,
     private readonly tokens: TokenService,
@@ -59,6 +63,7 @@ export class AuthService {
     private readonly googleTokens: GoogleTokenVerifier,
     private readonly firebasePhone: FirebasePhoneService,
     @Inject(API_ENV) private readonly env: ApiEnv,
+    private readonly reviewerTokens: FirebaseReviewerService,
   ) {}
 
   async requestEmailCode(input: RequestEmailCodeInput) {
@@ -655,6 +660,169 @@ export class AuthService {
     return this.formatIssuedSession(result);
   }
 
+  async loginWithReviewer(
+    input: ReviewerLoginInput,
+    device: { userAgent?: string; ipAddress?: string },
+  ): Promise<IssuedSession> {
+    // Rejected proofs never consume a legitimate reviewer's quota. Firebase
+    // owns password throttling; verified token exchanges are caller-scoped.
+    const identity = await this.reviewerTokens.verify(input.idToken);
+    const timestamp = Date.now();
+    for (const [key, value] of this.reviewerWindows) {
+      if (timestamp - value.startedAt >= 60_000) this.reviewerWindows.delete(key);
+    }
+    const key = this.tokens.hashIpAddress(device.ipAddress ?? identity.uid);
+    let window = this.reviewerWindows.get(key);
+    if (!window) {
+      if (this.reviewerWindows.size >= 1000) this.reviewerWindows.delete(this.reviewerWindows.keys().next().value!);
+      window = { startedAt: timestamp, attempts: 0 };
+      this.reviewerWindows.set(key, window);
+    }
+    if (++window.attempts > 60) {
+      throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "REVIEWER_RATE_LIMITED", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.");
+    }
+    const now = new Date();
+    const refresh = this.tokens.createRefreshToken();
+    const refreshTokenExpiresAt = new Date(
+      now.getTime() + this.env.AUTH_REFRESH_TOKEN_TTL_DAYS * 86_400_000,
+    );
+
+    const result = await this.prisma.$transaction<VerificationResult>(
+      async (transaction) => {
+        const lockKey = `firebase-reviewer:${identity.uid}`;
+        // Advisory locks return PostgreSQL void; execute without decoding rows.
+        await transaction.$executeRaw`
+          SELECT pg_advisory_xact_lock(hashtext(${lockKey}))
+        `;
+
+        const existingIdentity = await transaction.authIdentity.findUnique({
+          where: {
+            provider_providerAccountId: {
+              provider: AuthProvider.EMAIL,
+              providerAccountId: lockKey,
+            },
+          },
+          select: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                phoneNumber: true,
+                name: true,
+                role: true,
+                status: true,
+                onboardingCompletedAt: true,
+              },
+            },
+          },
+        });
+
+        if (
+          existingIdentity &&
+          (existingIdentity.user.status !== UserStatus.ACTIVE || existingIdentity.user.role !== UserRole.MEMBER)
+        ) {
+          return { status: "unavailable" };
+        }
+
+        const user = existingIdentity
+          ? await transaction.user.update({
+              where: { id: existingIdentity.user.id },
+              data: { lastLoginAt: now },
+              select: {
+                id: true,
+                email: true,
+                phoneNumber: true,
+                name: true,
+                role: true,
+                onboardingCompletedAt: true,
+              },
+            })
+          : await transaction.user.create({
+              data: {
+                name: "심사 계정",
+                role: UserRole.MEMBER,
+                lastLoginAt: now,
+                termsAgreedAt: now,
+                authIdentities: {
+                  create: {
+                    provider: AuthProvider.EMAIL,
+                    providerAccountId: lockKey,
+                  },
+                },
+              },
+              select: {
+                id: true,
+                email: true,
+                phoneNumber: true,
+                name: true,
+                role: true,
+                onboardingCompletedAt: true,
+              },
+            });
+
+        for (const documentType of [
+          ConsentDocumentType.TERMS,
+          ConsentDocumentType.PRIVACY,
+        ]) {
+          await transaction.consentRecord.upsert({
+            where: {
+              userId_documentType_version: {
+                userId: user.id,
+                documentType,
+                version: this.env.CONSENT_DOCUMENT_VERSION,
+              },
+            },
+            update: { granted: true, withdrawnAt: null, recordedAt: now },
+            create: {
+              userId: user.id,
+              documentType,
+              version: this.env.CONSENT_DOCUMENT_VERSION,
+              granted: true,
+              source: input.clientType.toLocaleLowerCase("en-US"),
+            },
+          });
+        }
+
+        await transaction.notificationPreference.upsert({
+          where: { userId: user.id },
+          update: {},
+          create: { userId: user.id },
+        });
+        const session = await transaction.authSession.create({
+          data: {
+            userId: user.id,
+            refreshTokenHash: refresh.hash,
+            clientType: input.clientType,
+            expiresAt: refreshTokenExpiresAt,
+            ...(device.userAgent ? { userAgent: device.userAgent.slice(0, 500) } : {}),
+            ...(device.ipAddress
+              ? { ipHash: this.tokens.hashIpAddress(device.ipAddress) }
+              : {}),
+          },
+          select: { id: true },
+        });
+
+        return {
+          status: "verified",
+          refreshToken: refresh.token,
+          refreshTokenExpiresAt,
+          sessionId: session.id,
+          user,
+        };
+      },
+    );
+
+    if (result.status !== "verified") {
+      throw new ApiException(
+        HttpStatus.FORBIDDEN,
+        "ACCOUNT_UNAVAILABLE",
+        "이 계정으로 로그인할 수 없습니다. 고객센터에 문의해 주세요.",
+      );
+    }
+
+    return this.formatIssuedSession(result, true);
+  }
+
   async loginWithGoogle(
     input: GoogleLoginInput,
     device: { userAgent?: string; ipAddress?: string },
@@ -892,6 +1060,7 @@ export class AuthService {
               role: true,
               status: true,
               onboardingCompletedAt: true,
+              authIdentities: { where: { provider: AuthProvider.EMAIL, providerAccountId: { startsWith: "firebase-reviewer:" } }, select: { id: true } },
             },
           },
         },
@@ -900,7 +1069,8 @@ export class AuthService {
         !session ||
         session.revokedAt ||
         session.expiresAt <= now ||
-        session.user.status !== UserStatus.ACTIVE
+        session.user.status !== UserStatus.ACTIVE ||
+        (Boolean(session.user.authIdentities?.length) && session.user.role !== UserRole.MEMBER)
       ) {
         return null;
       }
@@ -924,7 +1094,7 @@ export class AuthService {
         "로그인 시간이 만료되었습니다. 다시 로그인해 주세요.",
       );
     }
-    return this.formatIssuedSession(result);
+    return this.formatIssuedSession(result, Boolean(result.user.authIdentities?.length));
   }
 
   async logout(refreshToken: string) {
@@ -985,11 +1155,12 @@ export class AuthService {
       role: IssuedSession["user"]["role"];
       onboardingCompletedAt: Date | null;
     };
-  }): Promise<IssuedSession> {
+  }, reviewer = false): Promise<IssuedSession> {
     const access = await this.tokens.signAccessToken({
       userId: result.user.id,
       sessionId: result.sessionId,
       role: result.user.role,
+      ...(reviewer ? { reviewer: true as const } : {}),
     });
     return {
       accessToken: access.token,
@@ -998,7 +1169,10 @@ export class AuthService {
       refreshTokenExpiresAt: result.refreshTokenExpiresAt.toISOString(),
       sessionId: result.sessionId,
       user: {
-        ...result.user,
+        id: result.user.id,
+        name: result.user.name,
+        phoneNumber: result.user.phoneNumber,
+        role: result.user.role,
         email: result.user.email ?? "",
         onboardingCompletedAt:
           result.user.onboardingCompletedAt?.toISOString() ?? null,

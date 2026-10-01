@@ -190,3 +190,94 @@ describe('process restart authentication', () => {
     expect(mocks.stored?.refreshToken).toBe('new-refresh');
   });
 });
+
+describe('reviewer server sessions', () => {
+  const consent = { termsAccepted: true, privacyAccepted: true } as const;
+
+  it('exchanges only the Firebase proof and installs an ordinary server session', async () => {
+    mocks.fetch.mockResolvedValue(Response.json(issued('reviewer-member', 'reviewer-refresh')));
+    const { authSessionManager } = await import('./auth-session-manager');
+    const session = await authSessionManager.loginWithReviewer('fixture-firebase-proof', consent);
+    const [url, options] = mocks.fetch.mock.calls[0];
+    expect(String(url)).toBe('https://api.example.org/v1/auth/reviewer');
+    expect(options.method).toBe('POST');
+    expect(JSON.parse(options.body)).toEqual({
+      idToken: 'fixture-firebase-proof', clientType: 'ANDROID', termsAccepted: true, privacyAccepted: true,
+    });
+    expect(new Headers(options.headers).has('authorization')).toBe(false);
+    expect(session).toMatchObject({ userId: 'reviewer-member', role: 'member' });
+    expect(mocks.stored).toMatchObject({ refreshToken: 'reviewer-refresh', userId: 'reviewer-member' });
+    expect(JSON.stringify(mocks.stored)).not.toContain('fixture-firebase-proof');
+    expect(authSessionManager.getSnapshot().session).toEqual(session);
+  });
+
+  it('refuses missing mandatory consents before exchanging a proof', async () => {
+    const { authSessionManager } = await import('./auth-session-manager');
+    await expect(authSessionManager.loginWithReviewer('fixture-proof', {
+      termsAccepted: false, privacyAccepted: true,
+    } as unknown as typeof consent)).rejects.toMatchObject({ code: 'CONSENT_REQUIRED' });
+    expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+
+  it('invalidates a captured proof-preparation guard when logout completes', async () => {
+    mocks.fetch.mockResolvedValue(Response.json({ success: true }));
+    const { authSessionManager } = await import('./auth-session-manager');
+    const assertCurrent = authSessionManager.captureSessionGuard();
+    assertCurrent();
+    await authSessionManager.logout();
+    expect(assertCurrent).toThrow(expect.objectContaining({ code: 'AUTH_SESSION_CHANGED' }));
+  });
+
+  it('revokes a reviewer session returned after logout without installing it', async () => {
+    const response = deferred<Response>();
+    mocks.fetch.mockImplementation(async (url: string | URL) =>
+      String(url).endsWith('/v1/auth/reviewer') ? response.promise : Response.json({ success: true }));
+    const { authSessionManager } = await import('./auth-session-manager');
+    const login = authSessionManager.loginWithReviewer('fixture-proof', consent);
+    const rejection = expect(login).rejects.toMatchObject({ code: 'AUTH_SESSION_CHANGED' });
+    await vi.waitFor(() => expect(mocks.fetch).toHaveBeenCalled());
+    await authSessionManager.logout();
+    response.resolve(Response.json(issued('reviewer-member', 'late-reviewer-refresh')));
+    await rejection;
+    expect(mocks.stored).toBeNull();
+    expect(authSessionManager.getSnapshot().session).toBeNull();
+    const revoked = mocks.fetch.mock.calls.filter(([url]) => String(url).endsWith('/v1/auth/logout'));
+    expect(revoked.some(([, options]) => JSON.parse(options.body).refreshToken === 'late-reviewer-refresh')).toBe(true);
+  });
+
+  it('keeps logout authoritative while the reviewer SecureStore write finishes late', async () => {
+    const write = deferred<void>();
+    mocks.writeBarrier = write.promise;
+    mocks.fetch.mockImplementation(async (url: string | URL) => Response.json(
+      String(url).endsWith('/v1/auth/reviewer') ? issued('reviewer-member', 'late-reviewer-refresh') : { success: true },
+    ));
+    const { authSessionManager } = await import('./auth-session-manager');
+    const login = authSessionManager.loginWithReviewer('fixture-proof', consent);
+    const rejection = expect(login).rejects.toMatchObject({ code: 'AUTH_SESSION_CHANGED' });
+    await vi.waitFor(() => expect(mocks.fetch).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const logout = authSessionManager.logout();
+    write.resolve();
+    await logout;
+    await rejection;
+    expect(mocks.stored).toBeNull();
+    expect(authSessionManager.getSnapshot().status).toBe('anonymous');
+  });
+
+  it('does not let a late reviewer exchange replace a newer Kakao login', async () => {
+    const response = deferred<Response>();
+    mocks.fetch.mockImplementation(async (url: string | URL) => {
+      if (String(url).endsWith('/v1/auth/reviewer')) return response.promise;
+      if (String(url).endsWith('/v1/auth/kakao')) return Response.json(issued('kakao-member', 'kakao-refresh'));
+      return Response.json({ success: true });
+    });
+    const { authSessionManager } = await import('./auth-session-manager');
+    const login = authSessionManager.loginWithReviewer('fixture-proof', consent);
+    const rejection = expect(login).rejects.toMatchObject({ code: 'AUTH_SESSION_CHANGED' });
+    await authSessionManager.loginWithKakao('fixture-kakao-proof', consent);
+    response.resolve(Response.json(issued('reviewer-member', 'late-reviewer-refresh')));
+    await rejection;
+    expect(authSessionManager.getSnapshot().session?.userId).toBe('kakao-member');
+    expect(mocks.stored?.refreshToken).toBe('kakao-refresh');
+  });
+});
