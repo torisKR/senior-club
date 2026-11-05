@@ -81,7 +81,7 @@ function exportContracts(config) {
   // These are required exact components, not SDK package-prefix exemptions.
   return new Map([
     [`activity:${expectedPackage}.MainActivity`, {
-      permission: undefined, launchMode: 'singleTask',
+      permission: undefined, launchMode: 'singleTop',
       filters: [filter(['android.intent.action.MAIN'], ['android.intent.category.LAUNCHER']), callback(config.scheme)],
     }],
     ['activity:com.kakao.sdk.auth.AuthCodeHandlerActivity', {
@@ -293,7 +293,7 @@ export async function validateMergedAndroidManifest(xml, { expoConfig = checkedI
       }
       check(exported === 'true', `Required explicit android:exported=true: ${key}`);
       check(attrs['android:permission'] === contract.permission, `Export permission contract mismatch: ${key}`);
-      if (contract.launchMode) check(exactEnum(attrs['android:launchMode'], contract.launchMode, 2), `Launch mode contract mismatch: ${key}`);
+      if (contract.launchMode) check(exactEnum(attrs['android:launchMode'], contract.launchMode, contract.launchMode === 'singleTop' ? 1 : 2), `Launch mode contract mismatch: ${key}`);
       try {
         const actual = sorted((node['intent-filter'] ?? []).map(filterSignature));
         const expected = sorted(contract.filters.map(expectedFilterSignature));

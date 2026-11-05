@@ -35,6 +35,11 @@ describe('toBillingPurchase', () => {
       isPending: true,
     });
   });
+
+  it('does not grant an unknown or missing purchase state', () => {
+    expect(toBillingPurchase(purchased({ purchaseState: 'unknown' }))).toBeNull();
+    expect(toBillingPurchase(purchased({ purchaseState: null }))).toBeNull();
+  });
 });
 
 describe('toOwnedProbe', () => {
@@ -46,5 +51,16 @@ describe('toOwnedProbe', () => {
         purchased({ purchaseToken: 'owned-token' }),
       ]),
     ).toEqual({ status: 'ok', tokens: ['owned-token'] });
+  });
+
+  it('keeps the saved entitlement when a target purchase has an uncertain state or token', () => {
+    expect(toOwnedProbe([purchased({ purchaseState: 'unknown' })])).toEqual({ status: 'unavailable' });
+    expect(toOwnedProbe([purchased({ purchaseToken: '' })])).toEqual({ status: 'unavailable' });
+  });
+
+  it('matches each product separately without granting another cosmetic', () => {
+    const id = 'seniorclub.cosmetic.nacre_putter';
+    expect(toOwnedProbe([purchased({ productId: id })], id)).toEqual({ status: 'ok', tokens: ['tok-1'] });
+    expect(toOwnedProbe([purchased({ productId: id })], REMOVE_ADS_PRODUCT_ID)).toEqual({ status: 'ok', tokens: [] });
   });
 });

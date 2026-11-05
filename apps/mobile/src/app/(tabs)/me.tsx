@@ -1,5 +1,5 @@
-import { ProfileScreen } from '@/screens/profile/profile-screen';
+import { MasterHallScreen } from '@/arcade/master-hall-screen';
 
 export default function MeRoute() {
-  return <ProfileScreen />;
+  return <MasterHallScreen />;
 }

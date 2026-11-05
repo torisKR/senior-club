@@ -35,11 +35,20 @@ async function applyDecision(deps: RemoveAdsDeps, decision: EntitlementDecision)
 }
 
 async function finishQuietly(billing: BillingPort, purchase: BillingPurchase): Promise<void> {
-  await billing.finish(purchase).catch(() => undefined);
+  // Keep the purchase usable if the store is temporarily unavailable, but retry
+  // acknowledgement now and again on the next entitlement reconciliation.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await billing.finish(purchase);
+      return;
+    } catch {
+      // A later reconciliation will retry if all attempts fail.
+    }
+  }
 }
 
-function purchaseFromToken(token: string): BillingPurchase {
-  return { productId: REMOVE_ADS_PRODUCT_ID, purchaseToken: token, isPending: false };
+function purchaseFromToken(token: string, productId: string): BillingPurchase {
+  return { productId, purchaseToken: token, isPending: false };
 }
 
 function settledToken(decision: EntitlementDecision, storedToken: string | null): string {
@@ -48,17 +57,19 @@ function settledToken(decision: EntitlementDecision, storedToken: string | null)
     : decision.write.token;
 }
 
-export async function syncEntitlement(deps: RemoveAdsDeps): Promise<boolean> {
+export async function syncEntitlement(deps: RemoveAdsDeps, productId = REMOVE_ADS_PRODUCT_ID): Promise<boolean> {
   const storedToken = await deps.tokens.get().catch(() => null);
 
   try {
     await deps.billing.connect();
-    const probe = await deps.billing.ownedTokens();
+    const probe = await deps.billing.ownedTokens(productId);
     const decision = decideEntitlement(storedToken, probe);
-    await applyDecision(deps, decision);
+    // Play is authoritative even if this device cannot persist its offline cache.
+    // In particular, a cache failure must not prevent acknowledgement.
+    await applyDecision(deps, decision).catch(() => undefined);
 
     if (decision.owned) {
-      await finishQuietly(deps.billing, purchaseFromToken(settledToken(decision, storedToken)));
+      await finishQuietly(deps.billing, purchaseFromToken(settledToken(decision, storedToken), productId));
     }
 
     return decision.owned;
@@ -67,44 +78,49 @@ export async function syncEntitlement(deps: RemoveAdsDeps): Promise<boolean> {
   }
 }
 
-async function reconcileFromStore(deps: RemoveAdsDeps): Promise<RestoreOutcome> {
-  const storedToken = await deps.tokens.get();
-  const probe = await deps.billing.ownedTokens();
+async function reconcileFromStore(deps: RemoveAdsDeps, productId: string): Promise<RestoreOutcome> {
+  const storedToken = await deps.tokens.get().catch(() => null);
+  const probe = await deps.billing.ownedTokens(productId);
 
   if (probe.status === 'unavailable') {
     return RETRYABLE_FAILURE;
   }
 
   const decision = decideEntitlement(storedToken, probe);
-  await applyDecision(deps, decision);
+  await applyDecision(deps, decision).catch(() => undefined);
 
   if (!decision.owned) {
     return { status: 'none' };
   }
 
-  await finishQuietly(deps.billing, purchaseFromToken(settledToken(decision, storedToken)));
+  await finishQuietly(deps.billing, purchaseFromToken(settledToken(decision, storedToken), productId));
   return { status: 'owned' };
 }
 
-export async function purchaseRemoveAds(deps: RemoveAdsDeps): Promise<PurchaseOutcome> {
+export async function purchaseNonConsumable(deps: RemoveAdsDeps, productId: string): Promise<PurchaseOutcome> {
   try {
-    const purchase = await deps.billing.buy(REMOVE_ADS_PRODUCT_ID);
+    const purchase = await deps.billing.buy(productId);
+
+    if (purchase.productId !== productId || !purchase.purchaseToken.trim()) {
+      return { status: 'failed', code: 'product-invalid', retryable: false };
+    }
 
     if (purchase.isPending) {
       return { status: 'pending' };
     }
 
-    await deps.tokens.set(purchase.purchaseToken);
+    await deps.tokens.set(purchase.purchaseToken).catch(() => undefined);
     await finishQuietly(deps.billing, purchase);
     return { status: 'owned' };
   } catch (error: unknown) {
-    return classifyPurchaseFailure(deps, error);
+    return classifyPurchaseFailure(deps, error, productId);
   }
 }
 
 async function classifyPurchaseFailure(
   deps: RemoveAdsDeps,
   error: unknown,
+  productId: string,
 ): Promise<PurchaseOutcome> {
   if (!isBillingError(error)) {
     return { status: 'failed', code: 'unknown', retryable: false };
@@ -119,7 +135,7 @@ async function classifyPurchaseFailure(
   }
 
   if (error.code === 'already-owned') {
-    const restored = await reconcileFromStore(deps).catch((): RestoreOutcome => RETRYABLE_FAILURE);
+    const restored = await reconcileFromStore(deps, productId).catch((): RestoreOutcome => RETRYABLE_FAILURE);
     if (restored.status === 'owned') {
       return { status: 'owned' };
     }
@@ -129,11 +145,17 @@ async function classifyPurchaseFailure(
   return { status: 'failed', code: error.code, retryable: error.code === 'retryable' };
 }
 
-export async function restoreRemoveAds(deps: RemoveAdsDeps): Promise<RestoreOutcome> {
+export async function restoreNonConsumable(deps: RemoveAdsDeps, productId: string): Promise<RestoreOutcome> {
   try {
-    return await reconcileFromStore(deps);
+    return await reconcileFromStore(deps, productId);
   } catch (error: unknown) {
     const code = isBillingError(error) ? error.code : 'unknown';
     return { status: 'failed', code, retryable: code === 'retryable' };
   }
 }
+
+export const purchaseRemoveAds = (deps: RemoveAdsDeps): Promise<PurchaseOutcome> =>
+  purchaseNonConsumable(deps, REMOVE_ADS_PRODUCT_ID);
+
+export const restoreRemoveAds = (deps: RemoveAdsDeps): Promise<RestoreOutcome> =>
+  restoreNonConsumable(deps, REMOVE_ADS_PRODUCT_ID);

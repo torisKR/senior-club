@@ -1,11 +1,11 @@
 import type { AppIconName } from '@/components/ui/app-icon';
 
 export const BottomDestinations = [
-  { name: 'home', label: '홈', icon: 'home' },
-  { name: 'clubs', label: '커뮤니티', icon: 'groups' },
-  { name: 'events', label: '모임', icon: 'calendar' },
-  { name: 'chat', label: '채팅', icon: 'chat' },
-  { name: 'me', label: '내 정보', icon: 'person' },
+  { name: 'home', label: '라운지', icon: 'home' },
+  { name: 'clubs', label: '파크골프', icon: 'groups' },
+  { name: 'events', label: '알까기', icon: 'calendar' },
+  { name: 'chat', label: '사천성', icon: 'chat' },
+  { name: 'me', label: '명인전당', icon: 'person' },
 ] as const satisfies readonly { name: string; label: string; icon: AppIconName }[];
 
 /** Reserve scaled label lines instead of shrinking text to fit a fixed bar. */

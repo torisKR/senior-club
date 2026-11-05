@@ -1,1 +1,5 @@
-export { ClubsScreen as default } from '@/screens/discovery/clubs-screen';
+import { ParkGolfArcadeScreen } from '@/arcade/park-golf-screen';
+
+export default function ClubsRoute() {
+  return <ParkGolfArcadeScreen />;
+}

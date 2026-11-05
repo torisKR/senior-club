@@ -63,7 +63,7 @@ export function BottomNavigation({ state, descriptors, navigation }: BottomTabBa
                 allowFontScaling
                 selectable={false}
                 style={{ color, fontFamily: FontWeights.emphasis, fontSize: layout.labelSize, lineHeight: layout.labelLineHeight, textAlign: 'center', alignSelf: 'stretch' }}>
-                {destination.name === 'clubs' && layout.labelLines > 1 ? '커뮤\n니티' : destination.label}
+                {destination.name === 'clubs' && layout.labelLines > 1 ? '파크\n골프' : destination.label}
               </Text>
             </Pressable>
           );

@@ -1,6 +1,7 @@
 import {
   endConnection,
   finishTransaction,
+  fetchProducts,
   getAvailablePurchases,
   initConnection,
   purchaseErrorListener,
@@ -18,7 +19,9 @@ type VendorPurchaseError = Parameters<Parameters<typeof purchaseErrorListener>[0
 
 export function createExpoIapBilling(): BillingPort {
   const rawByToken = new Map<string, Purchase>();
+  const acknowledgedTokens = new Set<string>();
   let connecting: Promise<void> | null = null;
+  let purchaseInFlight = false;
 
   const remember = (purchases: readonly Purchase[]): void => {
     for (const purchase of purchases) {
@@ -29,7 +32,9 @@ export function createExpoIapBilling(): BillingPort {
 
   const connect = async (): Promise<void> => {
     connecting ??= initConnection()
-      .then(() => undefined)
+      .then((connected) => {
+        if (!connected) throw new BillingError('retryable', 'Google Play billing connection failed');
+      })
       .catch((error: unknown) => {
         connecting = null;
         throw error;
@@ -49,21 +54,35 @@ export function createExpoIapBilling(): BillingPort {
   return {
     connect,
 
-    async ownedTokens(): Promise<BillingProbe> {
+    async productPrice(productId: string): Promise<string | null> {
+      try {
+        await connect();
+        const products = await fetchProducts({ skus: [productId], type: 'in-app' });
+        const product = products?.find((item) => item.id === productId && item.type === 'in-app');
+        return product?.displayPrice?.trim() || null;
+      } catch {
+        return null;
+      }
+    },
+
+    async ownedTokens(productId?: string): Promise<BillingProbe> {
       try {
         await connect();
         const purchases = await getAvailablePurchases();
         remember(purchases);
-        return toOwnedProbe(purchases);
+        return toOwnedProbe(purchases, productId);
       } catch {
         return { status: 'unavailable' };
       }
     },
 
     async buy(productId: string): Promise<BillingPurchase> {
-      await connect();
+      if (purchaseInFlight) throw new BillingError('retryable', 'Another Play purchase is in progress');
+      purchaseInFlight = true;
+      try {
+        await connect();
 
-      return new Promise<BillingPurchase>((resolve, reject) => {
+        return await new Promise<BillingPurchase>((resolve, reject) => {
         let settled = false;
         let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -119,7 +138,10 @@ export function createExpoIapBilling(): BillingPort {
           const code = (error as { code?: string } | null)?.code;
           reject(new BillingError(mapVendorErrorCode(code), `${productId}: ${String(error)}`));
         });
-      });
+        });
+      } finally {
+        purchaseInFlight = false;
+      }
     },
 
     async finish(purchase: BillingPurchase): Promise<void> {
@@ -136,8 +158,13 @@ export function createExpoIapBilling(): BillingPort {
         );
       }
 
+      if (('isAcknowledgedAndroid' in raw && raw.isAcknowledgedAndroid === true) || acknowledgedTokens.has(purchase.purchaseToken)) {
+        return;
+      }
+
       try {
         await finishTransaction({ purchase: raw, isConsumable: false });
+        acknowledgedTokens.add(purchase.purchaseToken);
       } catch (error: unknown) {
         const code = (error as { code?: string } | null)?.code;
         throw new BillingError(

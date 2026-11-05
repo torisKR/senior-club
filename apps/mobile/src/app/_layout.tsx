@@ -11,8 +11,6 @@ import { AnalyticsProvider } from '@/analytics/analytics-provider';
 import { AppBillingProvider } from '@/billing/AppBillingProvider';
 import { AppStateProvider } from '@/context/app-state';
 import { BrandColors, Colors, FontWeights } from '@/constants/theme';
-import { PendingAuthIntentCoordinator } from '@/auth/pending-auth-intent-coordinator';
-import { PushNotificationCoordinator } from '@/notifications/push-notifications';
 
 const palette = Colors.light;
 
@@ -66,11 +64,9 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AppStateProvider>
+      <AppStateProvider offlineGame>
         <AppBillingProvider>
           <AnalyticsProvider><AdsProvider>
-            <PendingAuthIntentCoordinator />
-            <PushNotificationCoordinator />
             <ThemeProvider value={colorScheme === 'dark' ? darkNavigationTheme : lightNavigationTheme}>
               <Stack
                 screenOptions={{

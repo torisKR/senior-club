@@ -52,6 +52,39 @@ describe('purchaseRemoveAds', () => {
     expect(fake.finishedTokens()).toHaveLength(1);
   });
 
+  it('retries an acknowledgement after a transient store failure', async () => {
+    const fake = createFakeBilling();
+    const tokens = createMemoryTokens();
+    fake.failNextFinish('retryable');
+
+    await expect(purchaseRemoveAds({ billing: fake.billing, tokens })).resolves.toEqual({ status: 'owned' });
+    expect(fake.finishedTokens()).toHaveLength(1);
+  });
+
+  it('acknowledges and grants a Play purchase even when local cache storage fails', async () => {
+    const fake = createFakeBilling();
+    const tokens: TokenStore = {
+      get: async () => null,
+      set: async () => { throw new Error('storage unavailable'); },
+      clear: async () => undefined,
+    };
+
+    await expect(purchaseRemoveAds({ billing: fake.billing, tokens })).resolves.toEqual({ status: 'owned' });
+    expect(fake.finishedTokens()).toHaveLength(1);
+    await expect(syncEntitlement({ billing: fake.billing, tokens })).resolves.toBe(true);
+    expect(fake.finishedTokens()).toHaveLength(2);
+  });
+
+  it('rejects a purchase returned for a different product', async () => {
+    const fake = createFakeBilling();
+    const billing = { ...fake.billing, buy: async () => ({ productId: 'other.product', purchaseToken: 'wrong', isPending: false }) };
+    const tokens = createMemoryTokens();
+
+    await expect(purchaseRemoveAds({ billing, tokens })).resolves.toEqual({ status: 'failed', code: 'product-invalid', retryable: false });
+    await expect(tokens.get()).resolves.toBeNull();
+    expect(fake.finishedTokens()).toHaveLength(0);
+  });
+
   it('does not treat a cancelled sheet as a failure', async () => {
     const fake = createFakeBilling();
     const tokens = createMemoryTokens();
