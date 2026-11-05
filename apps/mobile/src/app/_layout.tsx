@@ -84,10 +84,10 @@ export default function RootLayout() {
                 <Stack.Screen name="index" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="event/[id]" options={{ title: '모임 자세히' }} />
+                <Stack.Screen name="event/[id]" options={{ title: '서비스 안내' }} />
                 <Stack.Screen name="club/[slug]" options={{ headerShown: false }} />
-                <Stack.Screen name="reviews/new" options={{ title: '후기 쓰기', presentation: 'modal' }} />
-                <Stack.Screen name="notifications" options={{ title: '알림' }} />
+                <Stack.Screen name="reviews/new" options={{ title: '서비스 안내', presentation: 'modal' }} />
+                <Stack.Screen name="notifications" options={{ title: '서비스 안내' }} />
               </Stack>
               <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
             </ThemeProvider>
