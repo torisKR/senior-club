@@ -12,8 +12,9 @@ function step(name) {
   return workflow.slice(start, end < 0 ? undefined : end);
 }
 test('reviewed main deployment retains upstream success and explicit binary update policy', () => {
-  assert.match(deploy, /needs: \[backend, sites-package\]/);
-  assert.match(deploy, /needs\.backend\.result == 'success' && needs\.sites-package\.result == 'success'/);
+  assert.match(deploy, /needs: \[quality, sites-package\]/);
+  assert.match(deploy, /needs\.quality\.result == 'success' && needs\.sites-package\.result == 'success'/);
+  assert.doesNotMatch(deploy, /aws-actions\/|AWS_ROLE_TO_ASSUME|ECS_SERVICE/);
   assert.match(deploy, /binary_update: true/);
   assert.match(workflow, /workflow_call:/);
   assert.match(workflow, /workflow_dispatch:/);
