@@ -125,7 +125,7 @@ jobs:
           fi
 
       - name: Install pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6
         with:
           version: 9.14.2
           run_install: false
@@ -263,7 +263,7 @@ jobs:
           printf '%s\n' "$GITHUB_SHA" > "$EVIDENCE_DIR/source-commit.txt"
 
       - name: Install Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
