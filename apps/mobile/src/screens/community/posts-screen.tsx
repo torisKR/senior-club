@@ -424,7 +424,7 @@ export function PostsScreen({ slug }: { slug?: string }) {
                 </AppText>
               </Pressable>
             </View>
-          ) : null
+          ) : undefined
         }
         onEndReached={() => void loadMore()}
         onEndReachedThreshold={0.3}

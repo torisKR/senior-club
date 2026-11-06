@@ -28,6 +28,8 @@ export const allowedMergedPermissions = new Set([
   'android.permission.INTERNET',
   'android.permission.VIBRATE',
   'com.android.vending.BILLING',
+  // Expo Audio declares this normal permission for audio routing on Android.
+  'android.permission.MODIFY_AUDIO_SETTINGS',
   // Firebase/Expo notifications and WorkManager scheduling.
   'android.permission.WAKE_LOCK',
   'android.permission.ACCESS_NETWORK_STATE',

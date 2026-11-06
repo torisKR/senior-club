@@ -13,7 +13,7 @@ import { BottomDestinations, bottomNavigationLayout } from './bottom-navigation-
 
 type BottomTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
 
-export function BottomNavigation({ state, descriptors, navigation }: BottomTabBarProps) {
+export function BottomNavigation({ state, descriptors, emitter, navigateToTab }: BottomTabBarProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { width, fontScale } = useWindowDimensions();
@@ -40,8 +40,8 @@ export function BottomNavigation({ state, descriptors, navigation }: BottomTabBa
           const options = descriptors[route.key].options;
           const color = selected ? theme.primary : theme.textSecondary;
           const onPress = () => {
-            const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-            if (!selected && !event.defaultPrevented) navigation.navigate(route.name, route.params);
+            const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+            if (!selected && !event.defaultPrevented) navigateToTab(route.key);
           };
           return (
             <Pressable
@@ -51,7 +51,7 @@ export function BottomNavigation({ state, descriptors, navigation }: BottomTabBa
               accessibilityLabel={options.tabBarAccessibilityLabel ?? `${destination.label} 탭`}
               accessibilityState={{ selected }}
               onPress={onPress}
-              onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+              onLongPress={() => emitter.emit({ type: 'tabLongPress', target: route.key })}
               style={({ pressed }) => ({
                 flex: 1, minWidth: 48, minHeight: 48, paddingVertical: 6, paddingHorizontal: 4,
                 alignItems: 'center', justifyContent: 'flex-start', gap: 4, opacity: pressed ? 0.72 : 1,

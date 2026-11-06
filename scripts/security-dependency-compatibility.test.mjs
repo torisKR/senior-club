@@ -29,16 +29,15 @@ const packageManifest = (parent, dependency) => {
   }
 };
 
-test('the patched decoder remains compatible with actual Expo route/query parsing', () => {
+test('Expo route/query parsing decodes values, repeated parameters and flags', () => {
   const routerRoot = dirname(mobileRequire.resolve('expo-router/package.json'));
-  const { getStateFromPath } = mobileRequire(resolve(routerRoot, 'build/react-navigation/core/getStateFromPath.js'));
+  const { getStateFromPath } = mobileRequire(resolve(routerRoot, 'build/fork/getStateFromPath.js'));
   const state = getStateFromPath('/events?category=photo&name=%ED%99%8D%EA%B8%B8%EB%8F%99', { screens: { events: 'events' } });
   assert.equal(state.routes[0].params.category, 'photo');
   assert.equal(state.routes[0].params.name, '홍길동');
-  const routerRequire = createRequire(resolve(routerRoot, 'package.json'));
-  const queryString = routerRequire('query-string');
-  assert.deepEqual({ ...queryString.parse('category=photo&tag=one&tag=two&q=hello+world&empty=&flag') }, {
-    category: 'photo', tag: ['one', 'two'], q: 'hello world', empty: '', flag: null,
+  const repeated = getStateFromPath('/events?category=photo&tag=one&tag=two&q=hello+world&empty=&flag', { screens: { events: 'events' } });
+  assert.deepEqual({ ...repeated.routes[0].params }, {
+    category: 'photo', tag: ['one', 'two'], q: 'hello world', empty: '', flag: '',
   });
 });
 
@@ -47,7 +46,7 @@ test('actual Expo path parsing terminates on a 60KB malformed query', () => {
     const {createRequire}=require('node:module'),{dirname,resolve}=require('node:path');
     const req=createRequire(resolve('apps/mobile/package.json'));
     const router=dirname(req.resolve('expo-router/package.json'));
-    const {getStateFromPath}=req(resolve(router,'build/react-navigation/core/getStateFromPath.js'));
+    const {getStateFromPath}=req(resolve(router,'build/fork/getStateFromPath.js'));
     getStateFromPath('/events?q='+'%C0%AF'.repeat(10000),{screens:{events:'events'}});
   `;
   execFileSync(process.execPath, ['-e', child], { cwd: root, timeout: 5000, stdio: 'pipe' });
@@ -55,11 +54,21 @@ test('actual Expo path parsing terminates on a 60KB malformed query', () => {
 
 test('Kakao query-string decodes OAuth-style parameters correctly', async () => {
   const kakao = owner(mobileRequire, '@react-native-kakao/core/package.json');
+  const queryPackage = packageManifest(kakao, 'query-string');
+  assert.equal(packageManifest(queryPackage.require, 'decode-uri-component').manifest.version, '0.5.1');
   const { default: queryString } = await import(pathToFileURL(kakao.resolve('query-string')).href);
   assert.deepEqual({ ...queryString.parse('code=a%2Bb&state=%ED%99%8D%EA%B8%B8%EB%8F%99') }, {
     code: 'a+b',
     state: '홍길동',
   });
+});
+
+test('the obsolete query-string 7 compatibility patch cannot be bypassed by a new dependency', () => {
+  const lock = readFileSync(resolve(root, 'pnpm-lock.yaml'), 'utf8');
+  const packages = lock.split('\npackages:\n')[1]?.split('\nsnapshots:\n')[0];
+  assert.ok(packages, 'expected package and snapshot sections in the pnpm lockfile');
+  assert.doesNotMatch(packages, /^ {2}['"]?query-string@7\./m,
+    'query-string 7 requires the decoder override and compatibility patch to be restored');
 });
 
 test('Xcode still generates valid project identifiers', () => {

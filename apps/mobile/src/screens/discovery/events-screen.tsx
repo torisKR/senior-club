@@ -370,7 +370,7 @@ export function EventsScreen() {
               ) : null}
               {showBanner ? <HomeBannerAd /> : null}
             </View>
-          ) : null
+          ) : undefined
         }
         keyExtractor={(item) => item.id}
       />
