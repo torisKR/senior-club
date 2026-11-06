@@ -90,16 +90,20 @@ function validateProductionFcmClient(config) {
     ? configuredPath
     : path.resolve(root, configuredPath);
   let document;
+  let file;
   try {
-    const stats = fs.statSync(absolutePath);
+    file = fs.openSync(absolutePath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    const stats = fs.fstatSync(file);
     if (!stats.isFile() || stats.size === 0 || stats.size > 1_048_576) {
       fail('GOOGLE_SERVICES_JSON은 1MB 이하의 비어 있지 않은 파일이어야 합니다.');
       return;
     }
-    document = JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
+    document = JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch {
     fail('GOOGLE_SERVICES_JSON 파일을 읽거나 JSON으로 해석할 수 없습니다.');
     return;
+  } finally {
+    if (file !== undefined) fs.closeSync(file);
   }
 
   if (document?.type === 'service_account' || typeof document?.private_key === 'string') {

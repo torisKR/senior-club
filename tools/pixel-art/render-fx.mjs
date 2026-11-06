@@ -139,18 +139,28 @@ export function renderAll(onlyNames) {
   // 기존 매니페스트에 없는 이펙트는 유지 (부분 렌더 시)
   const cacheFile = path.join(TMP, 'manifest.json');
   let existing = [];
-  if (fs.existsSync(cacheFile)) {
-    try {
-      existing = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
-    } catch {
-      existing = [];
-    }
+  try {
+    existing = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+  } catch {
+    existing = [];
   }
   const merged = new Map(existing.map((m) => [m.name, m]));
   for (const m of metas) merged.set(m.name, m);
   const all = [...merged.values()].sort((a, b) => a.name.localeCompare(b.name));
   fs.mkdirSync(TMP, { recursive: true });
-  fs.writeFileSync(cacheFile, JSON.stringify(all, null, 2));
+  const tmpDirectory = fs.mkdtempSync(path.join(TMP, '.manifest-'));
+  const tmpFile = path.join(tmpDirectory, 'manifest.json');
+  let renamed = false;
+  try {
+    fs.writeFileSync(tmpFile, JSON.stringify(all, null, 2), { flag: 'wx' });
+    fs.renameSync(tmpFile, cacheFile);
+    renamed = true;
+  } finally {
+    if (!renamed) {
+      try { fs.unlinkSync(tmpFile); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    }
+    fs.rmdirSync(tmpDirectory);
+  }
 
   const body = all.map((m) => `  ${m.name}: ${JSON.stringify(m, null, 2).replace(/\n/g, '\n  ')},`).join('\n');
   const ts = `/**

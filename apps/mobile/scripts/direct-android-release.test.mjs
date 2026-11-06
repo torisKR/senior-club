@@ -67,6 +67,12 @@ test('production manifest does not depend on unused community origins and keeps 
       assert.match(result.stdout, /활성 Android 권한/);
     }
 
+    const linkedServices = path.join(directory, 'linked-services.json');
+    fs.symlinkSync(servicesFile, linkedServices);
+    const symlinkResult = run({ GOOGLE_SERVICES_JSON: linkedServices });
+    assert.notEqual(symlinkResult.status, 0);
+    assert.match(symlinkResult.stderr, /GOOGLE_SERVICES_JSON 파일을 읽거나 JSON으로 해석할 수 없습니다/);
+
     fs.writeFileSync(servicesFile, JSON.stringify({ type: 'service_account', private_key: 'fixture' }));
     const invalidServices = run();
     assert.notEqual(invalidServices.status, 0);
