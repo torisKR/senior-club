@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createFakeBilling } from './fake-billing';
 import type { TokenStore } from './billing-port';
@@ -22,6 +22,21 @@ function createMemoryTokens(initial: string | null = null): TokenStore {
 }
 
 describe('syncEntitlement', () => {
+  it('waits for the billing connection before querying ownership', async () => {
+    const fake = createFakeBilling();
+    let resolveConnect!: () => void;
+    const connect = vi.fn(() => new Promise<void>((resolve) => { resolveConnect = resolve; }));
+    const ownedTokens = vi.fn(fake.billing.ownedTokens);
+    const syncing = syncEntitlement({ billing: { ...fake.billing, connect, ownedTokens }, tokens: createMemoryTokens() });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(connect).toHaveBeenCalledOnce();
+    expect(ownedTokens).not.toHaveBeenCalled();
+    resolveConnect();
+    await expect(syncing).resolves.toBe(false);
+    expect(ownedTokens).toHaveBeenCalledOnce();
+  });
+
   it('keeps a stored purchase when Play is offline', async () => {
     const fake = createFakeBilling();
     const tokens = createMemoryTokens(SEEDED);

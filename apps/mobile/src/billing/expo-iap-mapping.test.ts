@@ -43,14 +43,14 @@ describe('toBillingPurchase', () => {
 });
 
 describe('toOwnedProbe', () => {
-  it('ignores other products and pending purchases', () => {
+  it('does not grant pending purchases but reports them for later reconciliation', () => {
     expect(
       toOwnedProbe([
         purchased({ productId: 'other.sku', purchaseToken: 'other' }),
         purchased({ purchaseState: 'pending', purchaseToken: 'pending-token' }),
         purchased({ purchaseToken: 'owned-token' }),
       ]),
-    ).toEqual({ status: 'ok', tokens: ['owned-token'] });
+    ).toEqual({ status: 'ok', tokens: ['owned-token'], pending: true });
   });
 
   it('keeps the saved entitlement when a target purchase has an uncertain state or token', () => {

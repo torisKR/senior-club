@@ -73,7 +73,7 @@ export function CosmeticBillingProvider({
     for (const { id } of COSMETIC_PRODUCTS) retryPrice(id);
     return () => { mounted.current = false; };
   }, [refresh, retryPrice]);
-  useBillingReconciliation(refresh);
+  useBillingReconciliation(refresh, billing);
 
   const buy = React.useCallback(async (id: CosmeticProductId): Promise<PurchaseOutcome> => {
     if (busy.current || !items[id].ready || !items[id].price) {

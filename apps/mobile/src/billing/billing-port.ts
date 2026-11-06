@@ -38,6 +38,7 @@ export interface BillingPort {
   ownedTokens(productId?: string): Promise<BillingProbe>;
   buy(productId: string): Promise<BillingPurchase>;
   finish(purchase: BillingPurchase): Promise<void>;
+  subscribeReconciliation?(listener: () => void): () => void;
 }
 
 export interface TokenStore {

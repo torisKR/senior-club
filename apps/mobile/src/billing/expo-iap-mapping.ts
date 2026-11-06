@@ -93,12 +93,13 @@ export function toBillingPurchase(purchase: VendorPurchase): BillingPurchase | n
 
 export function toOwnedProbe(purchases: readonly VendorPurchase[], productId = REMOVE_ADS_PRODUCT_ID): BillingProbe {
   const tokens: string[] = [];
+  let pending = false;
 
   for (const purchase of purchases) {
     if (readProductId(purchase) !== productId) continue;
 
     const state = purchase.purchaseState;
-    if (state === 'pending') continue;
+    if (state === 'pending') { pending = true; continue; }
     if (state !== 'purchased') return { status: 'unavailable' };
 
     const token = purchase.purchaseToken ?? '';
@@ -108,5 +109,5 @@ export function toOwnedProbe(purchases: readonly VendorPurchase[], productId = R
     tokens.push(token);
   }
 
-  return { status: 'ok', tokens };
+  return pending ? { status: 'ok', tokens, pending: true } : { status: 'ok', tokens };
 }

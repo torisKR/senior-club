@@ -61,6 +61,7 @@ export function createExpoIapBilling(): BillingPort {
         const product = products?.find((item) => item.id === productId && item.type === 'in-app');
         return product?.displayPrice?.trim() || null;
       } catch {
+        connecting = null;
         return null;
       }
     },
@@ -72,6 +73,7 @@ export function createExpoIapBilling(): BillingPort {
         remember(purchases);
         return toOwnedProbe(purchases, productId);
       } catch {
+        connecting = null;
         return { status: 'unavailable' };
       }
     },
@@ -150,7 +152,13 @@ export function createExpoIapBilling(): BillingPort {
       }
 
       await connect();
-      const raw = await findRaw(purchase.purchaseToken);
+      let raw: Purchase | null;
+      try {
+        raw = await findRaw(purchase.purchaseToken);
+      } catch (error) {
+        connecting = null;
+        throw error;
+      }
       if (raw === null) {
         throw new BillingError(
           'retryable',
@@ -166,6 +174,7 @@ export function createExpoIapBilling(): BillingPort {
         await finishTransaction({ purchase: raw, isConsumable: false });
         acknowledgedTokens.add(purchase.purchaseToken);
       } catch (error: unknown) {
+        connecting = null;
         const code = (error as { code?: string } | null)?.code;
         throw new BillingError(
           mapVendorErrorCode(code),

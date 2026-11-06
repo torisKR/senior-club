@@ -73,7 +73,7 @@ export function BillingProvider({
     void refresh();
     return () => { mounted.current = false; };
   }, [refresh]);
-  useBillingReconciliation(refresh);
+  useBillingReconciliation(refresh, billing);
 
   React.useEffect(() => {
     let live = true;

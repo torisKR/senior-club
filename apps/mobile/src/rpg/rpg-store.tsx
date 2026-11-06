@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
 import { todayKey, withDailyReset } from './daily-reset';
@@ -37,6 +37,7 @@ import { STORY_CHAPTERS, type StoryChapter } from './story-data';
 import { completeStoryChapter, recordStoryTrial, type StoryGameResult } from './story-progress';
 
 const STORAGE_KEY = 'senior_club_rpg_state_v1';
+type OfflineReward = NonNullable<ReturnType<typeof calculateOfflineIdleRewards>>;
 
 export interface RpgPersistedState {
   playerPos: { x: number; y: number };
@@ -46,6 +47,8 @@ export interface RpgPersistedState {
   facilities: FacilityState[];
   partners: PartnerCompanion[];
   lastSavedTimestampMs: number;
+  offlineStartedAtMs: number | null;
+  pendingOfflineReward: OfflineReward | null;
   currentChapterId: string;
   completedChapterIds: string[];
   completedTrialIds: string[];
@@ -74,6 +77,8 @@ const DEFAULT_STATE: RpgPersistedState = {
   facilities: [...DEFAULT_FACILITIES],
   partners: [...DEFAULT_PARTNERS],
   lastSavedTimestampMs: Date.now(),
+  offlineStartedAtMs: null,
+  pendingOfflineReward: null,
   currentChapterId: 'chapter_1',
   completedChapterIds: [],
   completedTrialIds: [],
@@ -120,23 +125,57 @@ interface RpgContextValue {
 
 const RpgContext = createContext<RpgContextValue | null>(null);
 
-export function RpgProvider({ children }: { children: React.ReactNode }) {
-  const [pendingOfflineReward, setPendingOfflineReward] = useState<
-    ReturnType<typeof calculateOfflineIdleRewards> | null
-  >(null);
+function restoreChapterId(saved: Partial<RpgPersistedState>): string {
+  const completed = saved.completedChapterIds;
+  // The four-chapter format had neither field and reached its final chapter
+  // only after recording the first three chapters as complete.
+  const legacyFinal = saved.currentChapterId === 'chapter_4'
+    && !Object.prototype.hasOwnProperty.call(saved, 'completedTrialIds')
+    && !Object.prototype.hasOwnProperty.call(saved, 'onboarding')
+    && Array.isArray(completed)
+    && ['chapter_1', 'chapter_2', 'chapter_3'].every((id) => completed.includes(id))
+    && !completed.includes('chapter_4');
+  return legacyFinal ? 'chapter_6' : saved.currentChapterId ?? 'chapter_1';
+}
 
+function restorePendingReward(value: unknown): OfflineReward | null {
+  if (!value || typeof value !== 'object') return null;
+  const reward = value as Partial<OfflineReward>;
+  const amounts = [reward.elapsedSec, reward.cappedElapsedSec, reward.maxHours, reward.earnedAcorns, reward.earnedExp];
+  if (!amounts.every((amount) => typeof amount === 'number' && Number.isFinite(amount) && amount >= 0)) return null;
+  return reward as OfflineReward;
+}
+
+function accrueOfflineReward(state: RpgPersistedState, since: number, now: number): RpgPersistedState {
+  const earned = calculateOfflineIdleRewards(since, now, state.facilities, state.partners);
+  if (!earned || (earned.earnedAcorns <= 0 && earned.earnedExp <= 0)) return state;
+  const pending = state.pendingOfflineReward;
+  // Each absence is capped independently; an earlier unclaimed reward remains owed.
+  return {
+    ...state,
+    pendingOfflineReward: pending ? {
+      elapsedSec: pending.elapsedSec + earned.elapsedSec,
+      cappedElapsedSec: pending.cappedElapsedSec + earned.cappedElapsedSec,
+      maxHours: earned.maxHours,
+      earnedAcorns: pending.earnedAcorns + earned.earnedAcorns,
+      earnedExp: pending.earnedExp + earned.earnedExp,
+    } : earned,
+  };
+}
+
+export function RpgProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<RpgPersistedState>(() => {
     try {
+      const now = Date.now();
       const raw = getRpgStorage().getString(STORAGE_KEY);
       const saved = raw ? (JSON.parse(raw) as Partial<RpgPersistedState> | null) : null;
       if (saved && typeof saved === 'object') {
-        const lastTime = saved.lastSavedTimestampMs ?? Date.now();
+        const lastTime = typeof saved.offlineStartedAtMs === 'number' && Number.isFinite(saved.offlineStartedAtMs)
+          ? saved.offlineStartedAtMs
+          : typeof saved.lastSavedTimestampMs === 'number' && Number.isFinite(saved.lastSavedTimestampMs)
+            ? saved.lastSavedTimestampMs : now;
         const facs = saved.facilities ?? DEFAULT_STATE.facilities;
         const parts = saved.partners ?? DEFAULT_STATE.partners;
-        const offline = calculateOfflineIdleRewards(lastTime, Date.now(), facs, parts);
-        if (offline && (offline.earnedAcorns > 0 || offline.earnedExp > 0)) {
-          setTimeout(() => setPendingOfflineReward(offline), 400);
-        }
         const hasExistingSave = Boolean(
           saved.playerPos || saved.stats || saved.quests || saved.currentChapterId,
         );
@@ -148,8 +187,10 @@ export function RpgProvider({ children }: { children: React.ReactNode }) {
           inventory: saved.inventory ?? DEFAULT_STATE.inventory,
           facilities: facs,
           partners: parts,
-          lastSavedTimestampMs: Date.now(),
-          currentChapterId: saved.currentChapterId ?? 'chapter_1',
+          lastSavedTimestampMs: now,
+          offlineStartedAtMs: null,
+          pendingOfflineReward: restorePendingReward(saved.pendingOfflineReward),
+          currentChapterId: restoreChapterId(saved),
           completedChapterIds: saved.completedChapterIds ?? [],
           completedTrialIds: Array.isArray(saved.completedTrialIds)
             ? saved.completedTrialIds.filter((id): id is string => typeof id === 'string')
@@ -165,38 +206,61 @@ export function RpgProvider({ children }: { children: React.ReactNode }) {
           heartWarmth:
             typeof saved.heartWarmth === 'number' ? clampWarmth(saved.heartWarmth) : 50,
         };
-        return withDailyReset(restored, todayKey());
+        const next = withDailyReset(accrueOfflineReward(restored, lastTime, now), todayKey());
+        try {
+          getRpgStorage().setString(STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          // Keep the restored state available when storage is temporarily unavailable.
+        }
+        return next;
       }
     } catch {
       // Fallback
     }
-    return withDailyReset(DEFAULT_STATE, todayKey());
+    return withDailyReset({ ...DEFAULT_STATE, lastSavedTimestampMs: Date.now() }, todayKey());
   });
+  const stateRef = useRef(state);
+  const pendingOfflineReward = state.pendingOfflineReward;
 
   const updateAndPersist = useCallback(
     (updater: (prev: RpgPersistedState) => RpgPersistedState) => {
-      setState((prev) => {
-        const updated = updater(prev);
-        if (updated === prev) return prev;
-        const next: RpgPersistedState = {
-          ...updated,
-          lastSavedTimestampMs: Date.now(),
-        };
-        try {
-          getRpgStorage().setString(STORAGE_KEY, JSON.stringify(next));
-        } catch {
-          // Ignore
-        }
-        return next;
-      });
+      const prev = stateRef.current;
+      const updated = updater(prev);
+      if (updated === prev) return;
+      const next: RpgPersistedState = {
+        ...updated,
+        lastSavedTimestampMs: Date.now(),
+      };
+      stateRef.current = next;
+      try {
+        getRpgStorage().setString(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore
+      }
+      setState(next);
     },
     [],
   );
 
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (status) => {
-      if (status === 'active') updateAndPersist((prev) => withDailyReset(prev, todayKey()));
-    });
+    const handleAppState = (status: string) => {
+      const now = Date.now();
+      if (status === 'background') {
+        updateAndPersist((prev) => prev.offlineStartedAtMs === null
+          ? { ...prev, offlineStartedAtMs: now }
+          : prev);
+      } else if (status === 'active') {
+        updateAndPersist((prev) => {
+          const resumed = prev.offlineStartedAtMs === null ? prev : {
+            ...accrueOfflineReward(prev, prev.offlineStartedAtMs, now),
+            offlineStartedAtMs: null,
+          };
+          return withDailyReset(resumed, todayKey());
+        });
+      }
+    };
+    const subscription = AppState.addEventListener('change', handleAppState);
+    if (AppState.currentState === 'background') handleAppState('background');
     return () => subscription.remove();
   }, [updateAndPersist]);
 
@@ -211,20 +275,20 @@ export function RpgProvider({ children }: { children: React.ReactNode }) {
   );
 
   const claimOfflineReward = useCallback((doubleReward = false) => {
-    if (!pendingOfflineReward) return;
-    const multiplier = doubleReward ? 2 : 1;
-    const addAcorns = pendingOfflineReward.earnedAcorns * multiplier;
-    const addExp = pendingOfflineReward.earnedExp * multiplier;
-    updateAndPersist((prev) => ({
-      ...prev,
-      stats: {
-        ...prev.stats,
-        acorns: prev.stats.acorns + addAcorns,
-        wisdomExp: prev.stats.wisdomExp + addExp,
-      },
-    }));
-    setPendingOfflineReward(null);
-  }, [pendingOfflineReward, updateAndPersist]);
+    updateAndPersist((prev) => {
+      if (!prev.pendingOfflineReward) return prev;
+      const multiplier = doubleReward ? 2 : 1;
+      return {
+        ...prev,
+        pendingOfflineReward: null,
+        stats: {
+          ...prev.stats,
+          acorns: prev.stats.acorns + prev.pendingOfflineReward.earnedAcorns * multiplier,
+          wisdomExp: prev.stats.wisdomExp + prev.pendingOfflineReward.earnedExp * multiplier,
+        },
+      };
+    });
+  }, [updateAndPersist]);
 
   const upgradeFacility = useCallback(
     (facilityId: FacilityState['id']) => {
