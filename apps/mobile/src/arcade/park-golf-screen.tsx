@@ -1,29 +1,30 @@
 import { Image } from 'expo-image';
+import { randomUUID } from 'expo-crypto';
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { playSfx } from '@/audio/sound-manager';
 import { AppText, Card, Screen, SeniorButton } from '@/components/ui';
 import { FontWeights, Layout, Radius, Spacing } from '@/constants/theme';
 import { PixelFx } from '@/fx/pixel-fx';
+import { useAppState } from '@/hooks/use-app-state';
 
-import { PARK_GOLF_HOLES, simulateParkGolfShot } from './arcade-logic';
+import { PARK_GOLF_BOUNDS, PARK_GOLF_HOLES, simulateParkGolfShot } from './arcade-logic';
 import { useArcade } from './arcade-store';
 import { CompanionCoach } from '@/rpg/companion-coach';
 import { GAME_COACH } from '@/rpg/companion-lines';
 import { useRpg } from '@/rpg/rpg-store';
 import { getRpgStorage } from '@/rpg/rpg-db';
-import { isGolfRound, loadRound, saveRound } from './round-save';
+import { isGolfRound, loadRoundState } from './round-save';
+import { RoundSaveNotice, useRoundSave } from './round-save-notice';
+import { ChangeConfirmation } from './change-confirmation';
+import { getStoryTrial, StoryTrialNotice } from './story-trial';
 
 const ROUND_KEY = 'senior_club_golf_round_v1';
 
-const GREEN_BOARD = require('../../assets/game/rpg/pixel/arcade/board_parkgolf.png');
 const CLUB_BALL_SET = require('../../assets/game/rpg/pixel/arcade/equip_club_ball_set.png');
 const PUTTER_HEAD = require('../../assets/game/rpg/pixel/arcade/equip_putter.png');
 const BALL_WHITE = require('../../assets/game/rpg/pixel/arcade/equip_ball.png');
-const HOLE_FLAG = require('../../assets/game/rpg/pixel/arcade/equip_flag.png');
-const BUMPER_LOG = require('../../assets/game/rpg/pixel/props/spr_parkgolf_log_bumper_01.png');
-const BUMPER_GATE = require('../../assets/game/rpg/pixel/props/spr_parkgolf_gate_01.png');
 const AIM_SLOPE_FLOURISH = require('../../assets/game/rpg/ui/ui_parkgolf_aim_slope_01.png');
 const PUTTER_NAMES = {
   persimmon: '감나무 황동 퍼터', redwood: '적삼목 클래식',
@@ -44,11 +45,19 @@ const POWER_PRESETS: readonly { step: 1 | 2 | 3; label: string; desc: string }[]
   { step: 3, label: '3단 (강타)', desc: '장거리 홀인원 노리기' },
 ];
 
-export function ParkGolfArcadeScreen() {
+export function ParkGolfArcadeScreen({ storyChapter, onLeaveStory }: { storyChapter?: string; onLeaveStory?: () => void } = {}) {
+  const { width, fontScale } = useWindowDimensions();
+  const { largeTextEnabled } = useAppState();
+  const stackControls = width < 360 || fontScale >= 1.3 || largeTextEnabled;
   const { state, appearance, recordParkGolfClear, triggerHaptic } = useArcade();
   const { completeQuestStep, recordGameWithNpc, recordStoryResult, advanceOnboarding } = useRpg();
-  const [savedRound] = useState(() => loadRound(getRpgStorage(), ROUND_KEY, isGolfRound));
-  const [holeIndex, setHoleIndex] = useState(savedRound?.holeIndex ?? 0);
+  const [storage] = useState(getRpgStorage);
+  const story = getStoryTrial(storyChapter, 'parkgolf');
+  const coach = story?.id === 'chapter_4' ? 'herbalist' : story?.id === 'chapter_6' ? 'chief' : GAME_COACH.parkgolf;
+  const roundKey = story ? `${ROUND_KEY}_story_${story.id}` : ROUND_KEY;
+  const [loadedRound] = useState(() => loadRoundState(storage, roundKey, isGolfRound));
+  const savedRound = loadedRound.value;
+  const [holeIndex, setHoleIndex] = useState(savedRound?.holeIndex ?? (story?.id === 'chapter_6' ? 2 : 0));
   const hole = PARK_GOLF_HOLES[holeIndex] ?? PARK_GOLF_HOLES[0];
 
   const [ballPos, setBallPos] = useState<{ x: number; y: number }>(savedRound?.ballPos ?? hole.tee);
@@ -59,17 +68,17 @@ export function ParkGolfArcadeScreen() {
   const [lastShotNote, setLastShotNote] = useState<string>(
     savedRound?.lastShotNote ?? '각도와 힘(1~3단)을 고른 뒤 [퍼팅 샷 날리기] 버튼을 누르세요.',
   );
+  const [storyAttemptId, setStoryAttemptId] = useState(() => story ? savedRound?.storyAttemptId ?? randomUUID() : undefined);
 
-  React.useEffect(() => {
-    saveRound(getRpgStorage(), ROUND_KEY, { holeIndex, ballPos, strokes, aimAngle, powerStep, holedBanner, lastShotNote });
-  }, [holeIndex, ballPos, strokes, aimAngle, powerStep, holedBanner, lastShotNote]);
+  const roundSave = useRoundSave(storage, roundKey, loadedRound, { holeIndex, ballPos, strokes, aimAngle, powerStep, holedBanner, lastShotNote, storyAttemptId });
+  const [pendingHole, setPendingHole] = useState<number | null>(null);
 
   const preview = useMemo(
     () => simulateParkGolfShot(hole, ballPos, aimAngle, powerStep),
     [hole, ballPos, aimAngle, powerStep],
   );
 
-  const selectHole = (idx: number) => {
+  const startHole = (idx: number) => {
     const nextHole = PARK_GOLF_HOLES[idx] ?? PARK_GOLF_HOLES[0];
     triggerHaptic('light');
     setHoleIndex(idx);
@@ -78,7 +87,18 @@ export function ParkGolfArcadeScreen() {
     setAimAngle(0);
     setPowerStep(2);
     setHoledBanner(null);
+    if (story) setStoryAttemptId(randomUUID());
+    setPendingHole(null);
     setLastShotNote(`${nextHole.title} (PAR ${nextHole.par}) 라운딩을 시작합니다.`);
+  };
+
+  const selectHole = (idx: number) => {
+    if (idx === holeIndex) {
+      setPendingHole(null);
+      return;
+    }
+    if (strokes > 0 && !holedBanner) setPendingHole(idx);
+    else startHole(idx);
   };
 
   const handleShoot = () => {
@@ -87,9 +107,7 @@ export function ParkGolfArcadeScreen() {
     const nextStrokes = strokes + 1;
     setStrokes(nextStrokes);
 
-    // If close to cup or preview says holed, sink it cleanly!
-    const currentDist = Math.hypot(ballPos.x - hole.cup.x, ballPos.y - hole.cup.y);
-    if (preview.holed || (currentDist <= 38 && powerStep <= 2 && Math.abs(aimAngle) <= 15)) {
+    if (preview.holed) {
       setBallPos({ x: hole.cup.x, y: hole.cup.y });
       const delta = nextStrokes - hole.par;
       const title =
@@ -100,23 +118,24 @@ export function ParkGolfArcadeScreen() {
             : delta === 0
               ? `나이스 파(PAR)! (${nextStrokes}타 클리어)`
               : `홀컵 골인 완료! (${nextStrokes}타 클리어)`;
-      setHoledBanner(`${title} · +${delta <= 0 ? 180 : 120} CP & 인장 +1 획득!`);
+      const storyNote = story ? (story.id === 'chapter_6' || delta <= 0 ? ' 이야기 목표를 마쳤습니다.' : ' 이야기 목표는 파 이하여서 다시 도전할 수 있습니다.') : '';
+      setHoledBanner(`${title} · +${delta <= 0 ? 180 : 120} CP & 인장 +1 획득!${storyNote}`);
       setLastShotNote('딱! 달그락-통! 공이 홀컵 한가운데로 빨려 들어갔습니다!');
       playSfx('holein', state.soundEnabled);
       recordParkGolfClear(delta);
       if (hole.holeNumber === 1 && delta <= 0) completeQuestStep('parkgolf');
-      recordStoryResult({ type: 'parkgolf', hole: hole.holeNumber, strokesFromPar: delta });
-      recordGameWithNpc(GAME_COACH.parkgolf);
+      if (story && storyAttemptId) recordStoryResult({ type: 'parkgolf', hole: hole.holeNumber, strokesFromPar: delta, chapterId: story.id, attemptId: storyAttemptId });
+      recordGameWithNpc(coach);
       return;
     }
 
     setBallPos(preview.finalPos);
     if (preview.hitBunker) {
       setLastShotNote(`모래 벙커를 스치며 감속되었습니다. 남은 거리 ${preview.distanceToCup}m`);
-    } else if (preview.bouncedWall) {
-      setLastShotNote(`원목 쿠션 벽에 경쾌하게 반사되었습니다! 남은 거리 ${preview.distanceToCup}m`);
+    } else if (preview.bouncedBumper || preview.bouncedWall) {
+      setLastShotNote(`${preview.bouncedBumper ? '범퍼' : '코스 벽'}에 반사되었습니다. 남은 거리 ${preview.distanceToCup}m`);
     } else {
-      setLastShotNote(`나이스 어프로치! 홀컵까지 ${preview.distanceToCup}m 남았습니다. 한 번 더 치면 들어갑니다!`);
+      setLastShotNote(`홀컵까지 ${preview.distanceToCup}m 남았습니다. 점선으로 다음 타구를 확인하세요.`);
     }
   };
 
@@ -128,16 +147,18 @@ export function ParkGolfArcadeScreen() {
     <Screen testID="park-golf-screen" contentContainerStyle={styles.container}>
       {/* 1. 상단 홀 선택 & 스코어보드 HUD */}
       <View style={styles.hudCard}>
-        <View style={styles.holeTabsRow}>
+        <View style={[styles.holeTabsRow, stackControls && styles.stackedRow]}>
           {PARK_GOLF_HOLES.map((item, idx) => {
+            if (story && idx !== (story.id === 'chapter_6' ? 2 : 0)) return null;
             const active = idx === holeIndex;
             return (
               <Pressable
                 key={item.holeNumber}
                 testID={`parkgolf-hole-${item.holeNumber}`}
                 accessibilityRole="button"
+                accessibilityState={{ selected: active }}
                 onPress={() => selectHole(idx)}
-                style={[styles.holeTab, active && styles.holeTabActive]}>
+                style={[styles.holeTab, stackControls && styles.stackedControl, active && styles.holeTabActive]}>
                 <AppText
                   variant="bodyStrong"
                   style={{ color: active ? '#182620' : '#FCF9F2' }}>
@@ -148,12 +169,12 @@ export function ParkGolfArcadeScreen() {
           })}
         </View>
 
-        <View style={styles.scoreRow}>
-          <View style={styles.scoreStatBox}>
+        <View style={[styles.scoreRow, stackControls && styles.stackedRow]}>
+          <View style={[styles.scoreStatBox, stackControls && styles.stackedControl]}>
             <AppText variant="caption" style={styles.scoreLabel}>현재 홀</AppText>
             <AppText variant="sectionTitle" style={styles.scoreVal}>{hole.title}</AppText>
           </View>
-          <View style={styles.scoreStatBox}>
+          <View style={[styles.scoreStatBox, stackControls && styles.stackedControl]}>
             <AppText variant="caption" style={styles.scoreLabel}>현재 타수</AppText>
             <AppText variant="title" style={styles.strokeNumber}>{strokes}타째</AppText>
           </View>
@@ -171,32 +192,49 @@ export function ParkGolfArcadeScreen() {
         />
       </View>
 
+      {pendingHole !== null ? (
+        <ChangeConfirmation
+          message={`${PARK_GOLF_HOLES[pendingHole].title}로 이동하면 현재 홀의 진행이 사라집니다. 바꾸시겠습니까?`}
+          onCancel={() => setPendingHole(null)}
+          onConfirm={() => startHole(pendingHole)}
+        />
+      ) : null}
+      <RoundSaveNotice status={roundSave.status} onRetry={roundSave.retry} />
+      {story && storyAttemptId ? <StoryTrialNotice chapter={story} onLeave={onLeaveStory} canAbandon={!holedBanner} onAbandon={() => {
+        recordStoryResult({ type: 'parkgolf', hole: hole.holeNumber, outcome: 'failure', chapterId: story.id, attemptId: storyAttemptId });
+        startHole(holeIndex);
+      }} /> : null}
+
       {/* 함께 한 판 — 박 캡틴 코치 패널 */}
-      <CompanionCoach npcId={GAME_COACH.parkgolf} mood={holedBanner ? 'success' : 'start'} />
+      <CompanionCoach npcId={coach} mood={holedBanner ? 'success' : 'start'} />
 
-      {/* 2. 탑다운 파크골프 그린 보드 (ASSET-007 + 고대비 점선 궤적 & 볼 오버레이) */}
+      <AppText variant="caption" style={styles.previewText}>
+        점선은 예상 이동 경로입니다. 검은 원은 홀컵, 모래색은 벙커, 갈색 선은 반사 범퍼입니다.
+      </AppText>
+
+      {/* 2. 홀 데이터와 같은 좌표를 쓰는 그린 보드 */}
       <View style={styles.boardFrame}>
-        <Image source={GREEN_BOARD} style={styles.boardImage} contentFit="cover" />
+        <View pointerEvents="none" style={[styles.courseBoundary, {
+          left: `${PARK_GOLF_BOUNDS.left}%`, top: `${PARK_GOLF_BOUNDS.top}%`,
+          width: `${PARK_GOLF_BOUNDS.right - PARK_GOLF_BOUNDS.left}%`, height: `${PARK_GOLF_BOUNDS.bottom - PARK_GOLF_BOUNDS.top}%`,
+        }]} />
+        <View testID="parkgolf-bunker" pointerEvents="none" style={[styles.bunker, {
+          left: `${hole.bunker.x - hole.bunker.rx}%`, top: `${hole.bunker.y - hole.bunker.ry}%`,
+          width: `${hole.bunker.rx * 2}%`, height: `${hole.bunker.ry * 2}%`,
+        }]} />
 
-        {/* 장애물(원목 범퍼 / 황동 게이트) — 홀 데이터에 bumper가 있을 때만 보드에 표시 */}
+        {/* 홀 데이터의 선분을 범퍼 충돌선과 같은 좌표에 그립니다. */}
         {hole.bumper ? (
-          <Image
-            source={hole.holeNumber === 3 ? BUMPER_GATE : BUMPER_LOG}
-            style={[
-              styles.bumperImage,
-              hole.holeNumber === 3
-                ? { left: '57%', top: '24.5%', width: '23%', aspectRatio: 1.62 }
-                : { left: '19%', top: '39.5%', width: '19%', aspectRatio: 1.88 },
-            ]}
-            contentFit="contain"
+          <View
+            testID="parkgolf-bumper"
+            style={[styles.bumperLine, { left: `${hole.bumper.x1}%`, top: `${hole.bumper.y1}%`, width: `${hole.bumper.x2 - hole.bumper.x1}%` }]}
             pointerEvents="none"
-            accessible={false}
           />
         ) : null}
 
         {/* 점선 조준 궤적 (Art Bible §4 Colorblind Safety Rule 3: 상아 외곽선 + 주황/금빛 점) */}
         {!holedBanner &&
-          preview.path.slice(1, 10).map((pt, i) => (
+          preview.path.slice(1).map((pt, i) => (
             <View
               key={`traj-${i}`}
               style={[
@@ -210,14 +248,14 @@ export function ParkGolfArcadeScreen() {
             />
           ))}
 
-        {/* 홀컵 목표 하이라이트 링 */}
+        {/* 컵의 색칠된 영역이 실제 홀인 판정 범위입니다. */}
         <View
+          testID="parkgolf-cup"
+          pointerEvents="none"
           style={[
             styles.cupRing,
-            { left: `${hole.cup.x}%`, top: `${hole.cup.y}%` },
-          ]}>
-          <Image source={HOLE_FLAG} style={styles.holeFlagImage} contentFit="contain" />
-        </View>
+            { left: `${hole.cup.x - hole.cup.radius}%`, top: `${hole.cup.y - hole.cup.radius}%`, width: `${hole.cup.radius * 2}%`, height: `${hole.cup.radius * 2}%` },
+          ]} />
 
         {/* 조준 방향에 맞춘 원목 퍼터 헤드 가이드 */}
         {!holedBanner ? (
@@ -260,16 +298,26 @@ export function ParkGolfArcadeScreen() {
             🏆 {holedBanner}
           </AppText>
           <SeniorButton
+            testID="btn-parkgolf-replay-hole"
+            label="같은 홀 다시 도전하기"
+            variant="secondary"
+            onPress={() => startHole(holeIndex)}
+          />
+          {!story ? <SeniorButton
             testID="btn-parkgolf-next-hole"
             label="다음 홀 라운딩 이어가기 ▶"
             variant="primary"
-            onPress={() => selectHole((holeIndex + 1) % PARK_GOLF_HOLES.length)}
-          />
+            onPress={() => startHole((holeIndex + 1) % PARK_GOLF_HOLES.length)}
+          /> : null}
         </Card>
       ) : (
         <Card style={styles.controlCard}>
           <AppText variant="bodyStrong" style={{ color: '#182620' }}>
             {lastShotNote}
+          </AppText>
+          <AppText variant="caption" style={styles.previewText}>
+            {preview.holed ? '점선 예상: 홀인' : `점선 예상: 홀컵까지 ${preview.distanceToCup}m`}
+            {preview.hitBunker ? ' · 벙커 감속' : ''}{preview.bouncedBumper ? ' · 범퍼 반사' : ''}{preview.bouncedWall ? ' · 벽 반사' : ''}
           </AppText>
 
           {/* 조준 각도 미세 조정 (손떨림 방지 버튼형 컨트롤) */}
@@ -283,11 +331,12 @@ export function ParkGolfArcadeScreen() {
                 <Pressable
                   key={preset.label}
                   accessibilityRole="button"
+                  accessibilityState={{ selected }}
                   onPress={() => {
                     triggerHaptic('light');
                     setAimAngle(preset.deg);
                   }}
-                  style={[styles.angleBtn, selected && styles.angleBtnSelected]}>
+                  style={[styles.angleBtn, stackControls && styles.wideAngleBtn, selected && styles.angleBtnSelected]}>
                   <AppText
                     variant="caption"
                     style={{
@@ -305,7 +354,7 @@ export function ParkGolfArcadeScreen() {
           <AppText variant="caption" style={styles.controlLabel}>
             2. 퍼팅 힘 조절 (1단 ~ 3단)
           </AppText>
-          <View style={styles.powerRow}>
+          <View style={[styles.powerRow, stackControls && styles.stackedRow]}>
             {POWER_PRESETS.map((item) => {
               const selected = powerStep === item.step;
               return (
@@ -313,19 +362,20 @@ export function ParkGolfArcadeScreen() {
                   key={item.step}
                   testID={`parkgolf-power-${item.step}`}
                   accessibilityRole="button"
+                  accessibilityState={{ selected }}
                   onPress={() => {
                     triggerHaptic('light');
                     setPowerStep(item.step);
                   }}
-                  style={[styles.powerBtn, selected && styles.powerBtnSelected]}>
+                  style={[styles.powerBtn, stackControls && styles.stackedControl, selected && styles.powerBtnSelected]}>
                   <AppText
                     variant="bodyStrong"
-                    style={{ color: selected ? '#FCF9F2' : '#182620' }}>
+                    style={{ color: selected ? '#FFFFFF' : '#182620', textAlign: 'center' }}>
                     {item.label}
                   </AppText>
                   <AppText
                     variant="caption"
-                    style={{ color: selected ? '#FDE7DF' : '#526451', fontSize: 12 }}>
+                    style={{ color: selected ? '#FFFFFF' : '#526451', textAlign: 'center' }}>
                     {item.desc}
                   </AppText>
                 </Pressable>
@@ -375,8 +425,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.xs,
   },
+  stackedRow: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  stackedControl: {
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: 'auto',
+    alignSelf: 'stretch',
+  },
   holeTab: {
     flex: 1,
+    minWidth: 48,
     minHeight: 48,
     borderRadius: Radius.md,
     borderWidth: 1.5,
@@ -385,6 +446,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
+    paddingVertical: 6,
   },
   holeTabActive: {
     backgroundColor: '#F0BF4F',
@@ -397,6 +459,7 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   scoreStatBox: {
+    flex: 1,
     gap: 2,
   },
   scoreLabel: {
@@ -434,38 +497,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#0E5142',
     position: 'relative',
   },
-  boardImage: {
-    width: '100%',
-    height: '100%',
+  courseBoundary: {
+    position: 'absolute', borderWidth: 4, borderColor: '#D8B384', backgroundColor: '#317C51',
   },
-  bumperImage: {
+  bunker: {
+    position: 'absolute', borderRadius: '50%', borderWidth: 2, borderColor: '#9A6835', backgroundColor: '#E6BD76',
+  },
+  bumperLine: {
     position: 'absolute',
-    zIndex: 1,
+    zIndex: 1, height: 6, marginTop: -3, borderRadius: 3, backgroundColor: '#663B1D', borderWidth: 1, borderColor: '#F3D59A',
   },
   trajectoryDot: {
     position: 'absolute',
     zIndex: 2,
-    width: 12,
-    height: 12,
-    marginLeft: -6,
-    marginTop: -6,
-    borderRadius: 6,
+    width: 8,
+    height: 8,
+    marginLeft: -4,
+    marginTop: -4,
+    borderRadius: 4,
     borderWidth: 2,
     borderColor: '#FCF9F2',
   },
   cupRing: {
     position: 'absolute',
     zIndex: 2,
-    marginLeft: -22,
-    marginTop: -32,
-    width: 44,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  holeFlagImage: {
-    width: '100%',
-    height: '100%',
+    borderRadius: '50%', borderWidth: 2, borderColor: '#FCF9F2', backgroundColor: '#102A1B',
   },
   putterGuide: {
     position: 'absolute',
@@ -528,12 +584,15 @@ const styles = StyleSheet.create({
     fontFamily: FontWeights.emphasis,
     marginTop: 4,
   },
+  previewText: { color: '#315B38' },
   presetRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 6,
   },
   angleBtn: {
     flex: 1,
+    minWidth: 48,
     minHeight: 48,
     borderRadius: Radius.md,
     borderWidth: 1.5,
@@ -546,6 +605,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#0E5142',
     borderColor: '#0E5142',
   },
+  wideAngleBtn: {
+    flexBasis: '45%',
+    paddingVertical: 6,
+  },
   powerRow: {
     flexDirection: 'row',
     gap: Spacing.xs,
@@ -553,6 +616,7 @@ const styles = StyleSheet.create({
   },
   powerBtn: {
     flex: 1,
+    minWidth: 48,
     minHeight: 56,
     borderRadius: Radius.md,
     borderWidth: 2,

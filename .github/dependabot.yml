@@ -1,15 +1,14 @@
 version: 2
 
 updates:
-  # One pnpm workspace: the root pnpm-lock.yaml governs `.`, apps/api and
-  # apps/mobile. Dependabot must run from the workspace root and use
+  # One pnpm workspace: the root pnpm-lock.yaml governs `.` and apps/mobile.
+  # Dependabot must run from the workspace root and use
   # `directories` so every manifest bump lands in that single lockfile.
   # Per-directory npm entries cannot update the root lockfile and produce PRs
   # that fail `pnpm install --frozen-lockfile`.
   - package-ecosystem: npm
     directories:
       - /
-      - /apps/api
       - /apps/mobile
     schedule:
       interval: weekly
@@ -21,9 +20,6 @@ updates:
     labels:
       - dependencies
     groups:
-      nest-runtime:
-        patterns: ["@nestjs/*"]
-        update-types: ["minor", "patch"]
       # Batch low-risk upgrades so CI runs once per week instead of per package.
       minor-and-patch:
         patterns:
@@ -32,10 +28,7 @@ updates:
           - minor
           - patch
     ignore:
-      # Nest 12 requires a separately tested ESM/adapter migration. TS 7.0
-      # lacks the compiler API used by nest build; retain supported TS 6.
-      - dependency-name: "@nestjs/*"
-        update-types: ["version-update:semver-major"]
+      # Keep the supported TypeScript major until the Expo upgrade.
       - dependency-name: "typescript"
         versions: [">=7.0.0 <7.1.0"]
       # Expo and React Native versions are pinned to the installed SDK. Majors
@@ -50,17 +43,10 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-native-*"
         update-types: ["version-update:semver-major"]
-      # React majors are coupled across web and native; upgrade them together.
+      # React and the test renderer must stay on the same major version.
       - dependency-name: "react"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-dom"
-        update-types: ["version-update:semver-major"]
-      # Next and Prisma majors carry migration steps.
-      - dependency-name: "next"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "prisma"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@prisma/*"
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
@@ -78,15 +64,3 @@ updates:
       actions:
         patterns:
           - "*"
-
-  - package-ecosystem: docker
-    directory: /apps/api
-    schedule:
-      interval: weekly
-      day: monday
-      time: "04:00"
-      timezone: Asia/Seoul
-    open-pull-requests-limit: 3
-    labels:
-      - dependencies
-      - api

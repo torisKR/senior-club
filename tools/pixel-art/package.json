@@ -1,0 +1,22 @@
+{
+  "name": "senior-club-pixel-art",
+  "version": "1.0.0",
+  "description": "Senior Club 픽셀 아트 파이프라인 — pixelfx 이펙트 굽기 + sprite-gen 복장 변형",
+  "scripts": {
+    "build": "node build.mjs",
+    "fx": "node render-fx.mjs",
+    "preview": "node preview.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "private": "true",
+  "dependencies": {
+    "pixelfx": "github:patch-gg/pixelfx#a84159688af3ca37a4be05a0d422b94451b2e24e",
+    "pngjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

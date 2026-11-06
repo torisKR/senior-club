@@ -97,17 +97,17 @@ export const Fonts = Platform.select({
 
 export const FontSizes = {
   standard: {
-    caption: 13,
-    body: 16,
-    key: 17,
+    caption: 15,
+    body: 17,
+    key: 18,
     sectionTitle: 20,
     title: 24,
     display: 28,
   },
   large: {
-    caption: 15,
-    body: 18,
-    key: 19,
+    caption: 17,
+    body: 19,
+    key: 20,
     sectionTitle: 22,
     title: 27,
     display: 31,
@@ -116,17 +116,17 @@ export const FontSizes = {
 
 export const LineHeights = {
   standard: {
-    caption: 19,
-    body: 24,
-    key: 24,
+    caption: 22,
+    body: 26,
+    key: 27,
     sectionTitle: 28,
     title: 32,
     display: 36,
   },
   large: {
-    caption: 22,
-    body: 28,
-    key: 28,
+    caption: 25,
+    body: 29,
+    key: 30,
     sectionTitle: 31,
     title: 36,
     display: 40,

@@ -12,13 +12,15 @@ import { FontWeights, Layout, Radius, Spacing } from '@/constants/theme';
 import { PixelFx } from '@/fx/pixel-fx';
 
 import { ExitConfirmDialog } from './exit-confirm-dialog';
-import { MASTER_ACT_LINES, NPC_DISPLAY, PROMOTION_LINES } from './companion-lines';
-import { bondProgress, closestNpc, getBond, type NpcId } from './bond-logic';
+import { NPC_DISPLAY, PROMOTION_LINES } from './companion-lines';
+import { BOND_ENDING_LINES, BOND_EPISODES } from './bond-episodes';
+import { bondProgress, closestNpc, getBond, NPC_IDS, type NpcId } from './bond-logic';
 import { OnboardingOverlay } from './onboarding-overlay';
 import { PixelVillageMap } from './pixel-village-map';
 import { useAndroidBackExit } from './use-android-back-exit';
 import { canMoveTo, findNearbyNpc, getVillageTile } from './rpg-logic';
-import { storyStatus } from './story-progress';
+import { isStoryActionAvailable, STORY_ACTIONS, storyStatus, storyTrialCompleted, trialResolved } from './story-progress';
+import { STORY_CONTINUATION_DIALOGUE } from './story-data';
 import { portraitFor } from './rpg-sprites';
 import { useRpg } from './rpg-store';
 
@@ -41,6 +43,8 @@ export function VillageMapScreen() {
   const { rankProgress, state: arcadeState, claimAttendanceStamp } = useArcade();
   const {
     state,
+    saveProtection,
+    resolveLegacyStory,
     productionRates,
     currentChapter,
     pendingOfflineReward,
@@ -49,6 +53,9 @@ export function VillageMapScreen() {
     assignPartnerToFacility,
     recruitPartner,
     advanceChapter,
+    continueStoryAfterFailures,
+    performStoryAction,
+    chooseBondEpisode,
     movePlayer,
     doMorningGym,
     takeMedication,
@@ -66,8 +73,17 @@ export function VillageMapScreen() {
   const [activeTab, setActiveTab] = useState<'map' | 'idle' | 'story' | 'journal'>('map');
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const chapterStatus = storyStatus(state, arcadeState.cp);
-  const trialDone = state.completedTrialIds.includes(currentChapter.id);
+  const trialDone = storyTrialCompleted(state);
+  const trialSkipped = state.storySkippedTrialIds.includes(currentChapter.id);
+  const chapterActions = STORY_ACTIONS.filter((action) => action.chapterId === currentChapter.id);
+  const recordedLegacyChapter = state.storyLegacyChoice === 'keep' && currentChapter.id === 'chapter_4' && state.completedChapterIds.includes('chapter_4');
+  const showOutro = chapterStatus.kind === 'finished' || (trialResolved(state) && chapterStatus.kind !== 'actions') || recordedLegacyChapter;
+  const unknownLegacyResult = chapterStatus.kind === 'finished' && !trialDone && !trialSkipped;
   const [storyModalOpen, setStoryModalOpen] = useState(false);
+  const [episodeId, setEpisodeId] = useState<string | null>(null);
+  const activeEpisode = BOND_EPISODES.find((episode) => episode.id === episodeId);
+  const episodeBond = activeEpisode ? getBond(bonds, activeEpisode.npcId) : null;
+  const chosenEpisodeOption = activeEpisode?.choices.find((choice) => choice.id === episodeBond?.sceneChoices?.[activeEpisode.id]);
   // 안드로이드 뒤로가기 → 종료 확인 (홈 탭에서만)
   const backExit = useAndroidBackExit();
   const [promotionFx, setPromotionFx] = useState(false);
@@ -168,7 +184,7 @@ export function VillageMapScreen() {
     <Screen testID="village-map-screen" contentContainerStyle={styles.container}>
       <FocusedBackgroundAudio source={BGM_CLUB_LOUNGE} enabled={arcadeState.soundEnabled} />
       {/* 최초 1회 프롤로그 + 3단계 튜토리얼 배너 */}
-      <OnboardingOverlay />
+      {saveProtection === 'ready' && state.storyLegacyChoice !== 'pending' ? <OnboardingOverlay /> : null}
 
       {/* 안드로이드 하드웨어 뒤로가기 종료 확인 */}
       <ExitConfirmDialog
@@ -178,7 +194,7 @@ export function VillageMapScreen() {
       />
 
       {/* 0. 오프라인 방치 보상 수령 모달 */}
-      {pendingOfflineReward ? (
+      {pendingOfflineReward && saveProtection === 'ready' && state.storyLegacyChoice !== 'pending' ? (
         <Modal visible transparent animationType="fade">
           <View style={styles.modalBackdrop}>
             <View style={styles.offlineRewardCard}>
@@ -208,7 +224,37 @@ export function VillageMapScreen() {
         </Modal>
       ) : null}
 
-      {/* 4단계 인생 드라마 컷신 모달 */}
+      {/* 유대 에피소드는 선택과 그 결과를 저장해 다시 열어볼 수 있습니다. */}
+      <Modal visible={Boolean(activeEpisode)} transparent animationType="slide" onRequestClose={() => setEpisodeId(null)}>
+        <View style={styles.modalBackdrop}>
+          <ScrollView style={styles.storyCutsceneCard} contentContainerStyle={styles.storyCutsceneContent}>
+            {activeEpisode && episodeBond ? <>
+              <AppText variant="sectionTitle" style={{ color: '#FCF9F2' }}>{activeEpisode.title}</AppText>
+              <AppText variant="caption" style={{ color: '#F0BF4F' }}>
+                {NPC_DISPLAY[activeEpisode.npcId].name} · 유대 {activeEpisode.threshold}
+              </AppText>
+              <AppText variant="body" style={styles.storyLineText}>{activeEpisode.dialogue}</AppText>
+              {chosenEpisodeOption ? <>
+                <AppText variant="body" style={styles.storyLineText}>선택: {chosenEpisodeOption.label}</AppText>
+                <AppText variant="body" style={styles.storyLineText}>{chosenEpisodeOption.response}</AppText>
+              </> : episodeBond.scenesSeen.includes(activeEpisode.id) ? (
+                <AppText variant="body" style={styles.storyLineText}>이전에 함께한 이야기입니다.</AppText>
+              ) : activeEpisode.choices.map((choice) => (
+                <SeniorButton
+                  key={choice.id}
+                  testID={`bond-choice-${activeEpisode.id}-${choice.id}`}
+                  label={choice.label}
+                  variant="secondary"
+                  onPress={() => chooseBondEpisode(activeEpisode.npcId, activeEpisode.id, choice.id)}
+                />
+              ))}
+            </> : null}
+            <SeniorButton label="돌아가기" variant="secondary" onPress={() => setEpisodeId(null)} />
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* 여섯 막의 이야기와 CP 등급은 각각 표시합니다. */}
       <Modal visible={storyModalOpen} transparent animationType="slide" onRequestClose={() => setStoryModalOpen(false)}>
         <View style={styles.modalBackdrop}>
           <ScrollView style={styles.storyCutsceneCard} contentContainerStyle={styles.storyCutsceneContent}>
@@ -218,41 +264,74 @@ export function VillageMapScreen() {
               </AppText>
             </View>
             <View style={styles.storyDialogueBox}>
-              {currentChapter.id === 'chapter_6' && closestNpcId ? (
-                <AppText variant="body" style={{ color: '#F0BF4F' }}>
-                  {MASTER_ACT_LINES[closestNpcId]}
-                </AppText>
-              ) : null}
-              {(trialDone || chapterStatus.kind === 'finished' ? currentChapter.outroDialogue : currentChapter.introDialogue).map((line, i) => (
-                <AppText key={i} variant="body" style={styles.storyLineText}>
-                  {line}
-                </AppText>
+              {(showOutro
+                ? recordedLegacyChapter ? ['저장된 4막 완료 기록을 이어갑니다. 새 다실 이야기의 사건은 확인되지 않았습니다.']
+                  : unknownLegacyResult ? ['이전에 마친 이야기를 이어받았습니다. 시련 결과는 별도로 기록되지 않았습니다.']
+                  : trialSkipped ? STORY_CONTINUATION_DIALOGUE[currentChapter.id] ?? [] : currentChapter.outroDialogue
+                : currentChapter.introDialogue).map((line, i) => (
+                <AppText key={i} variant="body" style={styles.storyLineText}>{line}</AppText>
               ))}
+              {currentChapter.id === 'chapter_6' && chapterStatus.kind === 'finished' ? <>
+                <AppText variant="bodyStrong" style={{ color: '#F0BF4F' }}>여섯 막 이야기 완료</AppText>
+                <AppText variant="body" style={styles.storyLineText}>
+                  현재 CP 등급: {rankProgress.current.label} ({arcadeState.cp} CP) · 명인 등급은 3,500 CP부터
+                </AppText>
+                {NPC_IDS.filter((npcId) => getBond(bonds, npcId).points >= 200).map((npcId) => (
+                  <AppText key={npcId} variant="body" style={styles.storyLineText}>{BOND_ENDING_LINES[npcId]}</AppText>
+                ))}
+              </> : null}
             </View>
-            <View style={styles.climaxNotice}>
-              <AppText variant="bodyStrong" style={{ color: '#0E5142' }}>
-                🎯 챕터 승급 시험: {currentChapter.climaxTrial.opponentName}
+            {state.storyLegacyArchive ? <View style={styles.climaxNotice}>
+              <AppText variant="bodyStrong" style={{ color: '#0E5142' }}>이전 이야기 기록</AppText>
+              <AppText variant="caption" style={{ color: '#24382B' }}>
+                완료한 막: {state.storyLegacyArchive.completedChapterIds.join(', ') || '없음'}
               </AppText>
               <AppText variant="caption" style={{ color: '#24382B' }}>
-                {currentChapter.climaxTrial.description}
+                이전 시련 기록: {state.storyLegacyArchive.completedTrialIds.join(', ') || '없음'} · 4막의 이야기 종류는 확인되지 않았습니다.
+              </AppText>
+            </View> : null}
+            <View style={styles.climaxNotice}>
+              <AppText variant="bodyStrong" style={{ color: '#0E5142' }}>
+                🎯 시련: {currentChapter.climaxTrial.opponentName}
+              </AppText>
+              <AppText variant="caption" style={{ color: '#24382B' }}>{currentChapter.climaxTrial.description}</AppText>
+              <AppText variant="caption" style={{ color: '#24382B' }}>
+                {recordedLegacyChapter ? '이전 4막 기록 · 새 시련 결과 미상' : trialDone ? '시련 달성' : trialSkipped ? '시련 미완수 · 이야기 계속 선택' : unknownLegacyResult ? '이전 완료 기록 · 시련 결과 미상' : `시련 실패 ${state.storyTrialFailures[currentChapter.id] ?? 0}/3`}
               </AppText>
             </View>
+            {chapterActions.length ? <View style={styles.climaxNotice}>
+              <AppText variant="bodyStrong" style={{ color: '#0E5142' }}>마을에서 함께할 일</AppText>
+              {chapterActions.map((action) => <AppText key={action.id} variant="caption" style={{ color: '#24382B' }}>
+                {state.storyActionFlags[action.id] === 'performed' ? '완료' : state.storyActionFlags[action.id] === 'legacy' ? '이전 이야기 기록' : '남음'} · {NPC_DISPLAY[action.npcId].name}: {action.label}
+              </AppText>)}
+              {chapterActions.some((action) => !state.storyActionFlags[action.id]) ?
+                <AppText variant="caption" style={{ color: '#24382B' }}>마을에서 해당 인물에게 다가가 차례로 행동해 주세요.</AppText> : null}
+            </View> : null}
             <View style={{ gap: Spacing.sm }}>
-              {chapterStatus.kind !== 'finished' ? <SeniorButton
-                label="승급 시험 도전하러 가기 ▶"
+              {chapterStatus.kind !== 'finished' && !trialDone && !recordedLegacyChapter ? <SeniorButton
+                label={trialSkipped ? '시련에 다시 도전하기 ▶' : '시련 도전하러 가기 ▶'}
                 variant="accent"
                 onPress={() => {
                   setStoryModalOpen(false);
-                  router.push(currentChapter.climaxTrial.targetRoute as Href);
+                  router.push({ pathname: currentChapter.climaxTrial.targetRoute, params: { storyChapter: currentChapter.id } } as Href);
                 }}
               /> : null}
+              {chapterStatus.kind === 'trial' && (state.storyTrialFailures[currentChapter.id] ?? 0) >= 3 ? <SeniorButton
+                testID="btn-continue-story-after-failures"
+                label="시련을 마치지 않고 이야기 계속하기"
+                variant="secondary"
+                onPress={continueStoryAfterFailures}
+              /> : null}
+              {chapterStatus.kind === 'trial' && (state.storyTrialFailures[currentChapter.id] ?? 0) >= 3 ?
+                <AppText variant="caption" style={styles.storyLineText}>시련 승리나 CP는 추가되지 않습니다. 계속 도전할 수도 있습니다.</AppText> : null}
               <SeniorButton
                 label={
                   chapterStatus.kind === 'ready'
-                    ? chapterStatus.isFinal ? '명인전 마무리하기' : '다음 막으로 넘어가기'
+                    ? chapterStatus.isFinal ? '여섯 막 이야기 마무리하기' : 'alreadyRecorded' in chapterStatus ? '이전 기록으로 다음 막 보기' : '다음 막으로 넘어가기'
                     : chapterStatus.kind === 'rank'
                       ? `다음 이야기까지 ${chapterStatus.requiredCp} CP (현재 ${arcadeState.cp})`
-                      : chapterStatus.kind === 'finished' ? '이야기 완결' : '시험을 먼저 마쳐 주세요'
+                      : chapterStatus.kind === 'actions' ? '마을에서 남은 일을 마쳐 주세요'
+                        : chapterStatus.kind === 'finished' ? '이야기 완결' : '시련을 먼저 마쳐 주세요'
                 }
                 variant="secondary"
                 disabled={chapterStatus.kind !== 'ready'}
@@ -268,6 +347,27 @@ export function VillageMapScreen() {
           </ScrollView>
         </View>
       </Modal>
+
+      {/* 이전 4막이 어느 이야기인지 알 수 없으므로 직접 이어갈 경로를 고릅니다. */}
+      <Modal visible={saveProtection === 'ready' && state.storyLegacyChoice === 'pending'} transparent animationType="fade" onRequestClose={() => undefined}>
+        <View style={styles.modalBackdrop}>
+          <ScrollView style={styles.storyCutsceneCard} contentContainerStyle={styles.storyCutsceneContent}>
+            <AppText variant="sectionTitle" style={{ color: '#FCF9F2' }}>이전 이야기 이어가기</AppText>
+            <AppText variant="body" style={styles.storyLineText}>
+              저장된 4막은 예전 이야기와 새 이야기에서 같은 이름을 사용했습니다. 이어갈 방법을 골라 주세요.
+            </AppText>
+            <AppText variant="body" style={styles.storyLineText}>
+              {state.storyLegacyKeepChapterId === 'chapter_6' ? '기존 기록 유지는 예전 마지막 막을 새 6막에서 이어갑니다.' : '기존 기록 유지는 현재 막 위치와 완료 기록을 그대로 이어갑니다.'} 새 4막부터 보기는 이전 기록을 보관하고 새 이야기를 다시 시작합니다.
+            </AppText>
+            <AppText variant="body" style={styles.storyLineText}>
+              기존 소지품과 구매 기록은 유지되며 이미 받은 막 보상은 다시 지급되지 않습니다.
+            </AppText>
+            <SeniorButton testID="legacy-story-keep" label="기존 기록 유지" variant="accent" onPress={() => resolveLegacyStory('keep')} />
+            <SeniorButton testID="legacy-story-replay" label="새 4막부터 보기" variant="secondary" onPress={() => resolveLegacyStory('replay')} />
+          </ScrollView>
+        </View>
+      </Modal>
+
 
       {/* 승급 축하 금빛 폭죽 연출 — pixelfx `ui/confetti` 시트를 3.5초 재생 */}
       {promotionFx ? (
@@ -550,8 +650,38 @@ export function VillageMapScreen() {
                     {`"${line}"`}
                   </AppText>
                 ))}
+                {nearbyNpc.id === 'tea_manager' && state.currentChapterId === 'chapter_4' && !state.storyActionFlags.reopen_tea_room ? (
+                  <AppText variant="body" style={styles.dialogueLine}>다실은 손님맞이를 쉬고 있어요. 준비를 마치면 함께 문을 열어요.</AppText>
+                ) : nearbyNpc.id === 'tea_manager' && state.storyActionFlags.reopen_tea_room ? (
+                  <AppText variant="body" style={styles.dialogueLine}>다실이 다시 손님을 맞고 있습니다.</AppText>
+                ) : null}
+                {nearbyNpc.id === 'tea_manager' && state.currentChapterId === 'chapter_4' && state.storyActionFlags.collect_supplies && !state.storyActionFlags.deliver_supplies ? (
+                  <AppText variant="body" style={styles.dialogueLine}>강 원장의 차와 약재 꾸러미를 가지고 있습니다.</AppText>
+                ) : null}
               </View>
               <View style={styles.dialogueActions}>
+                {STORY_ACTIONS.filter((action) => action.npcId === nearbyNpc.id && isStoryActionAvailable(state, action.id)).map((action) => (
+                  <SeniorButton
+                    key={action.id}
+                    testID={`story-action-${action.id}`}
+                    label={action.label}
+                    variant="accent"
+                    onPress={() => {
+                      performStoryAction(action.id);
+                      setActionNotice(action.notice);
+                    }}
+                  />
+                ))}
+                {BOND_EPISODES.filter((episode) => episode.npcId === nearbyNpc.id).map((episode) => (
+                  <SeniorButton
+                    key={episode.id}
+                    testID={`bond-episode-${episode.id}`}
+                    label={`${episode.title} · 유대 ${episode.threshold}${getBond(bonds, episode.npcId).scenesSeen.includes(episode.id) ? ' ✔' : ''}`}
+                    disabled={getBond(bonds, episode.npcId).points < episode.threshold}
+                    variant="secondary"
+                    onPress={() => setEpisodeId(episode.id)}
+                  />
+                ))}
                 <SeniorButton
                   testID="btn-walk-together"
                   label={
@@ -570,12 +700,13 @@ export function VillageMapScreen() {
                 {nearbyNpc.facilityRoute ? (
                   <SeniorButton
                     testID="btn-enter-facility"
-                    label={nearbyNpc.facilityLabel ?? '시설 입장하기 ▶'}
+                    label={nearbyNpc.id === 'tea_manager' && state.currentChapterId === 'chapter_4' && !state.storyActionFlags.reopen_tea_room
+                      ? '사천성 연습하기 ▶' : nearbyNpc.facilityLabel ?? '시설 입장하기 ▶'}
                     variant="accent"
                     onPress={() => {
                       // 튜토리얼 3단계는 파크골프 입장으로만 완료됩니다.
                       if (nearbyNpc.facilityRoute === '/clubs') advanceOnboarding('openedParkGolf');
-                      router.push(nearbyNpc.facilityRoute as Href);
+                      router.push({ pathname: nearbyNpc.facilityRoute, params: { storyChapter: '' } } as Href);
                     }}
                   />
                 ) : null}
@@ -730,16 +861,14 @@ export function VillageMapScreen() {
               필요 급수: {currentChapter.rankRequirement}
             </AppText>
             <View style={styles.storyDialogueBox}>
-              {currentChapter.introDialogue.map((line, idx) => (
-                <AppText key={idx} variant="body" style={styles.storyLineText}>
-                  {line}
-                </AppText>
-              ))}
+              <AppText variant="body" style={styles.storyLineText}>
+                {chapterStatus.kind === 'finished' ? '여섯 막 이야기를 마쳤습니다.' : recordedLegacyChapter ? '이전 완료 기록을 이어갑니다.' : '시련과 마을에서 함께할 일을 확인해 주세요.'}
+              </AppText>
             </View>
             <SeniorButton
-              label="이 챕터 승급 시험 도전하기 ▶"
+              label="이야기와 진행 상황 보기 ▶"
               variant="accent"
-              onPress={() => router.push(currentChapter.climaxTrial.targetRoute as Href)}
+              onPress={() => setStoryModalOpen(true)}
             />
           </Card>
         </View>

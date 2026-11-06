@@ -15,6 +15,7 @@ import {
 import type { VillageTile } from './rpg-types';
 import { useRpg } from './rpg-store';
 import { useArcade } from '@/arcade/arcade-store';
+import { useReduceMotion } from '@/fx/use-reduce-motion';
 
 /** 타일 1칸의 논리 크기(dp) */
 export const TILE_DP = 48;
@@ -72,15 +73,21 @@ function NpcSprite({
   x,
   y,
   delayMs,
+  reduceMotion,
 }: {
   npcId: string;
   x: number;
   y: number;
   delayMs: number;
+  reduceMotion: boolean | null;
 }) {
   const [bob] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
+    if (reduceMotion !== false) {
+      bob.setValue(0);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(bob, {
@@ -100,7 +107,7 @@ function NpcSprite({
     );
     loop.start();
     return () => loop.stop();
-  }, [bob, delayMs]);
+  }, [bob, delayMs, reduceMotion]);
 
   const translateY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, -3] });
 
@@ -128,6 +135,7 @@ function NpcSprite({
 export function PixelVillageMap() {
   const { state } = useRpg();
   const { state: arcadeState } = useArcade();
+  const reduceMotion = useReduceMotion();
   const playerPos = state.playerPos;
   const companionId = state.companionId;
 
@@ -202,6 +210,11 @@ export function PixelVillageMap() {
 
   // 카메라: 주인공 중심을 따라 부드럽게 이동 (뷰포트 밖으로 나가지 않게 클램프)
   useEffect(() => {
+    if (reduceMotion !== false) {
+      cameraX.setValue(-cameraTargetX);
+      cameraY.setValue(-cameraTargetY);
+      return;
+    }
     const animation = Animated.parallel([
       Animated.spring(cameraX, {
         toValue: -cameraTargetX,
@@ -220,10 +233,15 @@ export function PixelVillageMap() {
     ]);
     animation.start();
     return () => animation.stop();
-  }, [cameraTargetX, cameraTargetY, cameraX, cameraY]);
+  }, [cameraTargetX, cameraTargetY, cameraX, cameraY, reduceMotion]);
 
   // 주인공 이동: 타일 단위 이동을 부드럽게 보간
   useEffect(() => {
+    if (reduceMotion !== false) {
+      playerX.setValue(playerPos.x * TILE_DP - PLAYER_OFFSET_X);
+      playerY.setValue(playerPos.y * TILE_DP - PLAYER_OFFSET_Y);
+      return;
+    }
     const animation = Animated.parallel([
       Animated.spring(playerX, {
         toValue: playerPos.x * TILE_DP - PLAYER_OFFSET_X,
@@ -242,7 +260,7 @@ export function PixelVillageMap() {
     ]);
     animation.start();
     return () => animation.stop();
-  }, [playerPos.x, playerPos.y, playerX, playerY]);
+  }, [playerPos.x, playerPos.y, playerX, playerY, reduceMotion]);
 
   // 방향 전환 + 걷기 상태 (이동이 멈추면 idle 프레임으로 복귀)
   useEffect(() => {
@@ -264,10 +282,11 @@ export function PixelVillageMap() {
 
   // 프레임 사이클: 걷는 중 130ms, 서 있을 때 260ms
   useEffect(() => {
+    if (reduceMotion !== false) return;
     const period = walking ? WALK_FRAME_MS : IDLE_FRAME_MS;
     const interval = setInterval(() => setFrame((current) => (current + 1) % 4), period);
     return () => clearInterval(interval);
-  }, [walking]);
+  }, [walking, reduceMotion]);
 
   const handleLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -276,7 +295,10 @@ export function PixelVillageMap() {
     );
   };
 
-  const playerSprite = playerSpriteForTier(playerTierForCp(arcadeState.cp), facing.direction, walking, frame);
+  const playerSprite = playerSpriteForTier(
+    playerTierForCp(arcadeState.cp), facing.direction,
+    reduceMotion === false && walking, reduceMotion === false ? frame : 0,
+  );
 
   return (
     <View
@@ -346,6 +368,7 @@ export function PixelVillageMap() {
             x={npc.x}
             y={npc.y}
             delayMs={index * 180}
+            reduceMotion={reduceMotion}
           />
         ))}
 
@@ -358,7 +381,7 @@ export function PixelVillageMap() {
                   : { x: playerPos.x, y: playerPos.y };
               return (
                 <>
-                  <NpcSprite npcId={companionId} x={shown.x} y={shown.y} delayMs={0} />
+                  <NpcSprite npcId={companionId} x={shown.x} y={shown.y} delayMs={0} reduceMotion={reduceMotion} />
                   {walkLine && walkLine.npcId === companionId ? (
                     <View
                       pointerEvents="none"

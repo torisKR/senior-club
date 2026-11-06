@@ -1,5 +1,7 @@
 # 운영 배포 및 Android 재검사 — 2026-09-30
 
+> **이력:** 이전 커뮤니티 앱과 운영 서비스의 증거다. 현재 Android 게임의 실행·출시 상태가 아니다.
+
 Galaxy M33 / Android 16에서 Android 디자인 QA APK `8d117e…`의 로그인 복원·프로필·5개 탭·사진 슬롯과 6개 글자 확대 조합을 검사했다. 기본 글자와 하단 탐색을 조정하고 실기기에서 발견한 확대 아이콘 정렬 문제도 수정했다. 이후 스크롤 상태 표시줄 겹침을 수정한 새 APK `3fa88a…`를 설치했으며 아래 추가 절에 검증 한계를 기록했다. 웹은 새 Vercel production에 배포해 Playwright CLI 검사가 통과했다. 전체 출시 검증 완료는 아니며 Firebase SMS 설정·origin TLS·별도 Play 조건이 남아 있다.
 
 ## 최신 API 탈퇴 복구 배포
@@ -90,13 +92,13 @@ Play max version/signing/provider·최종 screenshot 검토·hosted run·업로�
 6. Expo source introspection만으로 APK 권한을 판단하지 않도록 compiled merged manifest gate를 추가하고 CI 회귀와 production Gradle build 이후 gate에 연결했다.
 7. 운영 DB URL이 `sslmode=verify-full`을 사용하도록 시작 시 검사한다. 검증을 약화시키는 옵션, 중복/모호한 TLS query parameters와 `NODE_TLS_REJECT_UNAUTHORIZED=0`을 거절한다. 검증 오류에 DB URL을 노출하지 않는다. 이 변경은 API task 25에 배포했다.
 8. 추가 ADB 검사에서 모임 상세의 요약·본문이 같은 문장으로 중복 표시되고 종료 모임에도 남은 자리를 안내하는 문제를 확인했다. 동일 요약은 생략하고 신청 불가능한 모임은 참여 인원·전체 정원만 표시한다.
-9. 격리된 실제 웹 QA에서 보호 링크의 Next prefetch와 mounted session 조회가 같은 refresh token을 동시에 소비했다. 엄격한 재사용 거절 뒤 continue 응답이 쿠키를 제거해 인증 성공/실패가 섞였다. 브라우저의 session 조회·로그아웃을 공통 요청과 Web Locks로 조정하고, 보호 페이지의 복원은 `/auth/continue`의 실제 mounted component에서 수행하도록 변경했다. legacy `/api/auth/continue`와 미리보기는 토큰 회전·쿠키 변경을 하지 않는다. 이동 경로·onboarding·재시도·외부 주소 및 인증 순환 차단을 검사했다. 실제 UI의 수정 후 판정은 [역할 UI QA](QA_ROLE_UI_20260930.md)를 확인한다.
+9. 격리된 실제 웹 QA에서 보호 링크의 Next prefetch와 mounted session 조회가 같은 refresh token을 동시에 소비했다. 엄격한 재사용 거절 뒤 continue 응답이 쿠키를 제거해 인증 성공/실패가 섞였다. 브라우저의 session 조회·로그아웃을 공통 요청과 Web Locks로 조정하고, 보호 페이지의 복원은 `/auth/continue`의 실제 mounted component에서 수행하도록 변경했다. legacy `/api/auth/continue`와 미리보기는 토큰 회전·쿠키 변경을 하지 않는다. 이동 경로·onboarding·재시도·외부 주소 및 인증 순환 차단을 검사했다. 실제 UI의 수정 후 판정은 역할 UI QA (Git `8201a93:docs/QA_ROLE_UI_20260930.md`)를 확인한다.
 
 ## 최신 웹 세션 수정과 재배포
 
 웹 소스 `9a376d96f4e8a955fa29ad305c480d2d156d321b`를 고정한 별도 사본에서 production에 배포했다. 원격 Turbopack compile과 READY 상태를 확인했고 실제 canonical 주소에서 Playwright CLI 공개 화면·이동·글자 크기 27개, 익명 인증 경계 15개, legacy prefetch 무회전·안전한 익명 continuation 11개를 모두 통과했다. page/console error와 실패한 resource는 0개다. 실제 웹 provider login/token exchange와 운영 유효 계정의 restore는 이번 live 검사의 범위가 아니다. [새 웹 배포·세션 경계 증거](qa-evidence/20260930/web-session-live.json).
 
-격리된 실제 Nest/Prisma/Next HTTPS 환경에서 회원·리더·관리자 전체 19개와 동일 context 두 tab restore/logout 5개 검사가 통과했다. mounted reader는 모두 인증된 회원을 받았고 access 제거 후 refresh는 한 번만 회전했다. 보호 화면은 새 document navigation으로 실제 SSR에 다시 도달했다. 외부 Kakao identity verifier만 합성 신원으로 대체했다. [실제 역할 UI 보고서](QA_ROLE_UI_20260930.md). 이후 Android 디자인 수정 소스는 이 웹 검증 manifest에 포함되지 않는다.
+격리된 실제 Nest/Prisma/Next HTTPS 환경에서 회원·리더·관리자 전체 19개와 동일 context 두 tab restore/logout 5개 검사가 통과했다. mounted reader는 모두 인증된 회원을 받았고 access 제거 후 refresh는 한 번만 회전했다. 보호 화면은 새 document navigation으로 실제 SSR에 다시 도달했다. 외부 Kakao identity verifier만 합성 신원으로 대체했다. 실제 역할 UI 보고서 (Git `8201a93:docs/QA_ROLE_UI_20260930.md`). 이후 Android 디자인 수정 소스는 이 웹 검증 manifest에 포함되지 않는다.
 
 ## 최신 Android 디자인과 실기기 판정
 
@@ -158,7 +160,7 @@ Play max version/signing/provider·최종 screenshot 검토·hosted run·업로�
 
 별도의 운영 read-only / repeatable-read transaction에서 마이그레이션 이름·SQL SHA-256·완료 상태 10개와 테이블 35개가 로컬 소스와 일치했다. 무효 제약조건과 인덱스는 각각 0개였다. TLS 검증과 read-only 상태도 통과했다. 비즈니스 row를 읽지 않았으므로 사용자 데이터의 정확성이나 모든 Prisma 의미 차이를 검증한 결과는 아니다. [운영 스키마 메타데이터 증거](qa-evidence/20260930/database-schema-live.json).
 
-동일 VPC에 암호화·비공개 PITR 복구 DB 1개와 전용 보안그룹 2개를 만들고, 고정한 2026-09-30 16:20:11 KST 시점으로 복구했다. API 서버·worker를 시작하지 않는 동일한 one-shot reader로 strict TLS 및 read-only 상태, SQL migration 10개, 테이블 35개, migration/catalog fingerprint와 집계의 운영 baseline 일치를 확인했다. 요청 준비 시작부터 스키마 증거까지 845.3초, 정리 완료까지 1148.0초였다. 16:51 KST에 복구 DB·전용 보안그룹 부재와 새 snapshot/retained backup 0개, 운영 DB available/private 및 7일 backup·deletion protection 보존을 확인했다. 원본 endpoint·secret·보안그룹·route는 이 훈련에서 변경하지 않았다. [실제 PITR 메타데이터 비교·정리 증거](qa-evidence/20260930/database-recovery-live.json), [복구 실행 범위와 런북](RDS_RECOVERY_PLAN.md).
+동일 VPC에 암호화·비공개 PITR 복구 DB 1개와 전용 보안그룹 2개를 만들고, 고정한 2026-09-30 16:20:11 KST 시점으로 복구했다. API 서버·worker를 시작하지 않는 동일한 one-shot reader로 strict TLS 및 read-only 상태, SQL migration 10개, 테이블 35개, migration/catalog fingerprint와 집계의 운영 baseline 일치를 확인했다. 요청 준비 시작부터 스키마 증거까지 845.3초, 정리 완료까지 1148.0초였다. 16:51 KST에 복구 DB·전용 보안그룹 부재와 새 snapshot/retained backup 0개, 운영 DB available/private 및 7일 backup·deletion protection 보존을 확인했다. 원본 endpoint·secret·보안그룹·route는 이 훈련에서 변경하지 않았다. [실제 PITR 메타데이터 비교·정리 증거](qa-evidence/20260930/database-recovery-live.json), 복구 런북 이력 (Git `8201a93:docs/RDS_RECOVERY_PLAN.md`).
 
 이 훈련은 업무 row 대조, 전체 물리 블록 무결성, 운영 교체·failback·Multi-AZ/cross-region 복구나 snapshot restore를 검증하지 않았다. 위 시간은 한 번의 제한된 훈련 관찰이며 RPO/RTO SLA가 아니다. 비용 목표 $1은 청구 hard cap이 아니고 실제 청구액은 아직 확인하지 않았다.
 
@@ -245,7 +247,7 @@ screenshot manifest 부재로 실패했다(2/5 단계). API readiness·약관·�
 
 - Firebase `clubsenior-app`: actual QA SHA-1/SHA-256 등록 및 native rebuild 완료. Auth config 초기화는 `BILLING_NOT_ENABLED`로 거절됨. 사용할 결제 계정, Phone provider/KR region policy와 서버 Admin ADC가 필요함. 실제 SMS/번호 linking, Play signing SHA는 미검증.
 - 웹 OAuth callback/HttpOnly cookie/로그아웃의 실제 계정 E2E는 별도다. Android Kakao 성공으로 이를 대체하지 않음.
-- CloudFront→ALB는 HTTP. direct origin 403과 CloudFront prefix ingress는 적용했으나 origin DNS/ACM을 통한 HTTPS 전환은 남아 있음. Cloudflare DNS 로그인/권한이 필요하며 서울 ACM 인증서는 `PENDING_VALIDATION`. [정확한 DNS 레코드와 전환 순서](ORIGIN_TLS_HANDOFF.md).
+- CloudFront→ALB는 HTTP. direct origin 403과 CloudFront prefix ingress는 적용했으나 origin DNS/ACM을 통한 HTTPS 전환은 남아 있음. Cloudflare DNS 로그인/권한이 필요하며 서울 ACM 인증서는 `PENDING_VALIDATION`. DNS 전환 이력 (Git `8201a93:docs/ORIGIN_TLS_HANDOFF.md`).
 - RDS 공개 접근 해제, encrypted/backup/deletion protection 및 변경 후 strict DB certificate verification 확인. 임시 PITR 복구 DB의 migration/catalog 비교와 리소스 정리까지 통과. 기존 서브넷 구성과 single-AZ는 유지하며 전체 업무 데이터 복구·가용성 훈련은 별도 범위임.
 - 이메일/SMS outbox/FCM 채널은 disabled. 회원/리더/관리자 신청·승인·취소와 후기/신고는 위 local DB 범위를 통과했다. 외부 알림 수신, 실제 Plus 구매/복원, 역할별 운영 웹/앱 UI에서의 신청·취소/UGC/채팅/신고/관리자 E2E, 최종 서명 AAB/Play screenshot provenance와 Play 공개는 이번 재검사에서 완료하지 않음.
 - 화면 구조·접근성 상태는 XML/DOM으로 검사했다. 최신 Android 홈의 정상·확대, 5개 탭 선택 배경, 모임 목록·상세 사진의 캡처를 직접 시각 검토했다. 전체 제품 화면·웹·스토어 screenshot의 미감 승인을 포괄하는 결과는 아니다.

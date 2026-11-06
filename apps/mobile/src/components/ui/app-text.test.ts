@@ -13,10 +13,10 @@ describe('native readable typography', () => {
   it('uses a readable hierarchy with quiet captions and regular body copy', () => {
     state.large = false;
     for (const [variant, size, line, family] of [
-      ['caption', 13, 19, FontWeights.body], ['body', 16, 24, FontWeights.body],
-      ['bodyStrong', 16, 24, FontWeights.emphasis], ['key', 17, 24, FontWeights.emphasis],
+      ['caption', 15, 22, FontWeights.body], ['body', 17, 26, FontWeights.body],
+      ['bodyStrong', 17, 26, FontWeights.emphasis], ['key', 18, 27, FontWeights.emphasis],
       ['sectionTitle', 20, 28, FontWeights.emphasis], ['title', 24, 32, FontWeights.emphasis],
-      ['display', 28, 36, FontWeights.strong], ['button', 17, 24, FontWeights.emphasis],
+      ['display', 28, 36, FontWeights.strong], ['button', 18, 27, FontWeights.emphasis],
     ] as const) {
       const text = AppText({ variant });
       expect(text.props.style[0]).toMatchObject({ fontSize: size, lineHeight: line, fontFamily: family });
@@ -33,6 +33,8 @@ describe('native readable typography', () => {
       expect(text.props.style[0]).toMatchObject({ fontSize: FontSizes.large[variant], lineHeight: LineHeights.large[variant] });
       expect(FontSizes.large[variant]).toBeGreaterThan(FontSizes.standard[variant]);
       expect(text.props.allowFontScaling).toBe(true);
+      expect(text.props.maxFontSizeMultiplier).toBeUndefined();
+      expect(text.props.numberOfLines).toBeUndefined();
     }
     state.large = false;
   });

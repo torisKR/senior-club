@@ -4,11 +4,13 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import time
 import urllib.request
 import urllib.error
+import urllib.parse
 import xml.etree.ElementTree as ET
 import zipfile
 
@@ -16,6 +18,8 @@ PACKAGE = 'com.toris.seniorclub'
 API = 'https://androidpublisher.googleapis.com/androidpublisher/v3/applications/' + PACKAGE
 UPLOAD = 'https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/' + PACKAGE
 ANDROID = '{http://schemas.android.com/apk/res/android}'
+POLICY_SOURCE = Path(__file__).resolve().parent.parent / 'src/config/public-policy-url.js'
+JS_BUNDLE_PATH = 'base/assets/index.android.bundle'
 REQUIRED = ['ANDROID_UPLOAD_KEYSTORE_BASE64', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_ALIAS',
             'ANDROID_KEY_PASSWORD', 'ANDROID_UPLOAD_CERT_SHA256']
 
@@ -113,6 +117,25 @@ def validate_manifest(xml, code, version):
         raise ValueError('Ad measurement consent gate missing')
 
 
+def validate_bundle_policy(aab):
+    # Use the same exported constant as the app and public endpoint gate.
+    policy_url = command([
+        'node', '-e', 'process.stdout.write(require(process.argv[1]).PRIVACY_POLICY_URL)',
+        str(POLICY_SOURCE),
+    ]).decode('utf-8')
+    url = urllib.parse.urlsplit(policy_url)
+    if (url.scheme != 'https' or url.netloc != 'plume-mine-90a.notion.site' or
+            not re.fullmatch(r'/[0-9a-f]{32}', url.path) or url.query or url.fragment):
+        raise ValueError('Invalid game privacy policy URL')
+    with zipfile.ZipFile(aab) as archive:
+        if archive.namelist().count(JS_BUNDLE_PATH) != 1:
+            raise ValueError('Exact AAB must contain one base JS bundle')
+        bundle = archive.read(JS_BUNDLE_PATH)
+    if policy_url.encode('utf-8') not in bundle:
+        raise ValueError('Privacy policy URL absent from actual AAB JS bundle')
+    return policy_url
+
+
 def validate():
     evidence = Path(os.environ['EVIDENCE_DIR'])
     aab = evidence / 'app-release.aab'
@@ -133,17 +156,13 @@ def validate():
     fingerprint = hashlib.sha256(der).hexdigest()
     if fingerprint != os.environ['ANDROID_UPLOAD_CERT_SHA256'].lower():
         raise ValueError('AAB upload signing identity mismatch')
-    with zipfile.ZipFile(aab) as archive:
-        bundle = archive.read('base/assets/index.android.bundle')
-        for name in ['EXPO_PUBLIC_API_URL', 'EXPO_PUBLIC_WEB_URL']:
-            if os.environ[name].encode() not in bundle:
-                raise ValueError('Release endpoint absent from actual JS bundle: ' + name)
+    policy_url = validate_bundle_policy(aab)
     record = {'package': PACKAGE, 'versionCode': int(os.environ['ANDROID_VERSION_CODE']), 'versionName': version,
               'sha256': hashlib.sha256(aab.read_bytes()).hexdigest(), 'certificateSha256': fingerprint,
-              'commit': os.environ['GITHUB_SHA'], 'runId': os.environ['GITHUB_RUN_ID']}
+              'privacyPolicyUrl': policy_url, 'commit': os.environ['GITHUB_SHA'], 'runId': os.environ['GITHUB_RUN_ID']}
     (evidence / 'validated-build.json').write_text(json.dumps(record, indent=2) + '\n')
     (evidence / 'merged-manifest.xml').write_bytes(xml)
-    print('PASS exact signed AAB package, version, consent, endpoints and certificate')
+    print('PASS exact signed AAB package, version, consent, privacy policy URL and certificate')
 
 
 def main(action):

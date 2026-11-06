@@ -4,16 +4,19 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import releaseApiUrl from '../src/config/release-api-url.js';
+import publicPolicy from '../src/config/public-policy-url.js';
 
 const { getReleaseApiUrlViolation } = releaseApiUrl;
+const { PRIVACY_POLICY_URL, APP_ADS_URL, ADMOB_PUBLISHER_ID } = publicPolicy;
 
 export const DEFAULT_ENDPOINT_TIMEOUT_MS = 10_000;
 export const ENDPOINT_BODY_LIMIT_BYTES = Object.freeze({
-  readiness: 64 * 1024,
   policy: 2 * 1024 * 1024,
+  notionPolicy: 2 * 1024 * 1024,
+  appAds: 64 * 1024,
 });
+export const NOTION_PUBLIC_PAGE_ENDPOINT = 'https://www.notion.so/api/v3/loadPageChunk';
 
-const POLICY_PATHS = ['/terms', '/privacy', '/account-deletion'];
 const RELEASE_BLOCKERS = [
   { label: '초안', pattern: /초안/u },
   { label: '임시', pattern: /임시/u },
@@ -58,26 +61,37 @@ function requireReleaseUrl(rawValue, variableName, { originOnly = false } = {}) 
  * Converts explicit environment-like input into deterministic release endpoint checks.
  * This helper is pure: it never reads process.env or performs network I/O.
  */
-export function buildReleaseEndpointChecks(environment) {
-  const apiUrl = requireReleaseUrl(environment?.EXPO_PUBLIC_API_URL, 'EXPO_PUBLIC_API_URL');
-  const webUrl = requireReleaseUrl(environment?.EXPO_PUBLIC_WEB_URL, 'EXPO_PUBLIC_WEB_URL', {
-    originOnly: true,
-  });
+export function buildReleaseEndpointChecks() {
+  const policyUrl = requireReleaseUrl(PRIVACY_POLICY_URL, '개인정보처리방침 URL');
+  const appAdsUrl = requireReleaseUrl(APP_ADS_URL, 'app-ads.txt URL');
+  const policyPage = policyUrl.pathname.match(/^\/([0-9a-f]{32})$/u)?.[1];
+  if (policyUrl.hostname !== 'plume-mine-90a.notion.site' || !policyPage || policyUrl.search || policyUrl.hash) {
+    throw new Error('게시된 Notion 정책 페이지 주소가 아닙니다.');
+  }
+  const policyPageId = policyPage.replace(/^(........)(....)(....)(....)(............)$/u, '$1-$2-$3-$4-$5');
 
   return [
     {
-      kind: 'readiness',
-      label: 'API readiness',
-      url: new URL('/readyz', apiUrl.origin).href,
-      accept: 'application/json',
-    },
-    ...POLICY_PATHS.map((pathname) => ({
       kind: 'policy',
-      label: `공개 정책 ${pathname}`,
-      url: new URL(pathname, webUrl.origin).href,
+      label: '공개 개인정보처리방침',
+      url: policyUrl.href,
       accept: 'text/html',
-      expectedOrigin: webUrl.origin,
-    })),
+      expectedOrigin: policyUrl.origin,
+    },
+    {
+      kind: 'notionPolicy',
+      label: '비로그인 정책 본문',
+      url: NOTION_PUBLIC_PAGE_ENDPOINT,
+      accept: 'application/json',
+      pageId: policyPageId,
+    },
+    {
+      kind: 'appAds',
+      label: '광고 판매자 파일',
+      url: appAdsUrl.href,
+      accept: 'text/plain',
+      expectedOrigin: appAdsUrl.origin,
+    },
   ];
 }
 
@@ -115,21 +129,34 @@ export function getResponseMetadataViolation(check, response) {
 export function getResponseBodyViolation(check, contentType, body) {
   const mediaType = normalizeMediaType(contentType ?? '');
 
-  if (check.kind === 'readiness') {
-    if (mediaType !== 'application/json' && !mediaType.endsWith('+json')) {
-      return `Content-Type이 JSON이 아닙니다: ${contentType || '(없음)'}`;
+  if (check.kind === 'notionPolicy') {
+    if (mediaType !== 'application/json') return 'Notion 공개 본문이 JSON이 아닙니다.';
+    let data;
+    try { data = JSON.parse(body); } catch { return 'Notion 공개 본문을 해석할 수 없습니다.'; }
+    const blocks = data?.recordMap?.block;
+    const page = blocks?.[check.pageId]?.value;
+    const pageValue = page?.value;
+    if (page?.role !== 'reader' || pageValue?.id !== check.pageId || !Array.isArray(pageValue?.content)) {
+      return '로그인 없이 읽을 수 있는 정확한 정책 페이지가 아닙니다.';
     }
+    const title = pageValue?.properties?.title?.map((part) => part?.[0] ?? '').join('') ?? '';
+    const visibleText = pageValue.content.map((id) => blocks?.[id]?.value?.value?.properties?.title?.map((part) => part?.[0] ?? '').join('') ?? '').join(' ');
+    if (!title.includes('시니어클럽') || !visibleText.includes('RevenueCat') || !visibleText.includes('광고')) {
+      return '시니어클럽 정책 제목 또는 광고·구매 안내가 공개 본문에 없습니다.';
+    }
+    const blocker = RELEASE_BLOCKERS.find(({ pattern }) => pattern.test(visibleText.normalize('NFKC')));
+    return blocker ? `출시 차단 문구 "${blocker.label}"이(가) 포함되어 있습니다.` : null;
+  }
 
-    let payload;
-    try {
-      payload = JSON.parse(body);
-    } catch {
-      return '응답 본문이 유효한 JSON이 아닙니다.';
-    }
-    if (!payload || typeof payload !== 'object' || payload.status !== 'ready') {
-      return 'JSON status가 정확히 "ready"가 아닙니다.';
-    }
-    return null;
+  if (check.kind === 'appAds') {
+    if (mediaType !== 'text/plain') return `Content-Type이 텍스트가 아닙니다: ${contentType || '(없음)'}`;
+    const found = typeof body === 'string' && body.split(/\r?\n/u).some((line) => {
+      const fields = line.split('#', 1)[0].split(',').map((field) => field.trim());
+      return fields.length === 4 && fields[0].toLowerCase() === 'google.com' &&
+        fields[1] === ADMOB_PUBLISHER_ID && fields[2].toUpperCase() === 'DIRECT' &&
+        fields[3].toLowerCase() === 'f08c47fec0942fa0';
+    });
+    return found ? null : 'Google AdMob 판매자 항목이 없거나 일치하지 않습니다.';
   }
 
   if (check.kind === 'policy') {
@@ -179,13 +206,20 @@ function getActualBodySizeViolation(check, body) {
 
 async function validateEndpointWithinSignal(check, fetchImpl, signal) {
   const response = await fetchImpl(check.url, {
-    method: 'GET',
+    method: check.kind === 'notionPolicy' ? 'POST' : 'GET',
     redirect: 'manual',
     signal,
     headers: {
       Accept: check.accept,
       'Cache-Control': 'no-cache',
+      ...(check.kind === 'notionPolicy' ? {
+        'Content-Type': 'application/json',
+        'User-Agent': 'seniorclub-android-release-check/1.0',
+      } : {}),
     },
+    ...(check.kind === 'notionPolicy' ? { body: JSON.stringify({
+      pageId: check.pageId, limit: 100, cursor: { stack: [] }, chunkNumber: 0, verticalColumns: false,
+    }) } : {}),
   });
 
   const metadataViolation = getResponseMetadataViolation(check, response);
@@ -232,7 +266,6 @@ async function validateEndpoint(check, fetchImpl, timeoutMs) {
 }
 
 export async function validateReleaseEndpoints({
-  environment,
   fetchImpl = globalThis.fetch,
   timeoutMs = DEFAULT_ENDPOINT_TIMEOUT_MS,
 } = {}) {
@@ -241,15 +274,16 @@ export async function validateReleaseEndpoints({
     throw new Error('timeoutMs는 0보다 큰 유한한 숫자여야 합니다.');
   }
 
-  const checks = buildReleaseEndpointChecks(environment);
+  const checks = buildReleaseEndpointChecks();
   return Promise.all(checks.map((check) => validateEndpoint(check, fetchImpl, timeoutMs)));
 }
 
-export async function main(environment = process.env) {
+export async function main() {
   try {
-    const results = await validateReleaseEndpoints({ environment });
+    const results = await validateReleaseEndpoints();
     for (const result of results) console.log(`PASS ${result.label}: ${result.url}`);
-    console.log('PASS production API와 공개 정책 endpoint 검증 완료.');
+    console.log('PASS 공개 정책 페이지와 비로그인 본문, 광고 판매자 파일 응답 확인.');
+    console.log('NOTE Notion 사이트의 브라우저 렌더링은 별도 확인이 필요합니다.');
   } catch (error) {
     console.error(`FAIL ${error instanceof Error ? error.message : String(error)}`);
     process.exitCode = 1;

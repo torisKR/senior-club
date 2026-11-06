@@ -52,12 +52,8 @@ export function buildPreflightSteps({ screenshotManifest } = {}) {
       env: { EXPO_PUBLIC_APP_ENV: 'production' },
     },
     {
-      label: 'production API와 공개 정책 endpoint',
+      label: '공개 정책과 광고 판매자 endpoint',
       args: [path.join(mobileRoot, 'scripts', 'validate-release-endpoints.mjs')],
-    },
-    {
-      label: '후보 스토어 스크린샷 규격',
-      args: [path.join(mobileRoot, 'scripts', 'validate-store-screenshots.mjs')],
     },
     {
       label: '최종 스크린샷 provenance와 수동 확인 증빙 (strict)',
@@ -71,8 +67,6 @@ function printUsage() {
   pnpm release:android:preflight [--screenshot-manifest <경로>]
 
 필수 환경:
-  EXPO_PUBLIC_API_URL=https://실제-public-api-origin
-  EXPO_PUBLIC_WEB_URL=https://실제-public-web-origin
   GOOGLE_SERVICES_JSON=<Android client google-services.json 경로>
 
 EXPO_PUBLIC_APP_ENV는 우회할 수 없도록 production으로 고정됩니다. 최종 screenshot

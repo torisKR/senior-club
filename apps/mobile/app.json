@@ -5,6 +5,7 @@
     "description": "파크골프, 알까기, 전통 사천성 보드를 즐기며 명인으로 승급하는 시니어 게임",
     "version": "0.1.5",
     "orientation": "portrait",
+    "platforms": ["android"],
     "icon": "./assets/images/senior-club-icon-v2.png",
     "scheme": "clubsenior",
     "userInterfaceStyle": "light",
@@ -46,30 +47,8 @@
         "monochromeImage": "./assets/images/senior-club-monochrome-v2.png"
       }
     },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/senior-club-favicon-v2.png"
-    },
     "plugins": [
       "expo-router",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "extraMavenRepos": [
-              "https://devrepo.kakao.com/nexus/content/groups/public/"
-            ]
-          }
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/images/senior-club-notification-icon.png",
-          "color": "#0E5142",
-          "defaultChannel": "event-updates"
-        }
-      ],
       [
         "expo-splash-screen",
         {
@@ -90,7 +69,6 @@
       "reactCompiler": true
     },
     "extra": {
-      "kakaoNativeAppKey": "1b282a388c19fa49b2e4075ffe44a3fd",
       "router": {},
       "eas": {
         "projectId": "89cbd11f-03c0-4d30-9062-295654924f59"

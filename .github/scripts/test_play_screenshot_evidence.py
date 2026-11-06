@@ -24,6 +24,9 @@ sys.modules[SPEC.name] = evidence
 SPEC.loader.exec_module(evidence)
 SHA = "a" * 40
 CONTEXT = evidence.Context(101, SHA, 202, 303)
+APP_VERSION = json.loads(
+    (Path(__file__).resolve().parents[2] / "apps/mobile/app.json").read_text()
+)["expo"]["version"]
 
 
 def png(color):
@@ -38,7 +41,7 @@ def png(color):
 def fixture():
     files = {}
     manifest = {"schemaVersion": 1,
-        "app": {"name": "시니어클럽", "packageName": "com.toris.seniorclub", "version": "0.1.1"},
+        "app": {"name": "시니어클럽", "packageName": "com.toris.seniorclub", "version": APP_VERSION},
         "capture": {"commit": SHA, "artifactFile": "synthetic-test-only.apk",
                     "artifactSha256": "c" * 64, "buildProfile": "production",
                     "capturedAt": "2026-09-30T00:00:00Z", "locale": "ko-KR",
@@ -142,6 +145,17 @@ class DeliveryTests(unittest.TestCase):
                 self.assertEqual((manifest.parent / name).read_bytes(), data)
         self.assertEqual(client.downloads, 1)
 
+    def test_local_qa_apk_profile_is_accepted_but_unknown_profiles_are_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["capture"]["buildProfile"] = "qaInternalLocal"
+        client = FixtureGitHub(archive(manifest, self.files))
+        with tempfile.TemporaryDirectory() as directory:
+            received, _ = evidence.receive(CONTEXT, client, Path(directory))
+            self.assertEqual(json.loads(received.read_bytes())["capture"]["buildProfile"], "qaInternalLocal")
+
+        manifest["capture"]["buildProfile"] = "unknownProfile"
+        self.rejected(FixtureGitHub(archive(manifest, self.files)), "strict screenshot validator")
+
     def test_consumer_context_rejects_foreign_ref_event_sha_missing_id_and_rerun(self):
         env = {"GITHUB_REPOSITORY": evidence.REPOSITORY, "GITHUB_REPOSITORY_ID": "101",
                "GITHUB_REF": "refs/heads/main", "GITHUB_EVENT_NAME": "workflow_dispatch",
@@ -222,10 +236,14 @@ class DeliveryTests(unittest.TestCase):
                 manifest = copy.deepcopy(self.manifest)
                 manifest["attestations"][key] = False
                 self.rejected(FixtureGitHub(archive(manifest, self.files)), "manual review")
-        for section, key, bad in [("capture", "commit", "b" * 40), ("app", "version", "0.1.0")]:
+        wrong_version = "0.0.0" if APP_VERSION != "0.0.0" else "0.0.1"
+        for section, key, bad, message in [
+            ("capture", "commit", "b" * 40, "capture commit must equal release source SHA"),
+            ("app", "version", wrong_version, "app version must equal release app version"),
+        ]:
             manifest = copy.deepcopy(self.manifest)
             manifest[section][key] = bad
-            self.rejected(FixtureGitHub(archive(manifest, self.files)))
+            self.rejected(FixtureGitHub(archive(manifest, self.files)), message)
 
     def test_archive_traversal_links_and_undeclared_payload_are_rejected(self):
         link = zipfile.ZipInfo("assets/link.png")

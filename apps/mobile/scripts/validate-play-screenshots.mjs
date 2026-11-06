@@ -266,8 +266,8 @@ function validateManifestMetadata(manifest) {
     ) {
       fail('capture.artifactFile에 경로가 아닌 APK 파일명만 입력하세요.');
     }
-    if (!['internal', 'preview', 'playInternal', 'production'].includes(capture.buildProfile)) {
-      fail('capture.buildProfile은 internal, preview, playInternal, production 중 하나여야 합니다.');
+    if (!['internal', 'preview', 'qaInternalLocal', 'playInternal', 'production'].includes(capture.buildProfile)) {
+      fail('capture.buildProfile은 internal, preview, qaInternalLocal, playInternal, production 중 하나여야 합니다.');
     }
     if (
       typeof capture.capturedAt !== 'string' ||
