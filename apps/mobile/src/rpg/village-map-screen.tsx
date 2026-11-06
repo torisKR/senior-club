@@ -44,7 +44,6 @@ export function VillageMapScreen() {
   const {
     state,
     saveProtection,
-    retrySaveProtection,
     resolveLegacyStory,
     productionRates,
     currentChapter,
@@ -369,22 +368,6 @@ export function VillageMapScreen() {
         </View>
       </Modal>
 
-      {/* 백업이나 저장이 확인되지 않으면 모든 상태 갱신을 막습니다. */}
-      <Modal visible={saveProtection !== 'ready'} transparent animationType="fade" onRequestClose={() => undefined}>
-        <View style={styles.modalBackdrop}>
-          <ScrollView style={styles.storyCutsceneCard} contentContainerStyle={styles.storyCutsceneContent}>
-            <AppText variant="sectionTitle" style={{ color: '#FCF9F2' }}>저장 기록 보호 중</AppText>
-            <AppText variant="body" style={styles.storyLineText}>
-              {saveProtection === 'checking' ? '기존 기록을 안전하게 보관하고 있습니다.'
-                : saveProtection === 'conflict' ? '다른 곳에서 저장이 바뀌어 갱신을 멈췄습니다. 앱을 다시 열어 기록을 확인해 주세요.'
-                  : saveProtection === 'unavailable' ? '현재 저장 방식에서는 안전한 갱신을 확인할 수 없습니다. 기존 기록을 유지하고 저장을 멈췄습니다.'
-                    : saveProtection === 'read_failed' ? '저장 기록을 읽을 수 없어 갱신을 멈췄습니다. 앱을 다시 열어 확인해 주세요.'
-                      : '기존 기록의 백업 또는 저장을 확인하지 못해 갱신을 멈췄습니다.'}
-            </AppText>
-            {saveProtection !== 'checking' ? <SeniorButton testID="retry-save-protection" label="저장 다시 확인" variant="secondary" onPress={retrySaveProtection} /> : null}
-          </ScrollView>
-        </View>
-      </Modal>
 
       {/* 승급 축하 금빛 폭죽 연출 — pixelfx `ui/confetti` 시트를 3.5초 재생 */}
       {promotionFx ? (

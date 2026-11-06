@@ -9,6 +9,7 @@
  */
 
 import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
+import { Platform } from 'react-native';
 
 import { storage as legacyStorage } from '@/utils/storage';
 
@@ -61,6 +62,8 @@ function writeString(db: SQLiteDatabase, key: string, value: string): void {
   db.runSync(SQL_SET, key, value);
 }
 
+class LegacyMigrationError extends Error {}
+
 /**
  * Copies `senior_club_rpg_state_v1` from the legacy AsyncStorage-compatible
  * store into SQLite, once. The legacy key is never deleted, and a backup copy
@@ -68,36 +71,38 @@ function writeString(db: SQLiteDatabase, key: string, value: string): void {
  */
 function migrateLegacySave(db: SQLiteDatabase): void {
   try {
-    if (getMeta(db, RPG_MIGRATION_META_KEY) === MIGRATION_DONE) {
+    const migrated = getMeta(db, RPG_MIGRATION_META_KEY) === MIGRATION_DONE;
+    const existing = db.getFirstSync<{ value: string }>(SQL_GET, RPG_STORAGE_KEY);
+    if (migrated) {
+      if (existing?.value == null) throw new Error('migrated SQLite save is missing');
       return;
     }
 
-    const existing = db.getFirstSync<{ value: string }>(SQL_GET, RPG_STORAGE_KEY);
     if (existing?.value != null) {
       // SQLite already holds a save; just remember that migration is done.
       setMeta(db, RPG_MIGRATION_META_KEY, MIGRATION_DONE);
       return;
     }
 
-    let legacyRaw: string | null = null;
-    try {
-      legacyRaw = legacyStorage.getRaw(RPG_STORAGE_KEY);
-    } catch (error) {
-      warn('failed to read legacy save', error);
-      return;
-    }
-
+    const legacyRaw = legacyStorage.getRaw(RPG_STORAGE_KEY);
+    if (legacyRaw === null) return;
     const parsed = parseLegacyRpgSave(legacyRaw);
-    if (!parsed || !legacyRaw) {
-      // Nothing to migrate; leave the meta marker unset so a later legacy
-      // value (e.g. storage shim still warming up) can still be picked up.
-      return;
-    }
+    if (!parsed) throw new Error('legacy save could not be parsed');
 
     const rawToMigrate = legacyRaw;
     db.withTransactionSync(() => {
+      // Another writer may have created the SQLite save since the first read.
+      if (db.getFirstSync<{ value: string }>(SQL_GET, RPG_STORAGE_KEY)?.value != null) {
+        throw new Error('SQLite save changed during legacy migration');
+      }
       writeString(db, RPG_STORAGE_KEY, rawToMigrate);
+      if (db.getFirstSync<{ value: string }>(SQL_GET, RPG_STORAGE_KEY)?.value !== rawToMigrate) {
+        throw new Error('legacy save migration read-back failed');
+      }
       setMeta(db, RPG_MIGRATION_META_KEY, MIGRATION_DONE);
+      if (getMeta(db, RPG_MIGRATION_META_KEY) !== MIGRATION_DONE) {
+        throw new Error('legacy migration marker read-back failed');
+      }
     });
 
     try {
@@ -106,7 +111,7 @@ function migrateLegacySave(db: SQLiteDatabase): void {
       warn('failed to write legacy backup copy', error);
     }
   } catch (error) {
-    warn('legacy save migration failed', error);
+    throw new LegacyMigrationError('legacy save migration failed', { cause: error });
   }
 }
 
@@ -242,11 +247,24 @@ export class LocalStorageRpgStorage implements RpgGuardedKeyValueStorage {
 
 let cachedStorage: RpgGuardedKeyValueStorage | null = null;
 
+class UnavailableRpgStorage implements RpgGuardedKeyValueStorage {
+  readonly supportsGuardedWrites = false;
+  readStringStrict(): never { throw new Error('RPG storage unavailable'); }
+  getString(): never { throw new Error('RPG storage unavailable'); }
+  setString(): never { throw new Error('RPG storage unavailable'); }
+  guardedWrite(): RpgGuardedWriteResult { return 'unavailable'; }
+}
+
 function createRpgStorage(): RpgGuardedKeyValueStorage {
   const db = openDatabaseSync(RPG_DB_NAME);
-  db.execSync(SCHEMA_SQL);
-  migrateLegacySave(db);
-  return new SqliteRpgStorage(db);
+  try {
+    db.execSync(SCHEMA_SQL);
+    migrateLegacySave(db);
+    return new SqliteRpgStorage(db);
+  } catch (error) {
+    try { db.closeSync(); } catch { /* Preserve the original failure. */ }
+    throw error;
+  }
 }
 
 function createFallbackStorage(): RpgGuardedKeyValueStorage {
@@ -258,8 +276,8 @@ function createFallbackStorage(): RpgGuardedKeyValueStorage {
 }
 
 /**
- * Returns the process-wide RPG storage. Never throws: on any SQLite failure it
- * logs and degrades to localStorage / in-memory storage.
+ * Keep Android and failed migrations protected until the original store can be
+ * reopened. Other platforms retain their existing SQLite-open fallback.
  */
 export function getRpgStorage(): RpgGuardedKeyValueStorage {
   if (cachedStorage) return cachedStorage;
@@ -267,7 +285,11 @@ export function getRpgStorage(): RpgGuardedKeyValueStorage {
   try {
     cachedStorage = createRpgStorage();
   } catch (error) {
-    warn('failed to open SQLite storage, using fallback', error);
+    warn('failed to open or migrate RPG storage', error);
+    if (Platform.OS === 'android' || error instanceof LegacyMigrationError) {
+      // Do not cache failures: the user can retry the original SQLite store.
+      return new UnavailableRpgStorage();
+    }
     cachedStorage = createFallbackStorage();
   }
 

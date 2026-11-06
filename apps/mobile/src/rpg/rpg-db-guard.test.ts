@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LocalStorageRpgStorage, RPG_FALLBACK_ACTIVE_KEY, SqliteRpgStorage } from './rpg-db';
 
 vi.mock('expo-sqlite', () => ({ openDatabaseSync: vi.fn() }));
+vi.mock('react-native', () => ({ Platform: { OS: 'android' } }));
 vi.mock('@/utils/storage', () => ({ storage: { getRaw: vi.fn(), set: vi.fn() } }));
 
 const sourceKey = 'senior_club_rpg_state_v1';

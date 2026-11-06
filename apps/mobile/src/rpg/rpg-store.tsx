@@ -196,6 +196,9 @@ function loadRpgSave(): LoadedRpgSave {
   const storage = getRpgStorage();
   const now = Date.now();
   const fallback = withDailyReset({ ...DEFAULT_STATE, lastSavedTimestampMs: now }, todayKey());
+  if (!storage.supportsGuardedWrites) {
+    return { state: fallback, storage, expectedRaw: null, backup: null, migrationRaw: null, protection: 'unavailable' };
+  }
   try {
     // A read error must never look like an empty/new save.
     const raw = storage.readStringStrict(STORAGE_KEY);
@@ -290,8 +293,25 @@ export function RpgProvider({ children }: { children: React.ReactNode }) {
 
   const retrySaveProtection = useCallback(() => {
     const current = guard.current;
-    if (current.readFailed) { setSaveProtection('read_failed'); return; }
-    if (!current.storage.supportsGuardedWrites) { setSaveProtection('unavailable'); return; }
+    if (current.readFailed || !current.storage.supportsGuardedWrites) {
+      // Reopen and load the original source before allowing any game updates.
+      const recovered = loadRpgSave();
+      guard.current = {
+        storage: recovered.storage,
+        expectedRaw: recovered.expectedRaw,
+        backup: recovered.backup,
+        migrationRaw: recovered.migrationRaw,
+        readFailed: recovered.protection === 'read_failed',
+      };
+      stateRef.current = recovered.state;
+      setState(recovered.state);
+      if (recovered.migrationRaw !== null && recovered.protection === 'checking') {
+        persistGuarded(recovered.migrationRaw);
+      } else {
+        setSaveProtection(recovered.protection);
+      }
+      return;
+    }
     if (current.migrationRaw !== null) { persistGuarded(current.migrationRaw); return; }
     try {
       setSaveProtection(current.storage.readStringStrict(STORAGE_KEY) === current.expectedRaw ? 'ready' : 'conflict');

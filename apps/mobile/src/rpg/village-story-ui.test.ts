@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createInitialBonds } from './bond-logic';
 import { RpgProvider, useRpg } from './rpg-store';
+import { RpgStorageGate } from './rpg-storage-gate';
 
 const mocks = vi.hoisted(() => ({
   saves: new Map<string, string>(),
@@ -18,6 +19,7 @@ vi.mock('react-native', () => {
   return {
     AppState: { addEventListener: () => ({ remove() {} }) },
     Platform: { select: (options: { default: unknown }) => options.default },
+    Alert: { alert() {} }, Linking: { openURL: async () => undefined },
     Modal: ({ visible, children }: { visible: boolean; children?: ReactNode }) => visible ? box({ children }) : null,
     ScrollView: box, View: box,
     Pressable: ({ children, onPress, testID }: { children?: ReactNode; onPress?: () => void; testID?: string }) => createElement('button', { onClick: onPress, 'data-testid': testID }, children),
@@ -97,7 +99,8 @@ async function mount() {
   await rerender();
 }
 async function rerender() {
-  await act(async () => root.render(createElement(RpgProvider, null, createElement(Probe), createElement(villageScreen))));
+  await act(async () => root.render(createElement(RpgProvider, null, createElement(Probe),
+    createElement(RpgStorageGate, null, createElement(villageScreen)))));
 }
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
