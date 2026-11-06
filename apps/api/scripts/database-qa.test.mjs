@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import test from "node:test";
+import { pathToFileURL } from "node:url";
 
 import {
   DATABASE_QA_SUITES,
@@ -16,6 +18,29 @@ const safeEnv = {
   EMAIL_PROVIDER: "disabled", SMS_PROVIDER: "disabled", PUSH_PROVIDER: "disabled",
   OUTBOX_WORKER_ENABLED: "false",
 };
+
+test("entrypoint accepts Node 24 and 26 and rejects other majors before DB opt-in", () => {
+  const entry = resolve(import.meta.dirname, "database-qa.mjs");
+  for (const [version, expected] of [
+    ["24.0.0", /DB QA runner requires RUN_DATABASE_E2E=true/],
+    ["24.16.0", /DB QA runner requires RUN_DATABASE_E2E=true/],
+    ["26.0.0", /DB QA runner requires RUN_DATABASE_E2E=true/],
+    ["26.8.2", /DB QA runner requires RUN_DATABASE_E2E=true/],
+    ["20.19.0", /DB QA requires Node 24 or 26/],
+    ["22.12.0", /DB QA requires Node 24 or 26/],
+    ["25.0.0", /DB QA requires Node 24 or 26/],
+    ["27.0.0", /DB QA requires Node 24 or 26/],
+  ]) {
+    const source = `Object.defineProperty(process.versions, "node", { value: ${JSON.stringify(version)} });
+      process.argv[1] = ${JSON.stringify(entry)};
+      await import(${JSON.stringify(pathToFileURL(entry).href)});`;
+    const result = spawnSync(process.execPath, ["--input-type=module", "--eval", source], {
+      env: { PATH: process.env.PATH }, encoding: "utf8",
+    });
+    assert.equal(result.status, 1, `Node ${version} must fail safely without DB opt-in`);
+    assert.match(result.stderr, expected, `Node ${version} reached the wrong guard`);
+  }
+});
 
 test("registers all four database suites, including account deletion", () => {
   assert.deepEqual(DATABASE_QA_SUITES, [
