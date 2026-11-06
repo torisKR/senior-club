@@ -31,9 +31,9 @@ token은 읽기 전용이며 Release를 만들거나 credential을 생성하지 
 접근 조건은 [GitHub Release API](https://docs.github.com/en/rest/releases/releases)와
 [Release asset API](https://docs.github.com/en/rest/releases/assets)의 공식 계약을 기준으로 한다.
 
-현재 실제 수동 확인된 최종 입력·artifact·hosted run은 없다. 이번 작업은 로컬 코드와 offline
-계약 검사만 수행했다. 증거가 없거나 review가 없으면 실패한다. `f513abe`는 변경 전 소스이며,
-실제 캡처/발급/출시에는 **이번 workflow/helper를 포함해 고정한 다음 commit**의 full SHA를 사용한다.
+이 문서는 계약과 실행 방법이며 실제 수동 검토, artifact 발급 또는 hosted run의 완료 기록이
+아니다. 증거가 없거나 review가 없으면 실패한다. 실제 캡처·발급·출시에는 해당 workflow와
+helper가 포함된 최종 main commit의 full SHA를 사용하고 각 실행 결과를 별도로 확인한다.
 
 발급 입력은 `source_sha`, numeric `release_id`/`release_asset_id`, 원본 ZIP의 `zip_sha256`, 사람이
 직접 지정하는 `manual_review`다. `manual_review`의 기본값은 false다. helper는 GitHub dispatch
@@ -65,13 +65,21 @@ assets/
   ...
 ```
 
-기존 schemaVersion 1을 유지한다. `assetRoot`는 `assets` 같은 manifest 하위 상대 디렉터리이고,
+[`manifest.example.json`](../apps/mobile/store-listing/screenshots/manifest.example.json)을 참고하되
+예시를 실제 증거로 사용하지 않는다. schemaVersion 1을 유지한다. `assetRoot`는 `assets` 같은 manifest 하위 상대 디렉터리이고,
 각 `sets[].files[].path`도 `assets/...png`다. `app.version`은 release의 app.json 값과 같아야 하며
 `capture.commit`은 release SHA 전체 40자리와 같아야 한다. 실제 캡처 APK 파일명·SHA와 캡처 환경을
 기록하고, 모든 PNG의 `sha256`을 넣는다. 기존 6개 수동 검토 항목은 **검토한 사람만** 실제 결과에
 따라 설정한다. helper는 이를 읽고 검증하며 생성·수정하지 않는다. APK 해시의 실제 캡처 이력과
 화면 사용권·개인정보·기능 도달 여부는 발급자의 수동 확인 책임이며 문자열 검사를 그 증명으로
 대체하지 않는다.
+
+strict validator의 캡처 조건은 `ko-KR`, `Asia/Seoul`, light, 글자 배율 1, 애니메이션 비활성이다.
+세트는 세로 9:16이며 짧은 변 1080px 이상, 긴 변 3840px 이하의 8-bit RGB PNG를 요구한다.
+각 PNG는 8 MiB 이하여야 한다.
+실제 검토자가 `capturedFromFinalUi`, `noOldBrandOrDemoCopy`, `noPersonalData`,
+`reviewerCanReachShownFeatures`, `contentRightsCleared`, `statusBarSanitized`를 각각 확인한다.
+캡처 기기의 사용자 데이터와 설정을 보존하고, QA APK와 Play 업로드용 AAB의 서명을 혼동하지 않는다.
 
 producer와 receiver는 같은 archive 검사와 실제 Node strict validator를 사용한다. producer는
 원본 manifest/PNG bytes만 발급하고, dispatch review 입력·human ID·release/asset ID·ZIP/manifest
@@ -96,7 +104,7 @@ node --test apps/mobile/scripts/android-play-production-workflow.test.mjs
 actionlint .github/workflows/android-play-screenshot-evidence.yml .github/workflows/android-play-production.yml
 ```
 
-### 실제 업로드와 발급의 다음 명령 — 이번 작업에서 실행하지 않음
+### 실제 업로드와 발급의 다음 명령
 
 먼저 이 변경을 검토한 뒤 main에 반영하고 소스를 고정한다. 그 commit의 실제 서명 APK에서
 캡처하고, 검토자가 manifest의 APK 해시·PNG 해시·6개 항목을 직접 확인한다. ZIP 디렉터리는 Git
@@ -144,7 +152,7 @@ gh workflow run android-play-screenshot-evidence.yml \
 
 발급 run이 같은 head SHA에서 첫 attempt로 completed/success이며 exact screenshot artifact를
 발급했는지 확인한다. 해당 **구체적인 issuer run ID**를 다음 release 입력으로 전달한다. 최신 run
-자동 선택은 없다. 승인 후 실행할 consumer 명령도 이번 작업에서는 실행하지 않았다.
+자동 선택은 없다. 다음은 제출을 끈 후보 빌드 예시이며 실행 기록이 아니다.
 
 ```bash
 screenshot_issuer_run_id='<verified positive issuer run ID>'
@@ -155,8 +163,11 @@ gh workflow run android-play-production.yml \
 ```
 
 재사용 workflow 호출자도 `actions: read` 권한과 이 run ID를 명시적으로 전달한다. `deploy-main`은
-push 시 API/Cloudflare를 처리하고, Android 후보는 수동 dispatch에서 `screenshot_evidence_run_id`가
-제공된 경우에만 동일한 검증 workflow를 호출한다. Android workflow를 직접 호출할 때 입력이
+main push 시 CI를 실행하며, Android 후보는 수동 dispatch에서 `screenshot_evidence_run_id`가
+제공되고 CI가 성공한 경우에만 동일한 검증 workflow를 `submit_to_play=false`로 호출한다. 웹/API
+배포는 없다. Android workflow를 직접 호출할 때 입력이
 없거나 잘못되면 실패한다. `submit_to_play=false`여도 뒤의
 versionCode 할당은 Play edit를 생성하므로 dispatch는 읽기 전용 작업이 아니다. AAB 서명·실제
 binary 검사와 최종 Play 제출 승인은 이 screenshot 전달 검사와 별도다.
+
+이전 인수 문서의 기록은 `git show c20a031:docs/PLAY_UPLOAD_HANDOFF.md`에서 찾을 수 있다.
