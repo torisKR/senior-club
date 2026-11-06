@@ -5,6 +5,7 @@
     "description": "파크골프, 알까기, 전통 사천성 보드를 즐기며 명인으로 승급하는 시니어 게임",
     "version": "0.1.5",
     "orientation": "portrait",
+    "platforms": ["android"],
     "icon": "./assets/images/senior-club-icon-v2.png",
     "scheme": "clubsenior",
     "userInterfaceStyle": "light",
