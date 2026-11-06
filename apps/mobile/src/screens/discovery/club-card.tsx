@@ -32,7 +32,7 @@ export function ClubCard({ club, recommended, onPress }: ClubCardProps) {
         aspectRatio={CoverImageRatios.card}
       />
 
-      <View style={{ flex: 1, padding: Layout.cardPadding, gap: Spacing.md }}>
+      <View style={{ flexGrow: 1, minWidth: 0, padding: Layout.cardPadding, gap: Spacing.md }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.sm }}>
           <View
             style={{

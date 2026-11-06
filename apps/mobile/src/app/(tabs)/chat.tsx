@@ -1,5 +1,5 @@
-import { ChatScreen } from '@/screens/social/chat-screen';
+import { SacheonseongTileScreen } from '@/arcade/sacheonseong-screen';
 
 export default function ChatRoute() {
-  return <ChatScreen />;
+  return <SacheonseongTileScreen />;
 }

@@ -24,6 +24,8 @@ import {
   isRetryableAuthRestoreError,
 } from '@/auth/auth-restore-retry';
 import { requestKakaoAccessToken } from '@/auth/kakao-login';
+import { requestReviewerIdToken } from '@/auth/reviewer-login';
+import { ReviewerLoginError } from '@/auth/reviewer-error-message';
 import { authSessionManager } from '@/auth/auth-session-manager';
 import { unregisterCurrentAndroidDevice } from '@/notifications/push-registration';
 import { createAppStateStore } from '@/context/app-state-store';
@@ -45,6 +47,7 @@ import type {
   PersistedAppState,
   PhoneCodeRequestInput,
   PhoneCodeVerificationInput,
+  ReviewerLoginInput,
   User,
 } from '@/types';
 
@@ -103,8 +106,8 @@ function releaseApprovedSeat(feed: EventFeedState, eventId: EntityId): EventFeed
 
 export const AppStateContext = createContext<AppStateContextValue | undefined>(undefined);
 
-export function AppStateProvider({ children }: PropsWithChildren) {
-  const [isHydrated, setIsHydrated] = useState(false);
+export function AppStateProvider({ children, offlineGame = false }: PropsWithChildren<{ offlineGame?: boolean }>) {
+  const [isHydrated, setIsHydrated] = useState(offlineGame);
   const [authRestoreError, setAuthRestoreError] = useState<string | null>(null);
   const [eventFeeds, setEventFeeds] = useState<EventFeeds>(createInitialEventFeeds);
   const [availableInterests, setAvailableInterests] = useState<Interest[]>([]);
@@ -118,6 +121,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
   );
   const authenticatedUserId = state.session?.userId;
   const localSignOutsInFlight = useRef(0);
+  const localSignOutRevision = useRef(0);
   const profileMutationVersion = useRef(0);
   const participationMutationVersion = useRef(0);
   const interestsLoadInFlight = useRef<Promise<void> | null>(null);
@@ -205,6 +209,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
   );
 
   useEffect(() => {
+    if (offlineGame) return;
     let active = true;
     const unsubscribe = authSessionManager.subscribe((authSnapshot) => {
       if (!active) return;
@@ -235,9 +240,10 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       active = false;
       unsubscribe();
     };
-  }, [syncAuthenticatedSession, updateState]);
+  }, [offlineGame, syncAuthenticatedSession, updateState]);
 
   useEffect(() => {
+    if (offlineGame) return;
     let active = true;
     let retryInFlight = false;
     let retryableFailure = false;
@@ -336,7 +342,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       appStateSubscription.remove();
       unsubscribe();
     };
-  }, []);
+  }, [offlineGame]);
 
   const requestEventView = useCallback(
     (view: EventListView, mode: EventLoadMode): Promise<void> => {
@@ -488,6 +494,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
+    if (offlineGame) return;
     const requestControllers = eventRequestControllers.current;
     const requestPromises = eventRequestPromises.current;
     const requestVersions = eventRequestVersions.current;
@@ -501,19 +508,20 @@ export function AppStateProvider({ children }: PropsWithChildren) {
         requestVersions[view] += 1;
       }
     };
-  }, [ensureEventView]);
+  }, [ensureEventView, offlineGame]);
 
   useEffect(() => {
+    if (offlineGame) return;
     const controller = new AbortController();
     const task = setTimeout(() => void loadInterests(controller.signal), 0);
     return () => {
       clearTimeout(task);
       controller.abort();
     };
-  }, [loadInterests]);
+  }, [loadInterests, offlineGame]);
 
   useEffect(() => {
-    if (!isHydrated || !authenticatedUserId) {
+    if (offlineGame || !isHydrated || !authenticatedUserId) {
       return;
     }
 
@@ -535,7 +543,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       });
 
     return () => controller.abort();
-  }, [applyServerProfile, authenticatedUserId, isHydrated]);
+  }, [applyServerProfile, authenticatedUserId, isHydrated, offlineGame]);
 
   const requestEmailCode = useCallback(
     (input: EmailCodeRequestInput) => authSessionManager.requestEmailCode(input),
@@ -575,7 +583,37 @@ export function AppStateProvider({ children }: PropsWithChildren) {
     [syncAuthenticatedSession],
   );
 
+  const signInWithReviewer = useCallback(
+    async (email: string, password: string, input: ReviewerLoginInput) => {
+      if (input.termsAccepted !== true || input.privacyAccepted !== true) {
+        throw new ReviewerLoginError('CONSENT_REQUIRED');
+      }
+      const signOutRevision = localSignOutRevision.current;
+      const assertCurrentSession = authSessionManager.captureSessionGuard();
+      const assertNoLocalSignOut = () => {
+        if (localSignOutsInFlight.current > 0 || localSignOutRevision.current !== signOutRevision) {
+          throw new ReviewerLoginError('AUTH_SESSION_CHANGED');
+        }
+      };
+      assertNoLocalSignOut();
+      const idToken = await requestReviewerIdToken(email, password);
+      // Firebase cleanup has completed before this point. A logout or account
+      // change during native authentication must cancel the server exchange.
+      assertNoLocalSignOut();
+      assertCurrentSession();
+      const session = await authSessionManager.loginWithReviewer(idToken, input);
+      assertNoLocalSignOut();
+      if (authSessionManager.getSnapshot().session?.sessionId !== session.sessionId) {
+        throw new ReviewerLoginError('AUTH_SESSION_CHANGED');
+      }
+      syncAuthenticatedSession(session);
+      return session;
+    },
+    [syncAuthenticatedSession],
+  );
+
   const signOut = useCallback(async () => {
+    localSignOutRevision.current += 1;
     localSignOutsInFlight.current += 1;
     updateState((current) => ({ ...current, session: null }));
     try {
@@ -935,6 +973,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       requestPhoneCode,
       signIn,
       signInWithKakao,
+      signInWithReviewer,
       signInWithPhone,
       signOut,
       deleteAccount,
@@ -975,6 +1014,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       requestPhoneCode,
       signIn,
       signInWithKakao,
+      signInWithReviewer,
       signInWithPhone,
       signOut,
       deleteAccount,

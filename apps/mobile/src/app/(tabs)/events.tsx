@@ -1,1 +1,5 @@
-export { EventsScreen as default } from '@/screens/discovery/events-screen';
+import { AlkkagiBoardScreen } from '@/arcade/alkkagi-screen';
+
+export default function EventsRoute() {
+  return <AlkkagiBoardScreen />;
+}

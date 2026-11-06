@@ -1,9 +1,17 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
+import { AndroidConfig, withAndroidManifest } from 'expo/config-plugins';
 
 const GOOGLE_ANDROID_TEST_APP_ID = 'ca-app-pub-3940256099942544~3347511713';
 const GOOGLE_IOS_TEST_APP_ID = 'ca-app-pub-3940256099942544~1458002511';
-const PRODUCTION_ADMOB_ANDROID_APP_ID = 'ca-app-pub-5744832247312120~3966489068';
+const PRODUCTION_ADMOB_ANDROID_APP_ID = 'ca-app-pub-3004906966180197~9575830978';
 const ADMOB_APP_ID = /^ca-app-pub-\d{16}~\d{10}$/;
+
+// A Play purchase may open a banking app; singleTask can cancel that flow.
+const withBillingSafeActivity = (config: ExpoConfig) => withAndroidManifest(config, (mod) => {
+  const activity = AndroidConfig.Manifest.getMainActivityOrThrow(mod.modResults);
+  activity.$['android:launchMode'] = 'singleTop';
+  return mod;
+});
 
 function configuredAndroidAppId(): string {
   const candidate = process.env.EXPO_PUBLIC_ADMOB_ANDROID_APP_ID?.trim() || PRODUCTION_ADMOB_ANDROID_APP_ID;
@@ -59,6 +67,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     plugins: [
       ...(config.plugins ?? []),
+      withBillingSafeActivity,
       '@react-native-firebase/app',
       '@react-native-firebase/auth',
       [

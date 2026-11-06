@@ -181,6 +181,10 @@ export function EventsScreen() {
     const feed = eventFeeds[view];
     return !feed.loaded || feed.loading || feed.loadingMore || Boolean(feed.error) || feed.hasNextPage;
   });
+  const showBanner = visibleEvents.length > 0 && visibleFeedViews.every((view) => {
+    const feed = eventFeeds[view];
+    return feed.loaded && !feed.loading && !feed.loadingMore && !feed.error;
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background, paddingTop: insets.top }}>
@@ -309,7 +313,6 @@ export function EventsScreen() {
                 </AppText>
               ) : null}
             </View>
-            <HomeBannerAd />
           </View>
         }
         renderItem={({ item }) => {
@@ -360,9 +363,12 @@ export function EventsScreen() {
           )
         }
         ListFooterComponent={
-          hasFeedControls ? (
-            <View style={{ gap: Spacing.md, paddingTop: Spacing.md }}>
-              {visibleFeedViews.map(renderFeedControl)}
+          hasFeedControls || showBanner ? (
+            <View style={{ gap: Layout.sectionGap, paddingTop: Spacing.md }}>
+              {hasFeedControls ? (
+                <View style={{ gap: Spacing.md }}>{visibleFeedViews.map(renderFeedControl)}</View>
+              ) : null}
+              {showBanner ? <HomeBannerAd /> : null}
             </View>
           ) : null
         }

@@ -1,10 +1,11 @@
 import { HttpStatus, Inject, Injectable, Logger } from "@nestjs/common";
-import { applicationDefault, getApps, initializeApp, type App } from "firebase-admin/app";
+import { getApps, initializeApp, type App } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 
 import { ApiException } from "../common/http/api.exception";
 import type { ApiEnv } from "../config/env";
 import { API_ENV } from "../config/env.module";
+import { createFirebasePhoneCredential } from "./firebase-wif.credential";
 
 export interface FirebasePhoneVerificationResult {
   phoneNumber: string;
@@ -36,11 +37,11 @@ export class FirebasePhoneService {
       );
     }
     // Separate from the push app: phone verification works with push disabled.
-    // ADC supports an existing workload identity or mounted admin credential;
+    // WIF uses rotating ECS task credentials; local development retains ADC.
     // client google-services.json is never treated as a server credential.
     const name = `senior-club-phone-auth-${projectId}`;
     this.app = getApps().find((entry) => entry.name === name) ?? initializeApp(
-      { projectId, credential: applicationDefault() },
+      { projectId, credential: createFirebasePhoneCredential(this.env) },
       name,
     );
     return this.app;

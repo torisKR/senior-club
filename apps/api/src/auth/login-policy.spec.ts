@@ -18,7 +18,7 @@ describe("Kakao-only login policy", () => {
   });
 
   it("blocks internal legacy service entry points before touching dependencies", async () => {
-    const auth = new AuthService(undefined!, undefined!, undefined!, undefined!, undefined!, undefined!);
+    const auth = new AuthService(undefined!, undefined!, undefined!, undefined!, undefined!, undefined!, undefined!);
     for (const call of [
       () => auth.requestEmailCode(undefined!), () => auth.verifyEmailCode(undefined!, {}),
       () => auth.requestPhoneCode(undefined!), () => auth.verifyPhoneCode(undefined!, {}),

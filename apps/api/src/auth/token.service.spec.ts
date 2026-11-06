@@ -3,6 +3,19 @@ import { describe, expect, it } from 'vitest';
 
 import { parseApiEnv } from '../config/env';
 import { TokenService } from './token.service';
+import { UserRole } from '../generated/prisma/client';
+
+describe('reviewer session scope', () => {
+  it('preserves the signed reviewer restriction and keeps ordinary sessions unchanged', async () => {
+    const tokens = service();
+    const member = { userId: 'member-fixture', sessionId: 'session-fixture', role: UserRole.MEMBER };
+    const ordinary = await tokens.signAccessToken(member);
+    expect(await tokens.verifyAccessToken(ordinary.token)).toEqual(member);
+    const reviewer = { ...member, reviewer: true as const };
+    const issued = await tokens.signAccessToken(reviewer);
+    expect(await tokens.verifyAccessToken(issued.token)).toEqual(reviewer);
+  });
+});
 
 const service = () => new TokenService(parseApiEnv({
   NODE_ENV: 'test',

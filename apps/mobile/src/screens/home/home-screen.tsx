@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, Switch, View, useWindowDimensions } from 'react-native';
 
 import { HomeBannerAd } from '@/ads/HomeBannerAd';
+import { AnalyticsConsentCard } from '@/analytics/consent-card';
 import { notificationsApi } from '@/api/notifications-api';
 import {
   AppText,
@@ -61,6 +62,7 @@ export function HomeScreen() {
   const {
     user,
     upcomingEvents,
+    eventFeeds,
     interests: availableInterests,
     selectedInterestIds,
     participations,
@@ -125,6 +127,9 @@ export function HomeScreen() {
   const selectedInterests = availableInterests.filter((interest) =>
     selectedInterestIds.includes(interest.id),
   );
+  const recommendationFeed = eventFeeds.upcoming;
+  const showBanner = recommendedEvents.length > 0 && recommendationFeed.loaded &&
+    !recommendationFeed.loading && !recommendationFeed.loadingMore && !recommendationFeed.error;
 
   const openEvent = (eventId: string) => {
     router.push({ pathname: '/event/[id]', params: { id: eventId } });
@@ -132,6 +137,7 @@ export function HomeScreen() {
 
   return (
     <Screen testID="home-screen" contentContainerStyle={{ paddingTop: Spacing.lg }}>
+      <AnalyticsConsentCard prompt />
       <View style={{ minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
         <View style={{ minWidth: 0, flex: 1, gap: Spacing.xs }}>
           <AppText variant="caption" color="textSecondary">{user.region} · 시니어클럽</AppText>
@@ -248,7 +254,6 @@ export function HomeScreen() {
             </View>
           </Card>
         )}
-        <HomeBannerAd />
       </View>
 
       <View style={{ minWidth: 0, gap: Spacing.lg }}>
@@ -287,6 +292,8 @@ export function HomeScreen() {
           ) : null}
         </View>
       </View>
+
+      {showBanner ? <HomeBannerAd /> : null}
 
       <SeniorHobbyCourseSection />
 

@@ -40,6 +40,7 @@ export class TokenService {
       sid: principal.sessionId,
       role: principal.role,
       tokenType: "access",
+      ...(principal.reviewer ? { reviewer: true } : {}),
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setIssuer(JWT_ISSUER)
@@ -65,6 +66,7 @@ export class TokenService {
       payload.tokenType !== "access" ||
       typeof payload.role !== "string" ||
       !Object.values(UserRole).includes(payload.role as UserRole)
+      || (payload.reviewer !== undefined && payload.reviewer !== true)
     ) {
       throw new Error("Invalid access token claims");
     }
@@ -73,6 +75,7 @@ export class TokenService {
       userId: payload.sub,
       sessionId: payload.sid,
       role: payload.role as UserRole,
+      ...(payload.reviewer === true ? { reviewer: true as const } : {}),
     };
   }
 

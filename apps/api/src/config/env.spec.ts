@@ -71,6 +71,58 @@ const productionInput = {
   EMAIL_PROVIDER: "disabled", SMS_PROVIDER: "disabled", PUSH_PROVIDER: "disabled",
 };
 
+describe("Firebase WIF environment", () => {
+  const wifInput = {
+    ...productionInput, FIREBASE_PROJECT_ID: "clubsenior-app", AWS_REGION: "ap-northeast-2",
+    FIREBASE_WIF_AUDIENCE: "//iam.googleapis.com/projects/982568561637/locations/global/workloadIdentityPools/senior-club-prod/providers/aws-ecs",
+    FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL: "senior-phone-verifier@clubsenior-app.iam.gserviceaccount.com",
+  };
+
+  it("accepts a complete WIF config independently of push credentials", () => {
+    expect(parseApiEnv(wifInput)).toMatchObject({
+      FIREBASE_WIF_AUDIENCE: wifInput.FIREBASE_WIF_AUDIENCE,
+      FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL: wifInput.FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL,
+      AWS_REGION: "ap-northeast-2", PUSH_PROVIDER: "disabled",
+    });
+  });
+
+  it.each(["FIREBASE_PROJECT_ID", "FIREBASE_WIF_AUDIENCE", "FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL", "AWS_REGION"])("rejects partial WIF config missing %s", (key) => {
+    expect(() => parseApiEnv({ ...wifInput, [key]: undefined })).toThrow(EnvValidationError);
+  });
+
+  it.each([
+    { FIREBASE_WIF_AUDIENCE: "https://attacker.example/token" },
+    { FIREBASE_WIF_AUDIENCE: wifInput.FIREBASE_WIF_AUDIENCE.replace("iam.googleapis.com/", "iam.googleapis.com.attacker.example/") },
+    { FIREBASE_WIF_AUDIENCE: wifInput.FIREBASE_WIF_AUDIENCE.replace("982568561637", "project-id") },
+    { FIREBASE_WIF_AUDIENCE: `${wifInput.FIREBASE_WIF_AUDIENCE}?redirect=evil` },
+    { FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL: "https://iamcredentials.googleapis.com.attacker.example/iam" },
+    { FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL: `${wifInput.FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL}/../../evil` },
+    { FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL: `${wifInput.FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL}?redirect=evil` },
+    { FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL: `${wifInput.FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL}.attacker.example` },
+    { AWS_REGION: "ap-northeast-2.attacker.example" }, { AWS_REGION: "ap-northeast-2/../../evil" },
+    { FIREBASE_WIF_AUDIENCE: "" }, { FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL: "" },
+  ])("rejects untrusted WIF config without including the supplied value: %j", (override) => {
+    expect(() => parseApiEnv({ ...wifInput, ...override })).toThrow(EnvValidationError);
+    try {
+      parseApiEnv({ ...wifInput, ...override });
+    } catch (error) {
+      expect(String(error)).not.toContain("attacker.example");
+    }
+  });
+
+  it("retains ADC configuration without WIF or AWS settings", () => {
+    expect(parseApiEnv({ ...productionInput, FIREBASE_PROJECT_ID: "clubsenior-app" })).toMatchObject({
+      FIREBASE_WIF_AUDIENCE: undefined, FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL: undefined, AWS_REGION: undefined,
+    });
+  });
+
+  it("accepts the ECS region with baseline settings when WIF is not enabled", () => {
+    expect(parseApiEnv({ ...productionInput, AWS_REGION: "ap-northeast-2" })).toMatchObject({
+      AWS_REGION: "ap-northeast-2", FIREBASE_WIF_AUDIENCE: undefined, FIREBASE_WIF_SERVICE_ACCOUNT_EMAIL: undefined,
+    });
+  });
+});
+
 describe("production database transport", () => {
   it("accepts the deployed verify-full URL and bundled RDS root without changing it", () => {
     expect(parseApiEnv(productionInput).DATABASE_URL).toBe(VALID_PRODUCTION_DATABASE_URL);

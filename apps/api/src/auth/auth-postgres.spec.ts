@@ -53,7 +53,7 @@ describe.skipIf(!enabled)("auth/profile with real PostgreSQL adapter", () => {
     auth = new AuthService(prisma, tokens,
       { verify: vi.fn(async (accessToken: string) => ({ providerAccountId: `${namespace}:${accessToken}`, name: "카카오 테스트" })) } as unknown as KakaoTokenVerifier,
       { verify: vi.fn(async () => ({ providerAccountId: `${namespace}:google`, name: "구글 테스트" })) } as unknown as GoogleTokenVerifier,
-      firebase as unknown as FirebasePhoneService, env);
+      firebase as unknown as FirebasePhoneService, env, undefined!);
     profiles = new ProfileService(prisma);
     // Vitest does not emit constructor metadata. Register the production
     // controllers' constructor types explicitly for the real Express routes.

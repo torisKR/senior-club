@@ -85,6 +85,13 @@ export const googleLoginSchema = z
     message: "idToken 또는 accessToken이 필요합니다.",
   });
 
+export const reviewerLoginSchema = z.object({
+  idToken: z.string().trim().min(20).max(8192),
+  clientType: z.literal(SessionClientType.ANDROID),
+  termsAccepted: z.literal(true, { error: "서비스 이용약관 동의가 필요합니다." }),
+  privacyAccepted: z.literal(true, { error: "개인정보 처리방침 동의가 필요합니다." }),
+}).strict();
+
 export const refreshSessionSchema = z
   .object({ refreshToken: z.string().min(32).max(512) })
   .strict();
@@ -95,6 +102,7 @@ export type RequestPhoneCodeInput = z.infer<typeof requestPhoneCodeSchema>;
 export type VerifyPhoneCodeInput = z.infer<typeof verifyPhoneCodeSchema>;
 export type KakaoLoginInput = z.infer<typeof kakaoLoginSchema>;
 export type GoogleLoginInput = z.infer<typeof googleLoginSchema>;
+export type ReviewerLoginInput = z.infer<typeof reviewerLoginSchema>;
 export type RefreshSessionInput = z.infer<typeof refreshSessionSchema>;
 
 export const verifyFirebasePhoneSchema = z
@@ -109,6 +117,7 @@ export interface AuthenticatedPrincipal {
   userId: string;
   sessionId: string;
   role: UserRole;
+  reviewer?: true;
 }
 
 export interface IssuedSession {

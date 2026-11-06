@@ -1,4 +1,24 @@
-# CloudFront → ALB HTTPS 전환 준비
+# CloudFront → ALB HTTPS
+
+## 2026-10-01 전환 완료
+
+CloudFront 배포가 `Deployed`인 상태에서 API 원본을 `api.aws-origin.senior.toris.kr`와 `https-only`, origin TLS 1.2로 전환했다. `/readyz` HTTPS canary가 database `ok`를 반환한 뒤 전체 경로를 전환했고 canary를 제거했다. `/healthz`, `/readyz`, 인증 없는 `/v1/me`, 차단된 전화 로그인 경계를 확인한 뒤 ALB의 80 ingress를 제거했다.
+
+현재 DNS는 다음과 같다. 모두 TTL Auto이며 CNAME은 DNS only다.
+
+| Type | Name | Value |
+| --- | --- | --- |
+| CAA | aws-origin.senior.toris.kr | `0 issue "amazon.com"` |
+| CNAME | api.aws-origin.senior.toris.kr | senior-club-alb-1510403427.ap-northeast-2.elb.amazonaws.com |
+| CNAME | _83cb79fd3e642abd30fecff640410669.api.aws-origin.senior.toris.kr | _4b3cf0af31f2eac1d3de44eaac3ab8aa.wzccmgtwzk.acm-validations.aws |
+
+발급·사용 중인 서울 리전 non-exportable ACM 인증서 ID는 `5063e53e-90f6-4316-9933-23f7eeba8124`이며 SAN은 새 원본 hostname과 일치한다. ALB 443은 `ELBSecurityPolicy-TLS13-1-2-2021-06`, 기본 응답 403과 기존 secret-header forward rule을 사용한다. CloudFront origin-facing prefix list만 443으로 허용한다. prefix list의 규칙 가중치 때문에 기존 80 그룹과 별도의 HTTPS 전용 보안 그룹을 사용했으며 새 그룹은 outbound 권한을 추가하지 않는다. 기존 ALB 그룹의 outbound 경로는 보존했다.
+
+기존 `origin.senior.toris.kr` 인증서 요청은 `CAA_ERROR`로 종료됐다. 루트 CAA와 기존 웹 DNS를 바꾸지 않고 Amazon 발급이 허용된 원본 전용 하위 영역을 만들어 해결했다. 아래 9월 30일 요청과 DNS는 이전 준비 기록이며 현재 활성 원본이나 인증서로 사용하지 않는다. 실패한 인증서를 재사용하지 않는다. 새 검증 CNAME은 자동 갱신을 위해 유지한다.
+
+운영 설정이나 rollback 파일에 있는 origin secret을 로그·문서·저장소에 기록하지 않는다. 이후 변경도 fresh ETag, 현재 설정 보존, HTTPS readiness canary, 배포 완료 확인 순서로 진행한다. HTTP rollback이 필요하면 보존된 설정과 기존 CloudFront 전용 ingress를 먼저 복구하고, 정상 경로를 확인한 뒤 cleanup한다.
+
+## 이전 준비 기록 — 2026-09-30
 
 2026-09-30 현재 API는 정상이다. 아래 DNS 등록은 기존 웹 senior.toris.kr의 레코드를 바꾸지 않는다. CloudFront의 origin 전용 hostname을 준비한다.
 

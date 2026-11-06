@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 import { SiteShell } from "@/components/site-shell";
+import { AnalyticsProvider } from "@/components/analytics-provider";
 import { SITE_DESCRIPTION, SITE_KEYWORDS, SITE_NAME } from "@/lib/seo";
 import { LightColors, sharedDesignStyle } from "@/lib/shared-design";
 import { getSiteUrl } from "@/lib/site-url";
@@ -84,7 +85,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         <a className="skip-link" href="#main-content">
           본문으로 바로가기
         </a>
-        <SiteShell>{children}</SiteShell>
+        <AnalyticsProvider><SiteShell>{children}</SiteShell></AnalyticsProvider>
       </body>
     </html>
   );

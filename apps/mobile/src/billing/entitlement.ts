@@ -1,6 +1,6 @@
 export type BillingProbe =
   | { readonly status: 'unavailable' }
-  | { readonly status: 'ok'; readonly tokens: readonly string[] };
+  | { readonly status: 'ok'; readonly tokens: readonly string[]; readonly pending?: boolean };
 
 export type EntitlementDecision =
   | { readonly owned: false; readonly write: 'clear' | 'none' }

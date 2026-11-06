@@ -12,6 +12,14 @@ const nextConfig: NextConfig = {
     root: process.cwd(),
   },
   typedRoutes: true,
+  async rewrites() {
+    return [
+      {
+        source: "/favicon.ico",
+        destination: "/images/senior-club-mark-v3.png",
+      },
+    ];
+  },
   async headers() {
     return [
       {

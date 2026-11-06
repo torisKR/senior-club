@@ -15,6 +15,8 @@ import { AccessTokenGuard } from "./access-token.guard";
 import {
   googleLoginSchema,
   kakaoLoginSchema,
+  reviewerLoginSchema,
+  type ReviewerLoginInput,
   refreshSessionSchema,
   requestEmailCodeSchema,
   requestPhoneCodeSchema,
@@ -97,6 +99,19 @@ export class AuthController {
     @Headers("user-agent") userAgent?: string,
   ) {
     return this.auth.loginWithKakao(input, {
+      ...(userAgent ? { userAgent } : {}),
+      ...(request.ip ? { ipAddress: request.ip } : {}),
+    });
+  }
+
+  @Post("reviewer")
+  @Header("Cache-Control", "private, no-store")
+  reviewerLogin(
+    @Body(new ZodValidationPipe(reviewerLoginSchema)) input: ReviewerLoginInput,
+    @Req() request: Request,
+    @Headers("user-agent") userAgent?: string,
+  ) {
+    return this.auth.loginWithReviewer(input, {
       ...(userAgent ? { userAgent } : {}),
       ...(request.ip ? { ipAddress: request.ip } : {}),
     });
