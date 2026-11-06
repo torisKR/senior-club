@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
@@ -23,6 +24,16 @@ const packageManifest = (parent, dependency) => {
     assert.notEqual(next, directory, `package metadata not found for ${dependency}`);
     directory = next;
   }
+};
+const assertMinimumVersion = (parent, dependency, minimum) => {
+  const resolved = packageManifest(parent, dependency);
+  const current = resolved.manifest.version.match(/^(\d+)\.(\d+)\.(\d+)$/)?.slice(1).map(Number);
+  const required = minimum.split('.').map(Number);
+  assert.ok(current, `${dependency} must use a stable version`);
+  const comparison = current.findIndex((part, index) => part !== required[index]);
+  assert.ok(comparison === -1 || current[comparison] > required[comparison],
+    `${dependency} ${resolved.manifest.version} must be at least ${minimum}`);
+  return resolved;
 };
 
 test('Expo route/query parsing decodes values, repeated parameters and flags', () => {
@@ -54,6 +65,80 @@ test('the obsolete query-string 7 compatibility patch cannot be bypassed by a ne
   assert.ok(packages, 'expected package and snapshot sections in the pnpm lockfile');
   assert.doesNotMatch(packages, /^ {2}['"]?query-string@7\./m,
     'query-string 7 requires the decoder override and compatibility patch to be restored');
+});
+
+test('security fixes are present in the actual Vitest and Expo dependency paths', () => {
+  for (const manifest of ['package.json', 'apps/mobile/package.json']) {
+    const project = createRequire(resolve(root, manifest));
+    const vitest = assertMinimumVersion(project, 'vitest', '4.1.12');
+    assertMinimumVersion(vitest.require, '@vitest/mocker', '4.1.12');
+    assertMinimumVersion(vitest.require, 'vite', '8.1.6');
+  }
+  const expo = owner(mobileRequire, 'expo/package.json');
+  for (const dependency of ['@expo/cli', '@expo/fingerprint']) {
+    const parent = owner(expo, `${dependency}/package.json`);
+    const glob = assertMinimumVersion(parent, 'glob', '14.0.2');
+    assertMinimumVersion(glob.require, 'minimatch', '11.0.1');
+  }
+  const fingerprint = owner(expo, '@expo/fingerprint/package.json');
+  assertMinimumVersion(fingerprint, 'minimatch', '11.0.1');
+  const parser = owner(mobileRequire, '@typescript-eslint/parser/package.json');
+  const estree = owner(parser, '@typescript-eslint/typescript-estree/package.json');
+  assertMinimumVersion(estree, 'minimatch', '11.0.1');
+});
+
+test('Expo glob consumers discover routes and gitignore files and support early cancellation', async (t) => {
+  const expo = owner(mobileRequire, 'expo/package.json');
+  const cliRoot = dirname(expo.resolve('@expo/cli/package.json'));
+  const cli = owner(expo, '@expo/cli/package.json');
+  const fingerprint = owner(expo, '@expo/fingerprint/package.json');
+  const { anyMatchAsync, everyMatchAsync } = mobileRequire(resolve(cliRoot, 'build/src/utils/glob.js'));
+  const fixture = mkdtempSync(resolve(tmpdir(), 'senior-club-glob-test-'));
+  t.after(() => rmSync(fixture, { recursive: true, force: true }));
+
+  for (const directory of ['src', '.hidden', 'ignored']) mkdirSync(resolve(fixture, directory));
+  for (const file of ['src/users+api.ts', '.hidden/posts+api.tsx', 'src/screen.ts', '.gitignore', 'src/.gitignore', 'ignored/.gitignore']) {
+    writeFileSync(resolve(fixture, file), '');
+  }
+
+  const options = { cwd: fixture, dot: true, ignore: ['ignored/**'] };
+  const pattern = '**/*+api.@(ts|tsx|js|jsx)';
+  const expectedRoutes = ['.hidden/posts+api.tsx', 'src/users+api.ts'];
+  assert.deepEqual((await everyMatchAsync(pattern, options)).sort(), expectedRoutes);
+  assert.deepEqual(cli('glob').sync(pattern, options).sort(), expectedRoutes);
+  const firstRoute = await anyMatchAsync(pattern, options);
+  assert.equal(firstRoute.length, 1);
+  assert.ok(expectedRoutes.includes(firstRoute[0]));
+  assert.deepEqual(await anyMatchAsync('**/*.missing', options), []);
+  assert.deepEqual((await fingerprint('glob').glob('**/.gitignore', options)).sort(), ['.gitignore', 'src/.gitignore']);
+});
+
+test('TypeScript project service minimatch retains dotfile matching', () => {
+  const parser = owner(mobileRequire, '@typescript-eslint/parser/package.json');
+  const estree = owner(parser, '@typescript-eslint/typescript-estree/package.json');
+  const { minimatch } = estree('minimatch');
+  assert.equal(minimatch('.config/project.ts', '**/*.ts', { dot: true }), true);
+  assert.equal(minimatch('.config/project.js', '**/*.ts', { dot: true }), false);
+});
+
+test('Expo fingerprint ignore patterns retain dotfile and negation behavior', () => {
+  const expo = owner(mobileRequire, 'expo/package.json');
+  const fingerprintRoot = dirname(expo.resolve('@expo/fingerprint/package.json'));
+  const { isIgnoredPath } = mobileRequire(resolve(fingerprintRoot, 'build/utils/Path.js'));
+  const patterns = ['**/.cache/**', '**/*.tmp', '!**/keep.tmp'];
+  assert.equal(isIgnoredPath('src/.cache/item', patterns), true);
+  assert.equal(isIgnoredPath('src/remove.tmp', patterns), true);
+  assert.equal(isIgnoredPath('src/keep.tmp', patterns), false);
+  assert.equal(isIgnoredPath('src/screen.ts', patterns), false);
+});
+
+test('ESLint import plugin retains its legacy minimatch makeRe API', () => {
+  const expoLint = owner(mobileRequire, 'eslint-config-expo/package.json');
+  const importPlugin = owner(expoLint, 'eslint-plugin-import/package.json');
+  const minimatch = importPlugin('minimatch');
+  assert.equal(typeof minimatch, 'function');
+  assert.equal(typeof minimatch.makeRe, 'function');
+  assert.equal(minimatch.makeRe('src/**').test('src/screen.ts'), true);
 });
 
 test('Xcode still generates valid project identifiers', () => {
