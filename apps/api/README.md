@@ -35,3 +35,16 @@ pnpm typecheck
 pnpm test
 pnpm build
 ```
+
+`pnpm typecheck`는 별칭 `@typescript/native`의 TypeScript 7.0.2 네이티브
+컴파일러를 실행한다. Nest CLI는 TypeScript의 JavaScript 컴파일러 API가 필요하므로
+`pnpm build`, `pnpm start`, `pnpm dev`의 webpack `ts-loader`와 별도 phone credential
+컴파일은 TypeScript 6.0.3을 유지한다. 현재 Nest CLI 11.0.24의 webpack
+`fork-ts-checker`는 CLI에 포함된 TypeScript 5.9.3을 사용한다. 따라서 Nest 빌드와
+TypeScript 7 타입 검사는 둘 다 실행해야 한다.
+
+TypeScript 7.0의 API 제한과 병행 설치 방식은 [TypeScript 7.0 발표][ts7] 및
+[Nest CLI 호환성 이슈][nest-ts7]를 참고한다.
+
+[ts7]: https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/
+[nest-ts7]: https://github.com/nestjs/nest-cli/issues/3479
