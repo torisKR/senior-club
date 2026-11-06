@@ -49,6 +49,7 @@ RUN pnpm --dir apps/api --filter @senior-club/api --prod deploy /workspace/deplo
 FROM build AS node26-api-regression
 RUN --network=none test "$(node -p 'process.versions.node.split(".")[0]')" = 26 \
     && test "$(pnpm --version)" = 9.14.2 \
+    && pnpm --filter @senior-club/api typecheck \
     && CI=true NODE_ENV=test \
       DATABASE_URL='postgresql://ci:ci@127.0.0.1:5432/senior_club?schema=public' \
       AUTH_ACCESS_TOKEN_SECRET='ci-only-access-token-secret-at-least-32-characters' \

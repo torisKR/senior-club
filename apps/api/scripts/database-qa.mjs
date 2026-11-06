@@ -105,7 +105,7 @@ function run(entry, args, env, cwd) {
 }
 
 function main() {
-  if (Number(process.versions.node.split(".")[0]) !== 24) throw new Error("DB QA requires Node 24");
+  if (!["24", "26"].includes(process.versions.node.split(".")[0])) throw new Error("DB QA requires Node 24 or 26");
   if (process.argv.length !== 2) throw new Error("DB QA runner accepts no filtering arguments");
   const env = databaseQaEnvironment();
   const tempRoot = mkdtempSync(join(tmpdir(), "senior-role-qa-"));
