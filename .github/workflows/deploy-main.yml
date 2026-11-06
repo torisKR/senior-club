@@ -23,51 +23,10 @@ jobs:
     name: Validate before deploying
     uses: ./.github/workflows/ci.yml
 
-  sites-package:
-    name: Build ChatGPT Sites artifact
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6
-        with:
-          version: 9.14.2
-          run_install: false
-
-      - name: Install Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install locked dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build Sites Worker
-        env:
-          # Public configuration must be embedded when Next.js builds the client.
-          NEXT_PUBLIC_GA_MEASUREMENT_ID: ${{ vars.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-3DYGB4B3XL' }}
-        run: pnpm build:sites
-
-      - name: Package Sites Worker
-        run: |
-          bash .github/scripts/package-site.sh . sites-worker.tar.gz
-
-      - name: Upload Sites artifact for native Sites publish
-        uses: actions/upload-artifact@v7
-        with:
-          name: senior-club-sites-${{ github.sha }}
-          path: sites-worker.tar.gz
-          if-no-files-found: error
-          retention-days: 14
-
   android:
     name: Play production workflow
-    needs: [quality, sites-package]
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.screenshot_evidence_run_id != '' && needs.quality.result == 'success' && needs.sites-package.result == 'success' }}
+    needs: [quality]
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.screenshot_evidence_run_id != '' && needs.quality.result == 'success' }}
     permissions:
       contents: read
       actions: read

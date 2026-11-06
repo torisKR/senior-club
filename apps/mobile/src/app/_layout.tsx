@@ -64,7 +64,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AppStateProvider offlineGame>
+      <AppStateProvider>
         <AppBillingProvider>
           <AnalyticsProvider><AdsProvider>
             <ThemeProvider value={colorScheme === 'dark' ? darkNavigationTheme : lightNavigationTheme}>
@@ -82,12 +82,7 @@ export default function RootLayout() {
                   contentStyle: { backgroundColor: palette.background },
                 }}>
                 <Stack.Screen name="index" options={{ headerShown: false }} />
-                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="event/[id]" options={{ title: '서비스 안내' }} />
-                <Stack.Screen name="club/[slug]" options={{ headerShown: false }} />
-                <Stack.Screen name="reviews/new" options={{ title: '서비스 안내', presentation: 'modal' }} />
-                <Stack.Screen name="notifications" options={{ title: '서비스 안내' }} />
               </Stack>
               <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
             </ThemeProvider>

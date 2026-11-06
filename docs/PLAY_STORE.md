@@ -108,7 +108,7 @@ issuer artifact는 `android-play-final-screenshots-<full source SHA>`; review re
 production `completed` 경로는 단순 draft가 아니며 현재 코드에 소규모 staged rollout 옵션은 없다.
 Play 심사·managed publishing·실제 공개 상태는 별도로 확인한다. 코드가 completed를 요청한 사실만으로 사용자 공개를 확정하지 않는다.
 수동 dispatch의 submit 기본값은 false지만 reusable `workflow_call` 기본값은 true다. 호출자에서 의도한 값을 명시한다.
-main push의 deploy-main은 API/Sites를 처리한다. Android는 수동 dispatch와 run ID가 있을 때만 `submit_to_play=false`로 후보 빌드를 호출한다.
+main push의 deploy-main은 API/Cloudflare를 처리한다. Android는 수동 dispatch와 run ID가 있을 때만 `submit_to_play=false`로 후보 빌드를 호출한다.
 `internal_release=true`와 `binary_update=true` 조합은 거절한다. 실제 Play upload는 reviewed main을 요구한다.
 
 검증된 issuer run이 준비된 뒤 후보 빌드 호출은 다음과 같다. 아래 명령은 현재 실행 완료 기록이 아니다.

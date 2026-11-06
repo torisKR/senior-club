@@ -26,14 +26,13 @@ export function AnalyticsConsentCard({ prompt = false }: { prompt?: boolean }) {
         <SeniorButton label="동의하고 켜기" variant="secondary" onPress={() => choose(true)} />
       </View>}
       <SeniorButton label="개인정보 처리방침 보기" variant="quiet" onPress={() => {
-        void Linking.openURL(getPublicWebPageUrl('privacy') + '#analytics').catch(() => Alert.alert('안내를 열 수 없어요', '네트워크 연결을 확인해 주세요.'));
+        void Linking.openURL(getPublicWebPageUrl('privacy')).catch(() => Alert.alert('안내를 열 수 없어요', '네트워크 연결을 확인해 주세요.'));
       }} />
       {error ? <AppText color="danger" accessibilityRole="alert">{error}</AppText> : null}
     </Card>
   );
 }
 
-// Available outside RequireAuth as well, so logging out never hides withdrawal.
 export function AnalyticsSettingsEntry() {
   const { available } = useAnalyticsConsent();
   const [expanded, setExpanded] = useState(false);

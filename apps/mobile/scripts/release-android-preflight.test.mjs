@@ -10,7 +10,7 @@ import { fontHasGlyph, inspectNavigationIcons, navigationGlyphs } from './valida
 test('release preflight forces production and live endpoint gates before strict screenshots', () => {
   const steps = buildPreflightSteps({ screenshotManifest: 'evidence/manifest.json' });
 
-  assert.equal(steps.length, 5);
+  assert.equal(steps.length, 4);
   assert.equal(steps[1].env.EXPO_PUBLIC_APP_ENV, 'production');
   assert.match(steps[2].args[0], /validate-release-endpoints\.mjs$/);
   assert.match(steps[2].label, /endpoint/);

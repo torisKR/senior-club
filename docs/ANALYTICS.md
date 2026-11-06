@@ -51,4 +51,4 @@ Android QA에서는 승인된 테스트 기기에 한해 `debug.firebase.analyti
 이벤트 데이터 보존은 2개월입니다. 운영 설정과 수신 검증 결과는 QA 증거에 기록합니다.
 속성 이름 `senior_club`, 대한민국 시간대, KRW, 운영 규모 1~10명으로 저장했습니다.
 Google 콘솔에서 웹 `page_view`, Android `screen_view`·`session_start` 수신을 확인했습니다.
-Vercel 운영 환경과 `deploy-main.yml`의 Sites 빌드에 공개 측정 ID를 전달합니다.
+Cloudflare 운영 환경과 `deploy-main.yml`의 Cloudflare 빌드에 공개 측정 ID를 전달합니다.

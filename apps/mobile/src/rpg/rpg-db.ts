@@ -13,10 +13,11 @@ import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
 import { storage as legacyStorage } from '@/utils/storage';
 
 import { parseLegacyRpgSave } from './migrate';
-import { MemoryRpgStorage, type RpgKeyValueStorage } from './rpg-storage';
+import { MemoryRpgStorage, type RpgGuardedWriteResult, type RpgGuardedKeyValueStorage, type RpgSaveBackup } from './rpg-storage';
 
 export const RPG_DB_NAME = 'senior_club_rpg.db';
 export const RPG_STORAGE_KEY = 'senior_club_rpg_state_v1';
+export const RPG_FALLBACK_ACTIVE_KEY = 'senior_club_rpg_state_v3_fallback';
 export const RPG_LEGACY_BACKUP_KEY = 'senior_club_rpg_state_v1_backup';
 export const RPG_MIGRATION_META_KEY = 'migrated_from_async_storage_v1';
 
@@ -109,13 +110,18 @@ function migrateLegacySave(db: SQLiteDatabase): void {
   }
 }
 
-class SqliteRpgStorage implements RpgKeyValueStorage {
+export class SqliteRpgStorage implements RpgGuardedKeyValueStorage {
+  readonly supportsGuardedWrites = true;
   constructor(private readonly db: SQLiteDatabase) {}
+
+  readStringStrict(key: string): string | null {
+    const row = this.db.getFirstSync<{ value: string }>(SQL_GET, key);
+    return row?.value ?? null;
+  }
 
   getString(key: string): string | null {
     try {
-      const row = this.db.getFirstSync<{ value: string }>(SQL_GET, key);
-      return row?.value ?? null;
+      return this.readStringStrict(key);
     } catch (error) {
       warn(`read failed for key "${key}"`, error);
       return null;
@@ -127,6 +133,39 @@ class SqliteRpgStorage implements RpgKeyValueStorage {
       writeString(this.db, key, value);
     } catch (error) {
       warn(`write failed for key "${key}"`, error);
+    }
+  }
+
+  guardedWrite(key: string, expected: string | null, value: string, backup?: RpgSaveBackup): RpgGuardedWriteResult {
+    let result: RpgGuardedWriteResult = 'write_failed';
+    try {
+      this.db.withTransactionSync(() => {
+        if (this.readStringStrict(key) !== expected) {
+          result = 'conflict';
+          return;
+        }
+        if (backup) {
+          result = 'backup_failed';
+          const existing = this.readStringStrict(backup.key);
+          if (existing !== null && existing !== backup.value) {
+            result = 'backup_failed';
+            return;
+          }
+          if (existing === null) writeString(this.db, backup.key, backup.value);
+          if (this.readStringStrict(backup.key) !== backup.value) {
+            result = 'backup_failed';
+            throw new Error('backup read-back mismatch');
+          }
+        }
+        result = 'write_failed';
+        writeString(this.db, key, value);
+        if (this.readStringStrict(key) !== value) throw new Error('save read-back mismatch');
+        result = 'written';
+      });
+      return result;
+    } catch (error) {
+      warn('guarded save transaction failed', error);
+      return (result as RpgGuardedWriteResult) === 'backup_failed' ? 'backup_failed' : 'write_failed';
     }
   }
 }
@@ -153,12 +192,39 @@ function getGlobalLocalStorage(): SimpleLocalStorage | null {
  * the web build before the WASM asset is available). Keeps the app usable and
  * still persistent where `localStorage` exists.
  */
-class LocalStorageRpgStorage implements RpgKeyValueStorage {
+export class LocalStorageRpgStorage implements RpgGuardedKeyValueStorage {
+  readonly supportsGuardedWrites = true;
   constructor(private readonly backing: SimpleLocalStorage) {}
+
+  readStringStrict(key: string): string | null {
+    return key === RPG_STORAGE_KEY
+      ? this.backing.getItem(RPG_FALLBACK_ACTIVE_KEY) ?? this.backing.getItem(key)
+      : this.backing.getItem(key);
+  }
+
+  // Keep the legacy key untouched. The fallback writes a separate active copy,
+  // so even a cross-tab race cannot overwrite the old key before backup.
+  guardedWrite(key: string, expected: string | null, value: string, backup?: RpgSaveBackup): RpgGuardedWriteResult {
+    if (key !== RPG_STORAGE_KEY) return 'unavailable';
+    try {
+      if (this.readStringStrict(key) !== expected) return 'conflict';
+      if (backup) {
+        const old = this.backing.getItem(backup.key);
+        if (old !== null && old !== backup.value) return 'backup_failed';
+        if (old === null) this.backing.setItem(backup.key, backup.value);
+        if (this.backing.getItem(backup.key) !== backup.value) return 'backup_failed';
+      }
+      if (this.readStringStrict(key) !== expected) return 'conflict';
+      this.backing.setItem(RPG_FALLBACK_ACTIVE_KEY, value);
+      return this.backing.getItem(RPG_FALLBACK_ACTIVE_KEY) === value ? 'written' : 'write_failed';
+    } catch {
+      return 'write_failed';
+    }
+  }
 
   getString(key: string): string | null {
     try {
-      return this.backing.getItem(key);
+      return this.readStringStrict(key);
     } catch (error) {
       warn(`localStorage read failed for key "${key}"`, error);
       return null;
@@ -174,16 +240,16 @@ class LocalStorageRpgStorage implements RpgKeyValueStorage {
   }
 }
 
-let cachedStorage: RpgKeyValueStorage | null = null;
+let cachedStorage: RpgGuardedKeyValueStorage | null = null;
 
-function createRpgStorage(): RpgKeyValueStorage {
+function createRpgStorage(): RpgGuardedKeyValueStorage {
   const db = openDatabaseSync(RPG_DB_NAME);
   db.execSync(SCHEMA_SQL);
   migrateLegacySave(db);
   return new SqliteRpgStorage(db);
 }
 
-function createFallbackStorage(): RpgKeyValueStorage {
+function createFallbackStorage(): RpgGuardedKeyValueStorage {
   const local = getGlobalLocalStorage();
   if (local) {
     return new LocalStorageRpgStorage(local);
@@ -195,7 +261,7 @@ function createFallbackStorage(): RpgKeyValueStorage {
  * Returns the process-wide RPG storage. Never throws: on any SQLite failure it
  * logs and degrades to localStorage / in-memory storage.
  */
-export function getRpgStorage(): RpgKeyValueStorage {
+export function getRpgStorage(): RpgGuardedKeyValueStorage {
   if (cachedStorage) return cachedStorage;
 
   try {

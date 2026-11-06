@@ -26,6 +26,8 @@ export interface NpcBond {
   lastGiftDay: string | null;
   /** 재생한 개인 에피소드 id */
   scenesSeen: string[];
+  /** 선택한 에피소드 결말. 기존 기록에는 없을 수 있습니다. */
+  sceneChoices?: Record<string, string>;
 }
 
 /** 단계별 누적 유대 기준 (0~5단계) */
@@ -74,6 +76,9 @@ export function normalizeBonds(saved: unknown): NpcBond[] {
       scenesSeen: Array.isArray(row.scenesSeen)
         ? row.scenesSeen.filter((id): id is string => typeof id === 'string')
         : [],
+      ...(row.sceneChoices && typeof row.sceneChoices === 'object' && !Array.isArray(row.sceneChoices)
+        ? { sceneChoices: Object.fromEntries(Object.entries(row.sceneChoices).filter((entry): entry is [string, string] => typeof entry[1] === 'string')) }
+        : {}),
     };
   });
 }

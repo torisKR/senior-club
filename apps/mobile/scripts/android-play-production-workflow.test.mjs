@@ -12,8 +12,8 @@ function step(name) {
   return workflow.slice(start, end < 0 ? undefined : end);
 }
 test('reviewed main deployment retains upstream success and explicit binary update policy', () => {
-  assert.match(deploy, /needs: \[quality, sites-package\]/);
-  assert.match(deploy, /needs\.quality\.result == 'success' && needs\.sites-package\.result == 'success'/);
+  assert.match(deploy, /needs: \[quality\]/);
+  assert.match(deploy, /needs\.quality\.result == 'success'/);
   assert.doesNotMatch(deploy, /aws-actions\/|AWS_ROLE_TO_ASSUME|ECS_SERVICE/);
   assert.match(deploy, /binary_update: true/);
   assert.match(workflow, /workflow_call:/);
@@ -50,13 +50,22 @@ test('internal caller requires and forwards exact screenshot evidence with artif
 
 test('quality, live endpoints and strict screenshot provenance remain before native build', () => {
   const build = workflow.indexOf('pnpm exec expo prebuild');
-  for (const gate of ['pnpm lint', 'pnpm typecheck', 'pnpm test', 'pnpm test:release-validators', 'expo-doctor@1.20.1', 'pnpm release:android:preflight', 'node scripts/validate-release-endpoints.mjs']) {
+  for (const gate of ['pnpm lint', 'pnpm typecheck', 'pnpm test', 'scripts/direct-android-release.test.mjs', 'scripts/direct_play_release_test.py', 'scripts/validate-merged-android-manifest.test.mjs', 'expo-doctor@1.20.1', 'pnpm release:android:preflight', 'node scripts/validate-release-endpoints.mjs']) {
     assert.ok(workflow.indexOf(gate) > 0 && workflow.indexOf(gate) < build, gate);
   }
   assert.match(step('Bind final screenshot evidence to checked-out commit'), /manifest\?\.capture\?\.commit !== process\.env\.GITHUB_SHA/);
   assert.doesNotMatch(step('Bind final screenshot evidence to checked-out commit'), /^        if:/m);
   assert.match(step('Validate published app update'), /pnpm validate:manifest/);
-  assert.match(step('Verify release endpoints and Play service account'), /toris-play-uploader@toris-play-uploader/);
+  assert.match(step('Verify Play service account'), /toris-play-uploader@toris-play-uploader/);
+});
+
+test('game release does not require or inject retired API and web origins', () => {
+  assert.doesNotMatch(workflow, /EXPO_PUBLIC_API_URL|EXPO_PUBLIC_WEB_URL/);
+  assert.doesNotMatch(workflow, /d33totqtaqpyfs\.cloudfront\.net|senior\.toris\.kr/);
+  assert.doesNotMatch(workflow, /KAKAO_NATIVE_APP_KEY|kakao-key-hashes|PLAY_APP_SIGNING_CERTIFICATE_BASE64|pnpm test:release-validators/);
+  assert.match(step('Fail if release configuration is missing'), /REQUIRED_GOOGLE_SERVICES_JSON_BASE64/);
+  assert.match(step('Run production release preflight with final screenshot evidence'), /pnpm release:android:preflight/);
+  assert.match(step('Validate published app update'), /node scripts\/validate-release-endpoints\.mjs/);
 });
 test('all release modes consume exact issuer evidence before preflight and Play edits', () => {
   const receive = step('Receive exact reviewed screenshot evidence');
@@ -73,11 +82,12 @@ test('all release modes consume exact issuer evidence before preflight and Play 
   assert.ok(workflow.indexOf(preflight) < playEdit);
   assert.match(step('Check out repository'), /persist-credentials: false/);
 });
-test('certificate evidence uses actual prebuilt keystore before bounded native build', () => {
+test('bounded native build uses the upload keystore and signing identity is verified on the exact AAB', () => {
   const build = step('Build Play production AAB directly');
-  assert.ok(build.indexOf('expo prebuild') < build.indexOf('python3 scripts/kakao-key-hashes.py'));
-  assert.ok(build.indexOf('python3 scripts/kakao-key-hashes.py') < build.indexOf('./gradlew'));
-  assert.match(build, /vars.PLAY_APP_SIGNING_CERTIFICATE_BASE64/);
+  assert.ok(build.indexOf('expo prebuild') < build.indexOf('release-signing.gradle'));
+  assert.ok(build.indexOf('release-signing.gradle') < build.indexOf('./gradlew'));
+  assert.match(build, /ANDROID_UPLOAD_KEYSTORE_BASE64/);
+  assert.match(step('Validate exact signed AAB'), /direct-play-release.py validate/);
   assert.match(build, /--max-workers=2/);
   assert.match(build, /-Xmx4g -XX:MaxMetaspaceSize=1g/);
   assert.doesNotMatch(build, /reactNativeArchitectures|genkey/);

@@ -58,7 +58,6 @@ jobs:
       CI: "true"
       EXPO_NO_DOTENV: '1'
       ANDROID_UPLOAD_CERT_SHA256: ${{ secrets.ANDROID_UPLOAD_CERT_SHA256 }}
-      KAKAO_NATIVE_APP_KEY: ${{ secrets.KAKAO_NATIVE_APP_KEY }}
       SUBMIT_TO_PLAY: ${{ inputs.submit_to_play }}
 
     steps:
@@ -93,16 +92,9 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           REQUIRED_GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           REQUIRED_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
-          REQUIRED_KAKAO_NATIVE_APP_KEY: ${{ secrets.KAKAO_NATIVE_APP_KEY }}
-          REQUIRED_EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
-          REQUIRED_EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
         run: |
           set -euo pipefail
           missing=0
-          if [[ -z "$REQUIRED_KAKAO_NATIVE_APP_KEY" ]]; then
-            echo "::error::play-store-production environment secret KAKAO_NATIVE_APP_KEY is required."
-            missing=1
-          fi
           python3 apps/mobile/scripts/direct-play-release.py check-signing || missing=1
           if [[ -z "$REQUIRED_GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ]]; then
             echo "::error::play-store-production environment secret GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is required."
@@ -110,14 +102,6 @@ jobs:
           fi
           if [[ -z "$REQUIRED_GOOGLE_SERVICES_JSON_BASE64" ]]; then
             echo "::error::play-store-production environment secret GOOGLE_SERVICES_JSON_BASE64 is required."
-            missing=1
-          fi
-          if [[ -z "$REQUIRED_EXPO_PUBLIC_API_URL" ]]; then
-            echo "::error::play-store-production environment variable EXPO_PUBLIC_API_URL is required."
-            missing=1
-          fi
-          if [[ -z "$REQUIRED_EXPO_PUBLIC_WEB_URL" ]]; then
-            echo "::error::play-store-production environment variable EXPO_PUBLIC_WEB_URL is required."
             missing=1
           fi
           if [[ "$missing" -ne 0 ]]; then
@@ -157,16 +141,17 @@ jobs:
           pnpm lint
           pnpm typecheck
           pnpm test
-          pnpm test:release-validators
+          node --test scripts/release-api-url.test.mjs scripts/validate-release-endpoints.test.mjs \
+            scripts/release-android-preflight.test.mjs scripts/extract-eas-build-id.test.mjs \
+            scripts/direct-android-release.test.mjs scripts/validate-merged-android-manifest.test.mjs
+          python3 scripts/direct_play_release_test.py
           pnpm validate:play-internal-workflow
           pnpm validate:play-production-workflow
           npx --yes expo-doctor@1.20.1
 
-      - name: Verify release endpoints and Play service account
+      - name: Verify Play service account
         working-directory: apps/mobile
         env:
-          EXPECTED_EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
-          EXPECTED_EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
           set -euo pipefail
@@ -179,9 +164,7 @@ jobs:
             }
             fs.writeFileSync("/tmp/senior-club-play-service-account.json", JSON.stringify(key), {mode: 0o600});
           '
-          test "$EXPECTED_EXPO_PUBLIC_API_URL" = "https://d33totqtaqpyfs.cloudfront.net"
-          test "$EXPECTED_EXPO_PUBLIC_WEB_URL" = "https://senior.toris.kr"
-          echo "Release endpoints and Play service account are valid."
+          echo "Play service account is valid."
 
       - name: Bind final screenshot evidence to checked-out commit
         working-directory: apps/mobile
@@ -229,8 +212,6 @@ jobs:
       - name: Run production release preflight with final screenshot evidence
         working-directory: apps/mobile
         env:
-          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
-          EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
           GOOGLE_SERVICES_JSON: ${{ steps.google_services.outputs.path }}
           FINAL_SCREENSHOT_MANIFEST: ${{ steps.screenshot_evidence.outputs.manifest }}
           VERIFIED_SCREENSHOT_PROVENANCE: ${{ steps.screenshot_evidence.outputs.provenance }}
@@ -251,8 +232,6 @@ jobs:
         working-directory: apps/mobile
         env:
           EXPO_PUBLIC_APP_ENV: production
-          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
-          EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
           GOOGLE_SERVICES_JSON: ${{ steps.google_services.outputs.path }}
         run: |
           set -euo pipefail
@@ -276,22 +255,17 @@ jobs:
         working-directory: apps/mobile
         env:
           EXPO_PUBLIC_APP_ENV: production
-          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
-          EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
           GOOGLE_SERVICES_JSON: ${{ steps.google_services.outputs.path }}
           ANDROID_UPLOAD_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          # Optional base64 DER public certificate exported from Play Console, never a private key.
-          PLAY_APP_SIGNING_CERTIFICATE_BASE64: ${{ vars.PLAY_APP_SIGNING_CERTIFICATE_BASE64 }}
         run: |
           set -euo pipefail
           umask 077
           export ANDROID_UPLOAD_KEYSTORE_PATH="$RUNNER_TEMP/upload.keystore"
           printf '%s' "$ANDROID_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_UPLOAD_KEYSTORE_PATH"
           pnpm exec expo prebuild --platform android --clean --no-install
-          python3 scripts/kakao-key-hashes.py
           printf '\napply from: "../../scripts/release-signing.gradle"\n' >> android/app/build.gradle
           cd android
           # D8 mergeDexRelease exhausted the template heap; bound worker concurrency too.
@@ -305,9 +279,6 @@ jobs:
 
       - name: Validate exact signed AAB
         working-directory: apps/mobile
-        env:
-          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
-          EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
         run: |
           set -euo pipefail
           curl --fail --location --silent --show-error https://github.com/google/bundletool/releases/download/1.18.2/bundletool-all-1.18.2.jar -o "$BUNDLETOOL_JAR"
@@ -319,8 +290,6 @@ jobs:
         if: ${{ success() && env.SUBMIT_TO_PLAY == 'true' }}
         working-directory: apps/mobile
         env:
-          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
-          EXPO_PUBLIC_WEB_URL: ${{ vars.EXPO_PUBLIC_WEB_URL }}
           PLAY_TRACK: ${{ inputs.internal_release && 'internal' || 'production' }}
           PLAY_STATUS: ${{ !inputs.internal_release && inputs.binary_update && 'completed' || 'draft' }}
         run: python3 scripts/direct-play-release.py upload

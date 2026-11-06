@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MemoryRpgStorage } from '../rpg/rpg-storage';
 import { createInitialAlkkagiStones, createSacheonseongBoard } from './arcade-logic';
-import { isAlkkagiRound, isGolfRound, isTileRound, loadRound, saveRound } from './round-save';
+import { isAlkkagiRound, isGolfRound, isTileRound, loadRound, loadRoundState, saveRound } from './round-save';
 
 describe('round persistence', () => {
   it('restores each game independently, including completed rounds', () => {
@@ -25,7 +25,18 @@ describe('round persistence', () => {
     storage.setString('golf', '{broken');
     expect(loadRound(storage, 'golf', isGolfRound)).toBeNull();
     expect(storage.getString('golf')).toBe('{broken');
+    expect(loadRoundState(storage, 'golf', isGolfRound).status).toBe('protected');
     saveRound(storage, 'golf', { holeIndex: 99 });
     expect(loadRound(storage, 'golf', isGolfRound)).toBeNull();
+  });
+
+  it('reports silent write failures and identifies an in-memory fallback as temporary', () => {
+    const droppedWrites = { getString: () => null, setString: () => {} };
+    expect(saveRound(droppedWrites, 'golf', { strokes: 1 })).toBe('failed');
+    const throwing = { getString: () => null, setString: () => { throw new Error('disk full'); } };
+    expect(saveRound(throwing, 'golf', { strokes: 1 })).toBe('failed');
+    const memory = new MemoryRpgStorage();
+    expect(saveRound(memory, 'golf', { strokes: 1 })).toBe('volatile');
+    expect(memory.getString('golf')).toBe('{"strokes":1}');
   });
 });

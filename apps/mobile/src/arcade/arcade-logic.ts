@@ -102,7 +102,33 @@ export interface ParkGolfShotResult {
   holed: boolean;
   hitBunker: boolean;
   bouncedWall: boolean;
+  bouncedBumper: boolean;
   distanceToCup: number;
+}
+
+export const PARK_GOLF_BOUNDS = { left: 12, right: 88, top: 10, bottom: 90 } as const;
+
+type Point = { x: number; y: number };
+
+function bumperIntersection(start: Point, end: Point, bumper: NonNullable<ParkGolfHoleSpec['bumper']>) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const bx = bumper.x2 - bumper.x1;
+  const by = bumper.y2 - bumper.y1;
+  const cross = dx * by - dy * bx;
+  if (Math.abs(cross) < 1e-8) return null;
+  const ax = bumper.x1 - start.x;
+  const ay = bumper.y1 - start.y;
+  const t = (ax * by - ay * bx) / cross;
+  const u = (ax * dy - ay * dx) / cross;
+  if (t <= 1e-8 || t > 1 || u < 0 || u > 1) return null;
+  const length = Math.hypot(bx, by);
+  return length > 0 ? { t, normal: { x: -by / length, y: bx / length } } : null;
+}
+
+function reflect(vector: Point, normal: Point): Point {
+  const projection = vector.x * normal.x + vector.y * normal.y;
+  return { x: vector.x - 2 * projection * normal.x, y: vector.y - 2 * projection * normal.y };
 }
 
 export function simulateParkGolfShot(
@@ -121,26 +147,46 @@ export function simulateParkGolfShot(
   let holed = false;
   let hitBunker = false;
   let bouncedWall = false;
+  let bouncedBumper = false;
+
+  if (Math.hypot(x - hole.cup.x, y - hole.cup.y) <= hole.cup.radius) {
+    return { path: [...path, { x: hole.cup.x, y: hole.cup.y }], finalPos: { x: hole.cup.x, y: hole.cup.y }, holed: true, hitBunker, bouncedWall, bouncedBumper, distanceToCup: 0 };
+  }
 
   for (let step = 0; step < 26; step += 1) {
-    x += vx + hole.slope.dx * 0.04;
-    y += vy + hole.slope.dy * 0.04;
+    const start = { x, y };
+    const movement = { x: vx + hole.slope.dx * 0.04, y: vy + hole.slope.dy * 0.04 };
+    x += movement.x;
+    y += movement.y;
 
-    if (x < 12) {
-      x = 12 + (12 - x);
+    const impact = hole.bumper && bumperIntersection(start, { x, y }, hole.bumper);
+    if (impact) {
+      const reflectedMovement = reflect(movement, impact.normal);
+      const reflectedVelocity = reflect({ x: vx, y: vy }, impact.normal);
+      const hit = { x: start.x + movement.x * impact.t, y: start.y + movement.y * impact.t };
+      path.push({ x: Number(hit.x.toFixed(1)), y: Number(hit.y.toFixed(1)) });
+      x = hit.x + reflectedMovement.x * (1 - impact.t) * 0.82;
+      y = hit.y + reflectedMovement.y * (1 - impact.t) * 0.82;
+      vx = reflectedVelocity.x * 0.82;
+      vy = reflectedVelocity.y * 0.82;
+      bouncedBumper = true;
+    }
+
+    if (x < PARK_GOLF_BOUNDS.left) {
+      x = PARK_GOLF_BOUNDS.left + (PARK_GOLF_BOUNDS.left - x);
       vx = Math.abs(vx) * 0.82;
       bouncedWall = true;
-    } else if (x > 88) {
-      x = 88 - (x - 88);
+    } else if (x > PARK_GOLF_BOUNDS.right) {
+      x = PARK_GOLF_BOUNDS.right - (x - PARK_GOLF_BOUNDS.right);
       vx = -Math.abs(vx) * 0.82;
       bouncedWall = true;
     }
-    if (y < 10) {
-      y = 10 + (10 - y);
+    if (y < PARK_GOLF_BOUNDS.top) {
+      y = PARK_GOLF_BOUNDS.top + (PARK_GOLF_BOUNDS.top - y);
       vy = Math.abs(vy) * 0.82;
       bouncedWall = true;
-    } else if (y > 90) {
-      y = 90 - (y - 90);
+    } else if (y > PARK_GOLF_BOUNDS.bottom) {
+      y = PARK_GOLF_BOUNDS.bottom - (y - PARK_GOLF_BOUNDS.bottom);
       vy = -Math.abs(vy) * 0.82;
       bouncedWall = true;
     }
@@ -178,6 +224,7 @@ export function simulateParkGolfShot(
     holed,
     hitBunker,
     bouncedWall,
+    bouncedBumper,
     distanceToCup,
   };
 }
@@ -204,6 +251,15 @@ export function createInitialAlkkagiStones(): AlkkagiStone[] {
     { id: 'a4', owner: 'ai', x: 64, y: 26, alive: true },
     { id: 'a5', owner: 'ai', x: 80, y: 22, alive: true },
   ];
+}
+
+export function hasAlkkagiProgress(stones: readonly AlkkagiStone[]): boolean {
+  const initial = createInitialAlkkagiStones();
+  return stones.length !== initial.length || initial.some((original) => {
+    const current = stones.find((stone) => stone.id === original.id);
+    return !current || current.owner !== original.owner || current.alive !== original.alive ||
+      current.x !== original.x || current.y !== original.y;
+  });
 }
 
 export interface AlkkagiFlickOutcome {
@@ -450,6 +506,35 @@ export function findFirstSacheonseongHint(
     }
   }
   return null;
+}
+
+/** Rearranges only remaining motifs and tries to leave at least one legal pair. */
+export function shuffleSacheonseongBoard(board: readonly (readonly SacheonseongCell[])[]): SacheonseongCell[][] {
+  const slots = board.flat().filter((cell) => cell.motifId !== null);
+  const motifs = slots.map((cell) => cell.motifId!);
+  if (motifs.length > 2) motifs.push(motifs.shift()!);
+  const withMotifs = (values: readonly string[]) => {
+    let index = 0;
+    return board.map((row) => row.map((cell) => cell.motifId ? { ...cell, motifId: values[index++] } : { ...cell }));
+  };
+  const rotated = withMotifs(motifs);
+  if (findFirstSacheonseongHint(rotated)) return rotated;
+
+  const pairTypes = [...new Set(motifs)].filter((motif) => motifs.filter((id) => id === motif).length >= 2);
+  for (let i = 0; i < slots.length; i += 1) {
+    for (let j = i + 1; j < slots.length; j += 1) {
+      for (const motif of pairTypes) {
+        const values = [...motifs];
+        let source = values.indexOf(motif);
+        [values[i], values[source]] = [values[source], values[i]];
+        source = values.findIndex((value, index) => value === motif && index !== i);
+        [values[j], values[source]] = [values[source], values[j]];
+        const candidate = withMotifs(values);
+        if (findSacheonseongPath(candidate, slots[i], slots[j])) return candidate;
+      }
+    }
+  }
+  return rotated;
 }
 
 // --- Daily mission calendar reset ---

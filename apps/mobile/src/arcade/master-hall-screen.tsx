@@ -1,10 +1,11 @@
 import { Image } from 'expo-image';
 import React from 'react';
-import { Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, Switch, View } from 'react-native';
 
-import { AppText, Card, Screen, SectionHeader } from '@/components/ui';
+import { AppText, Card, Screen, SectionHeader, SeniorButton } from '@/components/ui';
 import { AdsPrivacySettings } from '@/ads/AdsPrivacySettings';
 import { AnalyticsSettingsEntry } from '@/analytics/consent-card';
+import { getPublicWebPageUrl } from '@/config/public-web-links';
 import { FontWeights, Layout, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/hooks/use-app-state';
 import { PlusCard } from '@/screens/profile/plus-card';
@@ -167,6 +168,15 @@ export function MasterHallScreen() {
           </View>
           <Switch value={state.soundEnabled} onValueChange={toggleSound} />
         </View>
+        <SeniorButton
+          label="개인정보 처리방침"
+          variant="quiet"
+          onPress={() => {
+            void Linking.openURL(getPublicWebPageUrl('privacy')).catch(() => {
+              Alert.alert('안내를 열 수 없어요', '인터넷 연결을 확인한 뒤 다시 시도해 주세요.');
+            });
+          }}
+        />
       </Card>
 
       <AdsPrivacySettings />
