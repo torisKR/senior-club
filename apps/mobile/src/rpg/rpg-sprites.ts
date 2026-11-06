@@ -5,9 +5,10 @@
  * 문자열 변수 없이 파일 경로를 그대로 넘기는 명시적 require() 로 등록합니다.
  * (require 경로가 실제 파일과 다르면 번들 단계에서 바로 실패합니다.)
  */
-import type { ImageSourcePropType } from 'react-native';
-
+import type { ImageProps } from 'expo-image';
 import type { VillageBuildingId } from './rpg-types';
+
+type SpriteSource = NonNullable<ImageProps['source']>;
 
 export type PlayerDirection = 'down' | 'side' | 'up';
 
@@ -21,7 +22,7 @@ export const TILE_SPRITES = {
   cherry: require('../../assets/game/rpg/pixel/tiles/cherry.png'),
   lantern: require('../../assets/game/rpg/pixel/tiles/lantern.png'),
   flower: require('../../assets/game/rpg/pixel/tiles/flower.png'),
-} as const satisfies Record<string, ImageSourcePropType>;
+} as const satisfies Record<string, SpriteSource>;
 
 /** 시설 건물 에셋 (3 x 2 타일 풋프린트 기준) */
 export const BUILDING_SPRITES = {
@@ -30,12 +31,12 @@ export const BUILDING_SPRITES = {
   alkkagi: require('../../assets/game/rpg/pixel/buildings/alkkagi.png'),
   sacheonseong: require('../../assets/game/rpg/pixel/buildings/sacheonseong.png'),
   herbal: require('../../assets/game/rpg/pixel/buildings/herbal.png'),
-} as const satisfies Record<VillageBuildingId, ImageSourcePropType>;
+} as const satisfies Record<VillageBuildingId, SpriteSource>;
 
 /** 주인공 어르신 4방향 스프라이트 (idle / walk 4프레임) */
 export const PLAYER_SPRITES: Record<
   PlayerDirection,
-  { idle: readonly ImageSourcePropType[]; walk: readonly ImageSourcePropType[] }
+  { idle: readonly SpriteSource[]; walk: readonly SpriteSource[] }
 > = {
   down: {
     idle: [
@@ -82,7 +83,7 @@ export const PLAYER_SPRITES: Record<
 };
 
 /** 급수별 복장 세트 — sprite-gen `recolor`로 구운 변형 (build-player-tiers.mjs) */
-export const PLAYER_TIER_SPRITES: Record<2 | 3, Record<PlayerDirection, { idle: readonly ImageSourcePropType[]; walk: readonly ImageSourcePropType[] }>> = {
+export const PLAYER_TIER_SPRITES: Record<2 | 3, Record<PlayerDirection, { idle: readonly SpriteSource[]; walk: readonly SpriteSource[] }>> = {
   2: {
   down: {
     idle: [
@@ -187,14 +188,14 @@ export function playerSpriteForTier(
   direction: PlayerDirection,
   walking: boolean,
   frame: number,
-): ImageSourcePropType {
+): SpriteSource {
   const set = tier === 1 ? PLAYER_SPRITES : PLAYER_TIER_SPRITES[tier];
   const frames = set[direction][walking ? 'walk' : 'idle'];
   return frames[frame % frames.length] ?? frames[0];
 }
 
 /** 마을 NPC 스프라이트 (npc id -> 96px 투명 PNG) */
-export const NPC_SPRITES: Record<string, ImageSourcePropType> = {
+export const NPC_SPRITES: Record<string, SpriteSource> = {
   chief: require('../../assets/game/rpg/pixel/npc/npc_chief.png'),
   golf_captain: require('../../assets/game/rpg/pixel/npc/npc_captain.png'),
   baduk_master: require('../../assets/game/rpg/pixel/npc/npc_choi.png'),
@@ -203,7 +204,7 @@ export const NPC_SPRITES: Record<string, ImageSourcePropType> = {
 };
 
 /** 대화창 초상화 (npc id -> portrait PNG) */
-export const NPC_PORTRAITS: Record<string, ImageSourcePropType> = {
+export const NPC_PORTRAITS: Record<string, SpriteSource> = {
   chief: require('../../assets/game/rpg/pixel/portraits/chief.png'),
   golf_captain: require('../../assets/game/rpg/pixel/portraits/captain.png'),
   baduk_master: require('../../assets/game/rpg/pixel/portraits/choi.png'),
@@ -211,11 +212,11 @@ export const NPC_PORTRAITS: Record<string, ImageSourcePropType> = {
   herbalist: require('../../assets/game/rpg/pixel/portraits/herbalist.png'),
 };
 
-export function npcSpriteFor(npcId: string): ImageSourcePropType {
+export function npcSpriteFor(npcId: string): SpriteSource {
   return NPC_SPRITES[npcId] ?? NPC_SPRITES.chief;
 }
 
-export function portraitFor(npcId: string): ImageSourcePropType {
+export function portraitFor(npcId: string): SpriteSource {
   return NPC_PORTRAITS[npcId] ?? NPC_PORTRAITS.chief;
 }
 
@@ -224,15 +225,15 @@ export function playerSpriteFor(
   direction: PlayerDirection,
   walking: boolean,
   frame: number,
-): ImageSourcePropType {
+): SpriteSource {
   const frames = PLAYER_SPRITES[direction][walking ? 'walk' : 'idle'];
   return frames[frame % frames.length] ?? frames[0];
 }
 
-export function tileSpriteFor(sprite: keyof typeof TILE_SPRITES): ImageSourcePropType {
+export function tileSpriteFor(sprite: keyof typeof TILE_SPRITES): SpriteSource {
   return TILE_SPRITES[sprite];
 }
 
-export function buildingSpriteFor(id: VillageBuildingId): ImageSourcePropType {
+export function buildingSpriteFor(id: VillageBuildingId): SpriteSource {
   return BUILDING_SPRITES[id];
 }

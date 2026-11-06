@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:24-bookworm-slim AS runtime-base
+FROM node:26-bookworm-slim AS runtime-base
 
 # Prisma detects the system TLS implementation through the OpenSSL binary.
 # Keep the same runtime library available in both build and production stages.
@@ -13,7 +13,10 @@ FROM runtime-base AS base
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
-RUN corepack enable && corepack prepare pnpm@9.14.2 --activate
+# Node 25+ no longer bundles Corepack. Pin it separately in the build stage.
+RUN npm install --global --ignore-scripts corepack@0.36.0 \
+    && corepack enable \
+    && corepack prepare pnpm@9.14.2 --activate
 
 WORKDIR /workspace
 
@@ -41,6 +44,20 @@ RUN DATABASE_URL='postgresql://generate:generate@127.0.0.1:5432/senior_club?sche
     pnpm exec prisma generate
 RUN pnpm --dir apps/api build
 RUN pnpm --dir apps/api --filter @senior-club/api --prod deploy /workspace/deploy
+
+# Explicitly targeted by CI; the production image below does not include this stage.
+FROM build AS node26-api-regression
+RUN --network=none test "$(node -p 'process.versions.node.split(".")[0]')" = 26 \
+    && test "$(pnpm --version)" = 9.14.2 \
+    && pnpm --filter @senior-club/api typecheck \
+    && CI=true NODE_ENV=test \
+      DATABASE_URL='postgresql://ci:ci@127.0.0.1:5432/senior_club?schema=public' \
+      AUTH_ACCESS_TOKEN_SECRET='ci-only-access-token-secret-at-least-32-characters' \
+      AUTH_OTP_PEPPER='ci-only-otp-pepper-secret-at-least-32-characters' \
+      AUTH_OTP_ENCRYPTION_KEY_BASE64='MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=' \
+      AUTH_DEV_OTP_EXPOSE=false EMAIL_PROVIDER=console PUSH_PROVIDER=disabled OUTBOX_WORKER_ENABLED=false \
+      pnpm --filter @senior-club/api exec vitest run \
+        src/health/nest-runtime.spec.ts src/config/env.spec.ts src/auth/firebase-wif.credential.spec.ts
 
 FROM runtime-base AS runtime
 

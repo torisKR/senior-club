@@ -914,7 +914,7 @@ export function ChatScreen() {
                   onPress={() => void loadRooms('more')}
                 />
               </View>
-            ) : null
+            ) : undefined
           }
           renderItem={({ item }: ListRenderItemInfo<ApiChatRoom>) => {
             const unread = isChatRoomUnread(item, currentUserId);

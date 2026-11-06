@@ -477,7 +477,7 @@ export function ClubsScreen() {
                 <AppText variant="bodyStrong" color="primary" selectable={false}>다시 불러오기</AppText>
               </Pressable>
             </View>
-          ) : null
+          ) : undefined
         }
         onEndReached={() => void loadMore()}
         onEndReachedThreshold={0.35}

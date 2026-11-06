@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance } from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { devicesApi } from '@/api/devices-api';
@@ -61,7 +62,7 @@ export async function initializeAndroidPush(sessionId: string) {
   await Notifications.setNotificationChannelAsync(EVENT_UPDATES_CHANNEL_ID, {
     name: '모임 소식',
     description: '신청 승인, 일정 변경과 모임 준비 소식을 알려드립니다.',
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: AndroidImportance.HIGH,
     enableVibrate: true,
     vibrationPattern: [0, 250, 180, 250],
     showBadge: true,

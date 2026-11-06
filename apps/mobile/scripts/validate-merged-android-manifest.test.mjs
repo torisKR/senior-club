@@ -134,6 +134,13 @@ test('rejects unknown permissions, including familiar SDK and badge prefixes', a
   }
 });
 
+test('allows Expo Audio routing while continuing to reject microphone access', async () => {
+  const audio = validManifest.replace('<application ', '<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" /><application ');
+  assert.ok((await validate(audio)).permissions.includes('android.permission.MODIFY_AUDIO_SETTINGS'));
+  const microphone = audio.replace('<application ', '<uses-permission android:name="android.permission.RECORD_AUDIO" /><application ');
+  await assert.rejects(validate(microphone), /Unreviewed or prohibited permission/);
+});
+
 for (const name of ['.MainActivity', 'com.kakao.sdk.auth.AuthCodeHandlerActivity', 'com.google.firebase.auth.internal.GenericIdpActivity', 'com.google.firebase.auth.internal.RecaptchaActivity']) {
   test(`${name} requires its exact browser callback or launcher contract`, async () => {
     const mutations = [

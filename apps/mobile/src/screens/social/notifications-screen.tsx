@@ -330,7 +330,7 @@ export function NotificationsScreen() {
               onPress={() => void loadMore()}
               style={{ marginTop: Spacing.sm }}
             />
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }: ListRenderItemInfo<NotificationItem>) => {
           const kind = KIND_LABELS[item.kind];

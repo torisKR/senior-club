@@ -9,6 +9,7 @@ import {
   StyleSheet,
   TextInput,
   View,
+  type ScrollViewInstance,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -64,7 +65,7 @@ export function OnboardingScreen() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitInFlight = useRef(false);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
 
   const currentStep = STEPS[step];
   const progressPercent = useMemo(() => `${((step + 1) / STEPS.length) * 100}%` as `${number}%`, [step]);

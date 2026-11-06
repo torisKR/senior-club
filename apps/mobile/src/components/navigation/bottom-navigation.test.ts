@@ -55,7 +55,7 @@ const render = async () => {
     tabBarHideOnKeyboard: true,
   } }]));
   await act(async () => root.render(createElement(BottomNavigation, {
-    state: { routes, index: 0 }, descriptors, navigation: { navigate: ui.navigate, emit: ui.emit },
+    state: { routes, index: 0 }, descriptors, emitter: { emit: ui.emit }, navigateToTab: ui.navigate,
   } as unknown as Parameters<typeof BottomNavigation>[0])));
 };
 beforeEach(() => {
@@ -92,7 +92,7 @@ describe('Android bottom navigation interactions and readability', () => {
     expect(ui.views[1].style).toMatchObject({ minHeight: 60 });
     expect(ui.views.slice(1).every((view) => !(view.style as { paddingBottom?: number })?.paddingBottom)).toBe(true);
   });
-  it('emits cancellable tab presses before navigation and preserves destination parameters', async () => {
+  it('emits cancellable tab presses before navigating to the destination route key', async () => {
     await render();
     const chat = container.querySelector('[data-testid="tab-chat"]') as HTMLButtonElement;
     ui.prevented = true;
@@ -101,7 +101,7 @@ describe('Android bottom navigation interactions and readability', () => {
     expect(ui.navigate).not.toHaveBeenCalled();
     ui.prevented = false;
     await act(async () => chat.click());
-    expect(ui.navigate).toHaveBeenCalledWith('chat', { thread: 'local-fixture' });
+    expect(ui.navigate).toHaveBeenCalledWith('key-chat');
   });
   it('retains reselect and long-press events without navigating twice', async () => {
     await render();
