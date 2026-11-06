@@ -8,11 +8,11 @@
     "node": "24.x"
   },
   "scripts": {
-    "build": "nest build && tsc --ignoreConfig --target ES2023 --module Node16 --moduleResolution Node16 --strict --skipLibCheck --outDir dist/phone-credential src/auth/firebase-wif.credential.ts",
+    "build": "nest build && node ./node_modules/typescript/bin/tsc --ignoreConfig --target ES2023 --module Node16 --moduleResolution Node16 --strict --skipLibCheck --outDir dist/phone-credential src/auth/firebase-wif.credential.ts",
     "dev": "nest start --watch",
     "start": "nest start",
     "start:prod": "node dist/main.js",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "node ./node_modules/@typescript/native/bin/tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "test:e2e:db": "node scripts/database-qa.mjs",
     "test:e2e:db:guard": "node --test scripts/database-qa.test.mjs",
@@ -47,11 +47,12 @@
     "@types/node": "^24.0.0",
     "@types/pg": "^8.23.1",
     "@types/supertest": "7.2.1",
+    "@typescript/native": "npm:typescript@7.0.2",
     "prisma": "7.10.1",
     "supertest": "7.3.1",
     "ts-loader": "^9.5.4",
     "tsx": "4.23.15",
-    "typescript": "^7.0.2",
+    "typescript": "^6.0.3",
     "vitest": "4.1.11"
   }
 }
