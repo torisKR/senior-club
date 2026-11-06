@@ -145,6 +145,17 @@ class DeliveryTests(unittest.TestCase):
                 self.assertEqual((manifest.parent / name).read_bytes(), data)
         self.assertEqual(client.downloads, 1)
 
+    def test_local_qa_apk_profile_is_accepted_but_unknown_profiles_are_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["capture"]["buildProfile"] = "qaInternalLocal"
+        client = FixtureGitHub(archive(manifest, self.files))
+        with tempfile.TemporaryDirectory() as directory:
+            received, _ = evidence.receive(CONTEXT, client, Path(directory))
+            self.assertEqual(json.loads(received.read_bytes())["capture"]["buildProfile"], "qaInternalLocal")
+
+        manifest["capture"]["buildProfile"] = "unknownProfile"
+        self.rejected(FixtureGitHub(archive(manifest, self.files)), "strict screenshot validator")
+
     def test_consumer_context_rejects_foreign_ref_event_sha_missing_id_and_rerun(self):
         env = {"GITHUB_REPOSITORY": evidence.REPOSITORY, "GITHUB_REPOSITORY_ID": "101",
                "GITHUB_REF": "refs/heads/main", "GITHUB_EVENT_NAME": "workflow_dispatch",
