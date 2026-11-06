@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View, type TextInputInstance } from 'react-native';
 
 import { reviewerErrorMessage } from '@/auth/reviewer-error-message';
 import { AppText } from '@/components/ui/app-text';
@@ -24,7 +24,7 @@ export function ReviewerLoginForm({
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submissionPending = useRef(false);
-  const passwordInput = useRef<TextInput>(null);
+  const passwordInput = useRef<TextInputInstance>(null);
   const busy = disabled || isSubmitting;
   const clearCredentials = () => { setEmail(''); setPassword(''); };
 

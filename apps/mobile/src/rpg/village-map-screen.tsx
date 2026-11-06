@@ -1,11 +1,11 @@
-import { useAudioPlayer } from 'expo-audio';
 import { Image } from 'expo-image';
-import { type Href, useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { type Href, useRouter } from 'expo-router';
+import React, { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { HomeBannerAd } from '@/ads/HomeBannerAd';
 import { useArcade } from '@/arcade/arcade-store';
+import { FocusedBackgroundAudio } from '@/audio/focused-background-audio';
 import { playSfx } from '@/audio/sound-manager';
 import { AppText, Card, Screen, SectionHeader, SeniorButton } from '@/components/ui';
 import { FontWeights, Layout, Radius, Spacing } from '@/constants/theme';
@@ -75,27 +75,6 @@ export function VillageMapScreen() {
   // 아침 체조·약 복용 성공 시 마을 위에 잠깐 피어오르는 회복 이펙트 (key로 재시작)
   const [healFxKey, setHealFxKey] = useState(0);
   const { height: viewportHeight } = useWindowDimensions();
-
-  // 명예의 전당(마을회관) 아침 BGM — 루프 재생, 사운드 설정 존중, 화면 이탈 시 정지
-  const bgm = useAudioPlayer(BGM_CLUB_LOUNGE);
-
-  useEffect(() => {
-    // expo-audio는 플레이어 인스턴스 속성(loop/volume)을 직접 설정하는 것이 공식 API입니다.
-    // eslint-disable-next-line react-hooks/immutability -- expo-audio AudioPlayer는 가변 네이티브 객체입니다.
-    bgm.loop = true;
-    bgm.volume = 0.45;
-  }, [bgm]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (arcadeState.soundEnabled) {
-        bgm.play();
-      }
-      return () => {
-        bgm.pause();
-      };
-    }, [arcadeState.soundEnabled, bgm]),
-  );
 
   const dailyMissions = arcadeState.dailyMissions;
   const missionRows = [
@@ -187,6 +166,7 @@ export function VillageMapScreen() {
 
   return (
     <Screen testID="village-map-screen" contentContainerStyle={styles.container}>
+      <FocusedBackgroundAudio source={BGM_CLUB_LOUNGE} enabled={arcadeState.soundEnabled} />
       {/* 최초 1회 프롤로그 + 3단계 튜토리얼 배너 */}
       <OnboardingOverlay />
 

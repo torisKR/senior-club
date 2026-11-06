@@ -1,6 +1,6 @@
-import { Image } from 'expo-image';
+import { Image, type ImageProps } from 'expo-image';
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View, type ImageSourcePropType } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText, Card, Screen, SeniorButton } from '@/components/ui';
 import { FontWeights, Layout, Radius, Spacing } from '@/constants/theme';
@@ -28,7 +28,7 @@ const MAGNIFIER_ICON = require('../../assets/game/rpg/ui/ui_icon_magnifier_01.pn
 const SHUFFLE_ICON = require('../../assets/game/rpg/ui/ui_icon_shuffle_01.png');
 const ROUND_KEY = 'senior_club_tile_round_v1';
 
-const TILE_IMAGES: Record<string, ImageSourcePropType> = {
+const TILE_IMAGES: Record<string, NonNullable<ImageProps['source']>> = {
   crane: require('../../assets/game/rpg/pixel/tileset/tile_crane.png'),
   plum: require('../../assets/game/rpg/pixel/tileset/tile_plum.png'),
   maple: require('../../assets/game/rpg/pixel/tileset/tile_maple.png'),
