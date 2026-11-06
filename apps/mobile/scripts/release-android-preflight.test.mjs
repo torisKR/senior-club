@@ -53,7 +53,7 @@ test('navigation gate rejects a renderer disconnected from the destination icon'
 test('navigation gate rejects duplicate destinations and missing labels', () => {
   for (const destinations of [
     navigationSources.destinations.replace("name: 'clubs'", "name: 'home'"),
-    navigationSources.destinations.replace("label: '커뮤니티'", "label: ''"),
+    navigationSources.destinations.replace(/label: '[^']+'/, "label: ''"),
   ]) assert.throws(() => navigationGlyphs({ ...navigationSources, destinations }), /order, label or icon/);
 });
 

@@ -22,7 +22,7 @@ const validManifest = `<?xml version="1.0" encoding="utf-8"?>
   <uses-permission android:name="com.toris.seniorclub.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
   <permission android:name="com.toris.seniorclub.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" android:protectionLevel="signature" />
   <application android:allowBackup="false">
-    <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask">
+    <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop">
       <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
       <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="clubsenior" /></intent-filter>
     </activity>
@@ -75,10 +75,11 @@ test('merged contracts accept the necessary Firebase callbacks and protected SDK
   assert.ok(result.exportedComponents.includes('activity:com.google.firebase.auth.internal.GenericIdpActivity'));
 });
 
-test('actual AAB enum encodings preserve the exact signature and singleTask contracts', async () => {
+test('actual AAB enum encodings preserve the exact signature and launch mode contracts', async () => {
   for (const numeric of ['2', '0x00000002']) {
     const xml = validManifest.replace('android:protectionLevel="signature"', `android:protectionLevel="${numeric}"`)
-      .replaceAll('android:launchMode="singleTask"', `android:launchMode="${numeric}"`);
+      .replaceAll('android:launchMode="singleTask"', `android:launchMode="${numeric}"`)
+      .replace('android:launchMode="singleTop"', `android:launchMode="${numeric === '2' ? '1' : '0x00000001'}"`);
     const result = await validate(xml);
     assert.equal(result.exportedComponents.length, 10);
   }
@@ -87,7 +88,9 @@ test('actual AAB enum encodings preserve the exact signature and singleTask cont
 test('numeric aliases cannot weaken signature permissions or activity launch contracts', async () => {
   for (const numeric of ['0', '1', '3', '0x00000012', '4294967298', '-2', '2x', '2.0']) {
     await assert.rejects(validate(validManifest.replace('android:protectionLevel="signature"', `android:protectionLevel="${numeric}"`)), /weakened permission/);
-    await assert.rejects(validate(changeComponent('.MainActivity', (node) => node.replace('android:launchMode="singleTask"', `android:launchMode="${numeric}"`))), /Launch mode contract mismatch/);
+  }
+  for (const numeric of ['0', '2', '3', '0x00000011', '4294967297', '-1', '1x', '1.0']) {
+    await assert.rejects(validate(changeComponent('.MainActivity', (node) => node.replace('android:launchMode="singleTop"', `android:launchMode="${numeric}"`))), /Launch mode contract mismatch/);
   }
 });
 
@@ -139,7 +142,7 @@ for (const name of ['.MainActivity', 'com.kakao.sdk.auth.AuthCodeHandlerActivity
       (node) => node.replace(/android:scheme="[^"]+"/, 'android:scheme="http"'),
       (node) => node.replace('<data ', '<data android:pathPrefix="/" '),
       (node) => node.replace('</activity>', '<intent-filter><action android:name="unreviewed" /></intent-filter></activity>'),
-      (node) => node.replace('android:launchMode="singleTask"', 'android:launchMode="standard"'),
+      (node) => node.replace(name === '.MainActivity' ? 'android:launchMode="singleTop"' : 'android:launchMode="singleTask"', 'android:launchMode="standard"'),
       (node) => node.replace('android:exported="true"', ''),
       (node) => node.replace('android:exported="true"', 'android:exported="false"'),
     ];

@@ -20,7 +20,7 @@ export function AnalyticsConsentCard({ prompt = false }: { prompt?: boolean }) {
       <AppText color="textSecondary">
         화면 조회와 방문 횟수를 Google Analytics로 분석해 서비스를 개선합니다. 이름·전화번호·채팅 내용은 보내지 않습니다.
       </AppText>
-      <AppText color="textSecondary">동의하지 않아도 모든 기능을 이용할 수 있어요. 내 정보에서 언제든 바꿀 수 있습니다.</AppText>
+      <AppText color="textSecondary">동의하지 않아도 모든 기능을 이용할 수 있어요. 설정에서 언제든 바꿀 수 있습니다.</AppText>
       {prompt && <View style={{ gap: Spacing.sm }}>
         <SeniorButton label="동의하지 않음" variant="secondary" onPress={() => choose(false)} />
         <SeniorButton label="동의하고 켜기" variant="secondary" onPress={() => choose(true)} />

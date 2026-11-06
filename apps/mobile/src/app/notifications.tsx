@@ -1,10 +1,3 @@
-import { RequireAuth } from '@/components/auth/require-auth';
-import { NotificationsScreen } from '@/screens/social/notifications-screen';
+import { LegacyServiceNotice } from '@/screens/legacy-service-notice';
 
-export default function NotificationsRoute() {
-  return (
-    <RequireAuth>
-      <NotificationsScreen />
-    </RequireAuth>
-  );
-}
+export default function NotificationsRoute() { return <LegacyServiceNotice />; }
