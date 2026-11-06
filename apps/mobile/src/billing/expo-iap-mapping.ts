@@ -82,6 +82,7 @@ function readProductId(purchase: VendorPurchase): string {
 export function toBillingPurchase(purchase: VendorPurchase): BillingPurchase | null {
   const purchaseToken = purchase.purchaseToken ?? '';
   if (purchaseToken === '') return null;
+  if (purchase.purchaseState !== 'pending' && purchase.purchaseState !== 'purchased') return null;
 
   return {
     productId: readProductId(purchase),
@@ -90,20 +91,23 @@ export function toBillingPurchase(purchase: VendorPurchase): BillingPurchase | n
   };
 }
 
-export function toOwnedProbe(purchases: readonly VendorPurchase[]): BillingProbe {
+export function toOwnedProbe(purchases: readonly VendorPurchase[], productId = REMOVE_ADS_PRODUCT_ID): BillingProbe {
   const tokens: string[] = [];
+  let pending = false;
 
   for (const purchase of purchases) {
-    if (readProductId(purchase) !== REMOVE_ADS_PRODUCT_ID) continue;
+    if (readProductId(purchase) !== productId) continue;
 
     const state = purchase.purchaseState;
-    if (state != null && state !== 'purchased') continue;
+    if (state === 'pending') { pending = true; continue; }
+    if (state !== 'purchased') return { status: 'unavailable' };
 
     const token = purchase.purchaseToken ?? '';
-    if (token === '' || tokens.includes(token)) continue;
+    if (token === '') return { status: 'unavailable' };
+    if (tokens.includes(token)) continue;
 
     tokens.push(token);
   }
 
-  return { status: 'ok', tokens };
+  return pending ? { status: 'ok', tokens, pending: true } : { status: 'ok', tokens };
 }

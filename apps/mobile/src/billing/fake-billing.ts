@@ -1,4 +1,5 @@
 import { REMOVE_ADS_PRODUCT_ID } from './product';
+import { isCosmeticProductId } from './cosmetic-products';
 import {
   BillingError,
   type BillingErrorCode,
@@ -10,6 +11,7 @@ import {
 export interface FakeBilling {
   readonly billing: BillingPort;
   seedOwned(...tokens: readonly string[]): void;
+  seedOwnedProduct(productId: string, ...tokens: readonly string[]): void;
   setProbeUnavailable(unavailable: boolean): void;
   failNextBuy(code: BillingErrorCode, detail?: string): void;
   failNextFinish(code: BillingErrorCode, detail?: string): void;
@@ -21,7 +23,7 @@ function fakeToken(sequence: number): string {
 }
 
 export function createFakeBilling(): FakeBilling {
-  const owned = new Set<string>();
+  const owned = new Map<string, Set<string>>();
   const finished: string[] = [];
   let sequence = 0;
   let probeUnavailable = false;
@@ -31,13 +33,18 @@ export function createFakeBilling(): FakeBilling {
   const billing: BillingPort = {
     async connect() {},
 
-    async ownedTokens(): Promise<BillingProbe> {
+    async productPrice(productId: string) {
+      if (productId === REMOVE_ADS_PRODUCT_ID) return '₩4,900';
+      return isCosmeticProductId(productId) ? '₩1,900' : null;
+    },
+
+    async ownedTokens(productId = REMOVE_ADS_PRODUCT_ID): Promise<BillingProbe> {
       if (probeUnavailable) return { status: 'unavailable' };
-      return { status: 'ok', tokens: [...owned] };
+      return { status: 'ok', tokens: [...(owned.get(productId) ?? [])] };
     },
 
     async buy(productId: string): Promise<BillingPurchase> {
-      if (productId !== REMOVE_ADS_PRODUCT_ID) {
+      if (productId !== REMOVE_ADS_PRODUCT_ID && !isCosmeticProductId(productId)) {
         throw new BillingError('product-invalid', productId);
       }
       if (nextBuyError) {
@@ -45,12 +52,12 @@ export function createFakeBilling(): FakeBilling {
         nextBuyError = null;
         throw error;
       }
-      if (owned.size > 0) {
+      if ((owned.get(productId)?.size ?? 0) > 0) {
         throw new BillingError('already-owned', productId);
       }
       sequence += 1;
       const purchaseToken = fakeToken(sequence);
-      owned.add(purchaseToken);
+      owned.set(productId, new Set([purchaseToken]));
       return { productId, purchaseToken, isPending: false };
     },
 
@@ -70,7 +77,10 @@ export function createFakeBilling(): FakeBilling {
   return {
     billing,
     seedOwned(...tokens) {
-      tokens.forEach((token) => owned.add(token));
+      owned.set(REMOVE_ADS_PRODUCT_ID, new Set(tokens));
+    },
+    seedOwnedProduct(productId, ...tokens) {
+      owned.set(productId, new Set(tokens));
     },
     setProbeUnavailable(unavailable) {
       probeUnavailable = unavailable;

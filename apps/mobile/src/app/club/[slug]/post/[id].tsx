@@ -1,17 +1,3 @@
-import { useLocalSearchParams } from 'expo-router';
+import { LegacyServiceNotice } from '@/screens/legacy-service-notice';
 
-import { PostDetailScreen } from '@/screens/community/post-detail-screen';
-import { strictSingleRouteParam } from '@/utils/route-params';
-
-export default function ClubPostDetailRoute() {
-  const { slug, id } = useLocalSearchParams<{
-    slug?: string | string[];
-    id?: string | string[];
-  }>();
-  return (
-    <PostDetailScreen
-      slug={strictSingleRouteParam(slug)}
-      postId={strictSingleRouteParam(id)}
-    />
-  );
-}
+export default function ClubPostDetailRoute() { return <LegacyServiceNotice />; }

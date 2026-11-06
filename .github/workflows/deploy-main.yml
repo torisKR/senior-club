@@ -13,103 +13,15 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: deploy-main
   cancel-in-progress: false
 
-env:
-  AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-2' }}
-  AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-  ECR_REPOSITORY: ${{ vars.AWS_ECR_REPOSITORY || 'senior-club-api' }}
-  ECS_CLUSTER: ${{ vars.AWS_ECS_CLUSTER || 'senior-club' }}
-  ECS_SERVICE: ${{ vars.AWS_ECS_SERVICE || 'senior-club-api' }}
-  ECS_TASK_DEFINITION: ${{ vars.AWS_ECS_TASK_DEFINITION || 'senior-club-api' }}
-  ECS_CONTAINER_NAME: ${{ vars.AWS_ECS_CONTAINER_NAME || 'api' }}
-
 jobs:
   quality:
     name: Validate before deploying
     uses: ./.github/workflows/ci.yml
-
-  backend:
-    needs: quality
-    name: Build and deploy API to ECS
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Require AWS OIDC configuration
-        run: |
-          set -euo pipefail
-          if [[ -z "$AWS_ROLE_TO_ASSUME" ]]; then
-            echo "::error::Set the AWS_ROLE_TO_ASSUME repository secret to the least-privilege GitHub OIDC role ARN."
-            exit 1
-          fi
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
-        with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
-          role-session-name: senior-club-main-${{ github.run_id }}
-
-      - name: Log in to Amazon ECR
-        id: ecr
-        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2
-
-      - name: Build and push API image
-        id: image
-        env:
-          REGISTRY: ${{ steps.ecr.outputs.registry }}
-        run: |
-          set -euo pipefail
-          image="$REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA"
-          docker build --file apps/api/Dockerfile --tag "$image" .
-          docker push "$image"
-          digest="$(docker image inspect "$image" --format '{{index .RepoDigests 0}}')"
-          test -n "$digest"
-          printf 'image=%s\n' "$digest" >> "$GITHUB_OUTPUT"
-
-      - name: Render ECS task definition
-        env:
-          API_IMAGE: ${{ steps.image.outputs.image }}
-        run: |
-          set -euo pipefail
-          current_task="$(aws ecs describe-services \
-            --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
-            --query 'services[0].taskDefinition' --output text)"
-          test "$current_task" != None
-          aws ecs describe-task-definition \
-            --task-definition "$current_task" \
-            --query taskDefinition \
-            --output json > task-definition.json
-          node .github/scripts/prepare-api-task.mjs task-definition.json task-definition.json "$API_IMAGE"
-
-      - name: Enable automatic rollback for unhealthy deployments
-        run: |
-          aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" \
-            --deployment-configuration '{"deploymentCircuitBreaker":{"enable":true,"rollback":true},"minimumHealthyPercent":100,"maximumPercent":200}' \
-            --query 'service.deploymentConfiguration' --output json
-
-      - name: Update API container image
-        id: render
-        uses: aws-actions/amazon-ecs-render-task-definition@138c24f321fdbdf7edee4a685519d253cae2cdea # v1
-        with:
-          task-definition: task-definition.json
-          container-name: ${{ env.ECS_CONTAINER_NAME }}
-          image: ${{ steps.image.outputs.image }}
-
-      - name: Deploy ECS service
-        uses: aws-actions/amazon-ecs-deploy-task-definition@c465972ecbd160473f22e683363b422a5412a3de # v2
-        with:
-          task-definition: ${{ steps.render.outputs.task-definition }}
-          service: ${{ env.ECS_SERVICE }}
-          cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true
 
   sites-package:
     name: Build ChatGPT Sites artifact
@@ -154,8 +66,8 @@ jobs:
 
   android:
     name: Play production workflow
-    needs: [backend, sites-package]
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.screenshot_evidence_run_id != '' && needs.backend.result == 'success' && needs.sites-package.result == 'success' }}
+    needs: [quality, sites-package]
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.screenshot_evidence_run_id != '' && needs.quality.result == 'success' && needs.sites-package.result == 'success' }}
     permissions:
       contents: read
       actions: read

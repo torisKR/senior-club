@@ -28,6 +28,7 @@ vi.mock('expo-router', () => ({ useIsFocused: () => native.focused }));
 vi.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => native.insets }));
 vi.mock('react-native', () => ({
   Platform: native.platform,
+  AppState: { addEventListener: () => ({ remove: () => undefined }) },
   useWindowDimensions: () => native.dimensions,
   View: (props: Record<string, unknown> & { children?: ReactNode; testID?: string }) => {
     if (props.testID) native.views.set(props.testID, props);

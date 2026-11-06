@@ -1,5 +1,5 @@
-import { HomeScreen } from '@/screens/home/home-screen';
+import { VillageMapScreen } from '@/rpg/village-map-screen';
 
 export default function HomeRoute() {
-  return <HomeScreen />;
+  return <VillageMapScreen />;
 }

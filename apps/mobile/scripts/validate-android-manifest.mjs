@@ -291,10 +291,10 @@ if (!mainActivity) {
   fail('.MainActivity를 찾을 수 없습니다.');
 } else {
   const mainAttributes = attributes(mainActivity);
-  if (mainAttributes['android:launchMode'] === 'singleTask') {
-    pass('.MainActivity launchMode=singleTask');
+  if (mainAttributes['android:launchMode'] === 'singleTop') {
+    pass('.MainActivity launchMode=singleTop');
   } else {
-    fail('.MainActivity는 deep link 중복 인스턴스를 막기 위해 launchMode=singleTask여야 합니다.');
+    fail('.MainActivity는 외부 결제 인증 후 복귀를 위해 launchMode=singleTop이어야 합니다.');
   }
   if (mainAttributes['android:screenOrientation'] === 'portrait') {
     pass('.MainActivity screenOrientation=portrait');
