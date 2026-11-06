@@ -5,7 +5,7 @@
   "description": "시니어클럽 production API scaffold",
   "license": "UNLICENSED",
   "engines": {
-    "node": "24.x"
+    "node": "24.x || 26.x"
   },
   "scripts": {
     "build": "nest build && tsc --ignoreConfig --target ES2023 --module Node16 --moduleResolution Node16 --strict --skipLibCheck --outDir dist/phone-credential src/auth/firebase-wif.credential.ts",

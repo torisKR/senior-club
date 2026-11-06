@@ -95,10 +95,11 @@ jobs:
       - name: Build API container
         run: docker build --file apps/api/Dockerfile --tag senior-club-api:ci .
 
+      - name: Check API compatibility on Node 26
+        run: docker buildx build --file apps/api/Dockerfile --target node26-api-regression --output type=cacheonly .
+
       - name: Verify API container contract
-        run: |
-          docker run --rm --entrypoint node senior-club-api:ci -e "require('node:fs').accessSync('/app/dist/main.js')"
-          test "$(docker image inspect senior-club-api:ci --format '{{.Config.User}}')" = "node"
+        run: bash .github/scripts/verify-api-image.sh senior-club-api:ci
 
   database-quality:
     name: Kakao, profile, roles, and safety on disposable PostgreSQL
