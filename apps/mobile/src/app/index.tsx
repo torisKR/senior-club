@@ -13,6 +13,10 @@ import { useAppState } from '@/hooks/use-app-state';
 const palette = Colors.light;
 
 export default function AppEntryScreen() {
+  return <Redirect href="/home" />;
+}
+
+export function LegacyCommunityEntryScreen() {
   const { isHydrated, onboardingCompleted, session } = useAppState();
   const [pendingNavigation, setPendingNavigation] = useState<
     PendingAuthNavigation | null | undefined

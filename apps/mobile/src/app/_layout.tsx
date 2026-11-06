@@ -7,11 +7,10 @@ import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AdsProvider } from '@/ads/AdsProvider';
+import { AnalyticsProvider } from '@/analytics/analytics-provider';
 import { AppBillingProvider } from '@/billing/AppBillingProvider';
 import { AppStateProvider } from '@/context/app-state';
 import { BrandColors, Colors, FontWeights } from '@/constants/theme';
-import { PendingAuthIntentCoordinator } from '@/auth/pending-auth-intent-coordinator';
-import { PushNotificationCoordinator } from '@/notifications/push-notifications';
 
 const palette = Colors.light;
 
@@ -65,11 +64,9 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AppStateProvider>
+      <AppStateProvider offlineGame>
         <AppBillingProvider>
-          <AdsProvider>
-            <PendingAuthIntentCoordinator />
-            <PushNotificationCoordinator />
+          <AnalyticsProvider><AdsProvider>
             <ThemeProvider value={colorScheme === 'dark' ? darkNavigationTheme : lightNavigationTheme}>
               <Stack
                 screenOptions={{
@@ -87,14 +84,14 @@ export default function RootLayout() {
                 <Stack.Screen name="index" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="event/[id]" options={{ title: '모임 자세히' }} />
+                <Stack.Screen name="event/[id]" options={{ title: '서비스 안내' }} />
                 <Stack.Screen name="club/[slug]" options={{ headerShown: false }} />
-                <Stack.Screen name="reviews/new" options={{ title: '후기 쓰기', presentation: 'modal' }} />
-                <Stack.Screen name="notifications" options={{ title: '알림' }} />
+                <Stack.Screen name="reviews/new" options={{ title: '서비스 안내', presentation: 'modal' }} />
+                <Stack.Screen name="notifications" options={{ title: '서비스 안내' }} />
               </Stack>
               <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
             </ThemeProvider>
-          </AdsProvider>
+          </AdsProvider></AnalyticsProvider>
         </AppBillingProvider>
       </AppStateProvider>
     </GestureHandlerRootView>

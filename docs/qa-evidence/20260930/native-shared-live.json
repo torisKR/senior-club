@@ -1,0 +1,105 @@
+{
+  "device": "Galaxy M33 / Android 16",
+  "package": "com.toris.seniorclub",
+  "artifact": {
+    "Status": "ok",
+    "LaunchState": "COLD",
+    "Activity": "com.toris.seniorclub/.MainActivity",
+    "TotalTime": "1051",
+    "WaitTime": "1067",
+    "apkSha256": "778ae626a8a914a2ecbabfecbcd7e45f20789883618bb14f1a23217d72672bb4",
+    "bytes": 64124707
+  },
+  "qaDebugSigned": true,
+  "productionEndpoints": true,
+  "testAds": true,
+  "checks": {
+    "home-initial": {
+      "foregroundTarget": true,
+      "serverCommunicationError": false,
+      "tabs": 5,
+      "referenceCaption": true,
+      "largeText": false,
+      "largeSwitchBounds": "[115,1567][965,1767]",
+      "passed": true
+    },
+    "large-on": {
+      "foregroundTarget": true,
+      "serverCommunicationError": false,
+      "tabs": 5,
+      "referenceCaption": true,
+      "largeText": true,
+      "largeSwitchBounds": "[115,1719][965,1939]",
+      "passed": true
+    },
+    "large-off-restored": {
+      "foregroundTarget": true,
+      "serverCommunicationError": false,
+      "tabs": 5,
+      "referenceCaption": true,
+      "largeText": false,
+      "largeSwitchBounds": "[115,1567][965,1767]",
+      "passed": true
+    },
+    "profile-original": {
+      "foregroundTarget": true,
+      "serverCommunicationError": false,
+      "originalProfileMatches": true,
+      "passed": true
+    },
+    "detail-dedup": {
+      "foregroundTarget": true,
+      "serverCommunicationError": false,
+      "descriptionOccurrences": 1,
+      "referenceCaption": true,
+      "passed": true
+    },
+    "closed-capacity": {
+      "foregroundTarget": true,
+      "serverCommunicationError": false,
+      "capacityTotalOnly": true,
+      "remainingSeatText": false,
+      "completedNotice": true,
+      "applyControlVisible": false,
+      "passed": true
+    },
+    "home-restored": {
+      "foregroundTarget": true,
+      "serverCommunicationError": false,
+      "tabs": 5,
+      "referenceCaption": true,
+      "largeText": false,
+      "largeSwitchBounds": "[115,1567][965,1767]",
+      "passed": true
+    },
+    "current-app-log": {
+      "fatalExceptions": 0,
+      "reactNativeJsErrors": 0,
+      "prismaP2010": 0,
+      "passed": true
+    }
+  },
+  "providerReLoginInThisArtifact": false,
+  "realAccountWrites": 0,
+  "actualSmsSent": 0,
+  "visualAestheticReviewPerformed": false,
+  "observedAt": "2026-09-30T07:06:52.395830+00:00",
+  "passed": true,
+  "detailSourceSha256": "aee680d8907230bab5860b78af586140d0510708bd2484a3d2ef779a149b0fad",
+  "compiledManifest": {
+    "passed": true,
+    "allowlistedPermissions": 34,
+    "exactExportedComponents": 10,
+    "debug": false,
+    "backup": false,
+    "cleartext": false
+  },
+  "qaCertificateSha256": "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c",
+  "limits": [
+    "Cold Activity time is not screen-ready time or p95.",
+    "The QA APK is debug-certificate signed, not a Play upload/signing artifact.",
+    "Provider re-login belongs to the earlier authentication QA artifact. This artifact verified session restoration, original profile, layout state and detail corrections.",
+    "XML/DOM and contrast checks do not imply a screenshot-pixel aesthetic review.",
+    "Community detail and chat empty-state checks used the preceding APK with the identical shared design, before two event-detail display corrections."
+  ]
+}

@@ -22,7 +22,7 @@ describe("private route proxy", () => {
     );
   });
 
-  it("refreshes a valid session before rendering a private route", () => {
+  it("restores a valid session in the browser before rendering a private route", () => {
     const refreshToken = "r".repeat(64);
     const response = proxy(
       request("/notifications", `${SESSION_COOKIE_NAME}=${refreshToken}`),
@@ -30,7 +30,7 @@ describe("private route proxy", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      `${origin}/api/auth/continue?returnTo=%2Fnotifications`,
+      `${origin}/auth/continue?returnTo=%2Fnotifications`,
     );
   });
 

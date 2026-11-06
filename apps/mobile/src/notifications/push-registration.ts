@@ -68,7 +68,7 @@ export async function initializeAndroidPush(sessionId: string) {
   });
 
   let permission = await Notifications.getPermissionsAsync();
-  if (permission.status !== 'granted' && permission.canAskAgain) {
+  if (permission.status === 'undetermined' && permission.canAskAgain) {
     permission = await Notifications.requestPermissionsAsync();
   }
   if (permission.status !== 'granted') {

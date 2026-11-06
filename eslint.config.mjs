@@ -16,6 +16,8 @@ export default defineConfig([
     "apps/api/**",
     "apps/mobile/**",
     ".github/scripts/**",
+    // Frozen CommonJS code executed by the read-only ECS QA probe.
+    "docs/qa-evidence/**/*.cjs",
     "next-env.d.ts",
   ]),
 ]);

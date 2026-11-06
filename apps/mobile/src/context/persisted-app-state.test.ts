@@ -5,7 +5,8 @@ import type { AuthSession, PersistedAppState, User } from '@/types';
 import {
   createAnonymousUser,
   createDefaultAppState,
-  normalizePersistedAppState,
+  normalizeInMemoryAppState,
+  updateCachedProfile,
 } from './persisted-app-state';
 
 const session: AuthSession = {
@@ -53,7 +54,7 @@ function persisted(overrides: Partial<PersistedAppState> = {}): PersistedAppStat
   };
 }
 
-describe('persisted app state ownership', () => {
+describe('in-memory app state ownership', () => {
   it('starts with a neutral anonymous user and no member fixture data', () => {
     expect(createDefaultAppState()).toEqual({
       session: null,
@@ -66,7 +67,7 @@ describe('persisted app state ownership', () => {
   });
 
   it('clears a previous member profile, interests, and participations after logout', () => {
-    const state = normalizePersistedAppState(
+    const state = normalizeInMemoryAppState(
       persisted({ session: null, largeTextEnabled: true }),
     );
 
@@ -76,8 +77,8 @@ describe('persisted app state ownership', () => {
     });
   });
 
-  it('preserves only the current session user offline cache', () => {
-    const state = normalizePersistedAppState({
+  it('preserves only the current session user in-memory snapshot', () => {
+    const state = normalizeInMemoryAppState({
       ...persisted(),
       selectedInterestIds: ['hiking', 'hiking', 'photo'],
       participations: [
@@ -120,7 +121,7 @@ describe('persisted app state ownership', () => {
       onboardingCompletedAt: null,
     };
 
-    const state = normalizePersistedAppState({
+    const state = normalizeInMemoryAppState({
       ...persisted(),
       session: nextSession,
     });
@@ -141,12 +142,32 @@ describe('persisted app state ownership', () => {
     expect(state.participations).toEqual([]);
   });
 
-  it('fails closed for malformed persisted sessions', () => {
-    const state = normalizePersistedAppState({
+  it('fails closed for malformed sessions', () => {
+    const state = normalizeInMemoryAppState({
       ...persisted(),
       session: { userId: 'user-a' },
     });
 
     expect(state).toEqual(createDefaultAppState());
+  });
+
+  it('retains server-edited name and contact in memory through normalization', () => {
+    const current = normalizeInMemoryAppState(persisted());
+    const updated = updateCachedProfile(current, {
+      id: 'user-a', name: '새 별명', phoneNumber: '+821055501234',
+    });
+    const reloaded = normalizeInMemoryAppState(updated);
+    expect(reloaded.user.name).toBe('새 별명');
+    expect(reloaded.user.phoneNumber).toBe('+821055501234');
+    expect(reloaded.session?.displayName).toBe('새 별명');
+    expect(reloaded.session?.phoneNumber).toBe('+821055501234');
+    expect(normalizeInMemoryAppState(updateCachedProfile(reloaded, { phoneNumber: null })).user.phoneNumber).toBeNull();
+  });
+
+  it('rejects profile updates from a different or signed-out account', () => {
+    const current = normalizeInMemoryAppState(persisted());
+    expect(updateCachedProfile(current, { id: 'user-b', name: '다른 회원' })).toBe(current);
+    const anonymous = createDefaultAppState();
+    expect(updateCachedProfile(anonymous, { name: '이전 회원' })).toBe(anonymous);
   });
 });

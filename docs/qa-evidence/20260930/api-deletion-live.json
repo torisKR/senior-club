@@ -1,0 +1,48 @@
+{
+  "date": "2026-09-30",
+  "sourceCommit": "84c4fe751cc426c1839c44b74a58ff81750b38d3",
+  "running": 1,
+  "pending": 0,
+  "rollout": "COMPLETED",
+  "automaticRollbackEnabled": true,
+  "imageDigestMatchesRunningContainer": true,
+  "productionConfigurationPreserved": true,
+  "outboxAndDeletionWorkerEnabled": true,
+  "workerSettingUnchanged": true,
+  "channelsDisabled": true,
+  "endpointChecks": {
+    "/healthz": 200,
+    "/readyz": 200,
+    "/v1/me": 401,
+    "/v1/admin/reports": 401,
+    "/v1/auth/email/request": {
+      "status": 403,
+      "code": "AUTH_PROVIDER_DISABLED"
+    },
+    "/v1/auth/email/verify": {
+      "status": 403,
+      "code": "AUTH_PROVIDER_DISABLED"
+    },
+    "/v1/auth/phone/request": {
+      "status": 403,
+      "code": "AUTH_PROVIDER_DISABLED"
+    },
+    "/v1/auth/phone/verify": {
+      "status": 403,
+      "code": "AUTH_PROVIDER_DISABLED"
+    }
+  },
+  "newTaskLogEvents": 112,
+  "newTaskErrorEvents": 0,
+  "newTaskPrismaP2010Events": 0,
+  "freshProviderLoginVerified": false,
+  "productionDeletionExecutedByQa": false,
+  "automaticScheduledDeletionOutcomeVerified": false,
+  "limitations": [
+    "Readiness and anonymous/disabled-provider boundaries only",
+    "No real provider login, manual production deletion or external provider cleanup verification; automatic scheduled deletion outcome was not inspected"
+  ],
+  "taskDefinition": "senior-club-api:26",
+  "previousTaskDefinition": "senior-club-api:25",
+  "imageDigest": "sha256:38fd2444038fec5bd8177214f8ff12a82f6f0a9ec2c523f0caf90f8a9d0600ee"
+}

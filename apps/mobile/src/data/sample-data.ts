@@ -7,6 +7,12 @@ import type {
   User,
 } from '@/types/domain';
 
+function relativeDate(days: number, hour = 10, minute = 0): string {
+  const d = new Date(Date.now() + days * 86_400_000);
+  d.setHours(hour, minute, 0, 0);
+  return d.toISOString();
+}
+
 export const interests: Interest[] = [
   { id: 'hiking', name: '등산', emoji: '🥾', description: '가까운 산과 둘레길을 함께 걸어요.' },
   { id: 'photo', name: '사진', emoji: '📷', description: '사진을 배우고 출사도 함께 떠나요.' },
@@ -115,8 +121,8 @@ export const events: Event[] = [
     description: '초보자도 쉽게 키울 수 있는 바질과 로즈마리를 심습니다. 완성한 화분은 집으로 가져갑니다.',
     location: '경의선숲길 커뮤니티센터',
     address: '서울 마포구 와우산로 37길 35',
-    startsAt: '2026-07-19T10:30:00+09:00',
-    endsAt: '2026-07-19T12:30:00+09:00',
+    startsAt: relativeDate(2, 10, 30),
+    endsAt: relativeDate(2, 12, 30),
     capacity: 16,
     participantCount: 12,
     price: 15000,
@@ -134,8 +140,8 @@ export const events: Event[] = [
     description: '연주 전 30분 해설을 듣고 현악 사중주 공연을 감상합니다. 공연 후 차담도 마련됩니다.',
     location: '신촌 문화살롱 2층',
     address: '서울 서대문구 연세로 12길 28',
-    startsAt: '2026-07-23T18:30:00+09:00',
-    endsAt: '2026-07-23T20:30:00+09:00',
+    startsAt: relativeDate(4, 18, 30),
+    endsAt: relativeDate(4, 20, 30),
     capacity: 24,
     participantCount: 20,
     price: 25000,
@@ -153,8 +159,8 @@ export const events: Event[] = [
     description: '평탄한 둘레길을 2시간 동안 걷습니다. 중간 쉼터에서 간단한 간식을 함께 나눕니다.',
     location: '북한산우이역 2번 출구',
     address: '서울 강북구 우이동 16-20',
-    startsAt: '2026-07-26T08:30:00+09:00',
-    endsAt: '2026-07-26T11:30:00+09:00',
+    startsAt: relativeDate(6, 8, 30),
+    endsAt: relativeDate(6, 11, 30),
     capacity: 20,
     participantCount: 18,
     price: 0,
@@ -172,8 +178,8 @@ export const events: Event[] = [
     description: '스마트폰만 가져오면 됩니다. 익선동 골목을 천천히 걸으며 빛과 구도를 연습합니다.',
     location: '종로3가역 4번 출구',
     address: '서울 종로구 돈화문로 30',
-    startsAt: '2026-08-02T15:00:00+09:00',
-    endsAt: '2026-08-02T17:30:00+09:00',
+    startsAt: relativeDate(9, 15, 0),
+    endsAt: relativeDate(9, 17, 30),
     capacity: 12,
     participantCount: 7,
     price: 5000,
@@ -191,8 +197,8 @@ export const events: Event[] = [
     description: '장마철에 자주 생기는 문제를 함께 살펴본 지난 모임입니다.',
     location: '마포평생학습관',
     address: '서울 마포구 홍익로2길 16',
-    startsAt: '2026-07-05T10:30:00+09:00',
-    endsAt: '2026-07-05T12:00:00+09:00',
+    startsAt: relativeDate(-5, 10, 30),
+    endsAt: relativeDate(-5, 12, 0),
     capacity: 16,
     participantCount: 14,
     price: 5000,
@@ -210,8 +216,8 @@ export const events: Event[] = [
     description: '영화에 등장한 클래식 음악을 해설과 함께 감상한 지난 모임입니다.',
     location: '신촌 문화살롱 2층',
     address: '서울 서대문구 연세로 12길 28',
-    startsAt: '2026-06-24T18:30:00+09:00',
-    endsAt: '2026-06-24T20:30:00+09:00',
+    startsAt: relativeDate(-12, 18, 30),
+    endsAt: relativeDate(-12, 20, 30),
     capacity: 24,
     participantCount: 22,
     price: 20000,

@@ -1,0 +1,35 @@
+{
+  "observedAt": "2026-09-30T06:01:40Z",
+  "revision": 25,
+  "rollout": "COMPLETED",
+  "running": 1,
+  "rollbackEnabled": true,
+  "imageDigest": "sha256:a7c01a4561a39478742d0298ea8d2143c09cf2b579d0e9a0e321d60d20891314",
+  "readyzCount": 3,
+  "readyzStatus": 200,
+  "database": "ok",
+  "clientRoundTripMs": {
+    "median": 36,
+    "min": 31,
+    "max": 146
+  },
+  "legacyLogin": {
+    "phone": {
+      "status": 403,
+      "code": "AUTH_PROVIDER_DISABLED"
+    },
+    "email": {
+      "status": 403,
+      "code": "AUTH_PROVIDER_DISABLED"
+    },
+    "google": {
+      "status": 403,
+      "code": "AUTH_PROVIDER_DISABLED"
+    }
+  },
+  "unauthenticatedProfileStatus": 401,
+  "unauthenticatedPhoneProofStatus": 401,
+  "newTaskErrorLogCount": 0,
+  "notALoadTest": true,
+  "actualKakaoRetest": "previous revision 24; Android actual provider flow verified before TLS-only revision 25"
+}

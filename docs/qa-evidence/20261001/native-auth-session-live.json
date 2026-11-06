@@ -1,0 +1,235 @@
+{
+  "observedAt": "2026-10-01T09:04:28.711735+00:00",
+  "sourceSha256": "c2c377a8e3e5b02797b1eec5709763160814b2728f5803b07f43f8dd92807d10",
+  "apkSha256": "d0c86145bc909e55a4da25412d906e24c09fed306788ac2c65052c9bd9101bc5",
+  "device": "Galaxy M33 / Android 16",
+  "profileWrites": 0,
+  "eventWrites": 0,
+  "smsSent": 0,
+  "adClicks": 0,
+  "providerLoginRetested": false,
+  "checks": {
+    "home": {
+      "before": {
+        "systemStatusBarBottomPx": 71,
+        "statusBarGeometrySource": "Android WindowInsets",
+        "verticalViewportBounds": [
+          [
+            0,
+            71,
+            1080,
+            2103
+          ]
+        ],
+        "viewportStartsBelowStatusBar": true,
+        "communicationErrorVisible": false,
+        "passed": true
+      },
+      "after": {
+        "systemStatusBarBottomPx": 71,
+        "statusBarGeometrySource": "Android WindowInsets",
+        "verticalViewportBounds": [
+          [
+            0,
+            71,
+            1080,
+            2103
+          ]
+        ],
+        "viewportStartsBelowStatusBar": true,
+        "communicationErrorVisible": false,
+        "passed": true,
+        "selectedTabRetained": true,
+        "captureSha256": "988427830c87f55f2d55cea2f7a87fc500fd650b1dcd4e78abbb2eba9f05b9c2"
+      },
+      "passed": true
+    },
+    "community": {
+      "before": {
+        "systemStatusBarBottomPx": 71,
+        "statusBarGeometrySource": "Android WindowInsets",
+        "verticalViewportBounds": [
+          [
+            0,
+            71,
+            1080,
+            2103
+          ]
+        ],
+        "viewportStartsBelowStatusBar": true,
+        "communicationErrorVisible": false,
+        "passed": true
+      },
+      "after": {
+        "systemStatusBarBottomPx": 71,
+        "statusBarGeometrySource": "Android WindowInsets",
+        "verticalViewportBounds": [
+          [
+            0,
+            71,
+            1080,
+            2103
+          ]
+        ],
+        "viewportStartsBelowStatusBar": true,
+        "communicationErrorVisible": false,
+        "passed": true,
+        "selectedTabRetained": true,
+        "captureSha256": "789ff1a23675896e7780edced265e86861cb8c51655f794a07df1ec99015c2c5"
+      },
+      "passed": true
+    },
+    "events": {
+      "before": {
+        "systemStatusBarBottomPx": 71,
+        "statusBarGeometrySource": "Android WindowInsets",
+        "verticalViewportBounds": [
+          [
+            0,
+            71,
+            1080,
+            2103
+          ]
+        ],
+        "viewportStartsBelowStatusBar": true,
+        "communicationErrorVisible": false,
+        "passed": true
+      },
+      "after": {
+        "systemStatusBarBottomPx": 71,
+        "statusBarGeometrySource": "Android WindowInsets",
+        "verticalViewportBounds": [
+          [
+            0,
+            71,
+            1080,
+            2103
+          ]
+        ],
+        "viewportStartsBelowStatusBar": true,
+        "communicationErrorVisible": false,
+        "passed": true,
+        "selectedTabRetained": true,
+        "captureSha256": "265beb516b3838efd0d7bc2f0f663eb6f3978424f105718c27af81f79653c3e0"
+      },
+      "passed": true
+    },
+    "chat": {
+      "before": {
+        "systemStatusBarBottomPx": 71,
+        "statusBarGeometrySource": "Android WindowInsets",
+        "verticalViewportBounds": [
+          [
+            0,
+            71,
+            1080,
+            2103
+          ]
+        ],
+        "viewportStartsBelowStatusBar": true,
+        "communicationErrorVisible": false,
+        "passed": true
+      },
+      "after": {
+        "systemStatusBarBottomPx": 71,
+        "statusBarGeometrySource": "Android WindowInsets",
+        "verticalViewportBounds": [
+          [
+            0,
+            71,
+            1080,
+            2103
+          ]
+        ],
+        "viewportStartsBelowStatusBar": true,
+        "communicationErrorVisible": false,
+        "passed": true,
+        "selectedTabRetained": true,
+        "captureSha256": "89f5477e34273398b34a01d72bfe28a09d950379799454184c6dbd41fedca032"
+      },
+      "passed": true
+    },
+    "me": {
+      "before": {
+        "systemStatusBarBottomPx": 71,
+        "statusBarGeometrySource": "Android WindowInsets",
+        "verticalViewportBounds": [
+          [
+            0,
+            71,
+            1080,
+            2103
+          ]
+        ],
+        "viewportStartsBelowStatusBar": true,
+        "communicationErrorVisible": false,
+        "passed": true
+      },
+      "after": {
+        "systemStatusBarBottomPx": 71,
+        "statusBarGeometrySource": "Android WindowInsets",
+        "verticalViewportBounds": [
+          [
+            0,
+            71,
+            1080,
+            2103
+          ]
+        ],
+        "viewportStartsBelowStatusBar": true,
+        "communicationErrorVisible": false,
+        "passed": true,
+        "selectedTabRetained": true,
+        "captureSha256": "a2d085c27db07cc8d48d752a5d36175c28af814cac9334e3607acbfe8f83a7ba"
+      },
+      "passed": true
+    }
+  },
+  "returnedHome": true,
+  "logs": {
+    "fatalExceptionCount": 0,
+    "reactNativeJsErrorCount": 0,
+    "p2010Count": 0
+  },
+  "passed": true,
+  "evidenceScope": "Read-only runtime QA of the installed debug-certificate APK; raw UI hierarchy, screenshots and logcat remain private.",
+  "installedSha256Verified": true,
+  "freshKakaoLoginVerified": false,
+  "playUploaded": false,
+  "compiledArtifactSourceCommit": "948c2327c70eaf42b997dd11ae384e1258bfc63f",
+  "reportingCommit": "595dbfb060b670244718cbb5076222722d6bbdcb",
+  "qaToolStatusBarFallback": "Android statusBars WindowInsets: unique visible frame used when SystemUI clock is absent from uiautomator XML.",
+  "installMode": "adb install -r",
+  "dataCleared": false,
+  "restoredAuthenticatedSessionObserved": true,
+  "limitations": [
+    "Five-tab viewport checks passed; this is not whole-app visual acceptance.",
+    "Separate photo QA found collapsed single-column event cards in this artifact; it must not be treated as a release-ready binary.",
+    "Fresh Kakao login, Firebase SMS, FCM, Plus and Play acceptance remain unverified."
+  ],
+  "observedPhotoIssue": {
+    "fullCoverRatioVerified": false,
+    "endedEventCardCount": 3,
+    "imageBounds": [
+      [
+        48,
+        1661,
+        1032,
+        1663
+      ],
+      [
+        48,
+        1717,
+        1032,
+        1719
+      ],
+      [
+        48,
+        1773,
+        1032,
+        1776
+      ]
+    ],
+    "privateScreenshotSha256": "a4e1f3c2fee9d8a5d8fbdc45b3194556d67d81be7621afd0ab75f4af96d19a7d"
+  }
+}

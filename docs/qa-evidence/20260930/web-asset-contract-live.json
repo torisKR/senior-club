@@ -1,0 +1,20 @@
+{
+  "observedAt": "2026-09-30T06:59:09.888Z",
+  "deployment": "dpl_9fK6bmYnVLeaP9PVhbY3HCFSuYcG",
+  "origin": "https://senior.toris.kr",
+  "facts": {
+    "primary": "#356347",
+    "canvas": "#eef2e9",
+    "controlMinHeight": "56px",
+    "bodyFontFamily": "\"Pretendard Variable\", Pretendard, \"Noto Sans KR\", \"Apple SD Gothic Neo\", system-ui, sans-serif",
+    "registeredFaces": 92,
+    "loadedFaces": 13,
+    "requestedFontSubsets": 13,
+    "externalFontRequests": 0,
+    "allSubsetPreloads": 0
+  },
+  "fontResourceChecks": 94,
+  "immutableResponses": 94,
+  "failures": [],
+  "passed": true
+}

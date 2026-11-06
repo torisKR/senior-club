@@ -37,14 +37,14 @@ const sizeKeyByVariant: Record<AppTextVariant, keyof (typeof FontSizes)['standar
  * the Pretendard file that renders it instead of relying on `fontWeight`.
  */
 const familyByVariant: Record<AppTextVariant, string> = {
-  caption: FontWeights.emphasis,
+  caption: FontWeights.body,
   body: FontWeights.body,
   bodyStrong: FontWeights.emphasis,
   key: FontWeights.emphasis,
-  sectionTitle: FontWeights.strong,
-  title: FontWeights.strong,
+  sectionTitle: FontWeights.emphasis,
+  title: FontWeights.emphasis,
   display: FontWeights.strong,
-  button: FontWeights.strong,
+  button: FontWeights.emphasis,
 };
 
 export function AppText({
@@ -79,4 +79,3 @@ export function AppText({
     />
   );
 }
-

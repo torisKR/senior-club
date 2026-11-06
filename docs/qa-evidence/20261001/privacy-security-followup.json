@@ -1,0 +1,90 @@
+{
+  "scope": "Local privacy/dependency follow-up on PR39 main base; not production provider or Play evidence",
+  "baseCommit": "4f024c9defc657cae45bc3a8bd6fbdcfbf4bf616",
+  "sourceState": "Uncommitted tested worktree; exact file hashes below",
+  "dependencyAuditBefore": {
+    "info": 0,
+    "low": 7,
+    "moderate": 31,
+    "high": 34,
+    "critical": 1
+  },
+  "dependencyAuditAfter": {
+    "exitCode": 0,
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0
+    },
+    "advisoryCount": 0,
+    "scope": "Full root pnpm workspace dependency audit; not a complete product security assessment"
+  },
+  "verifiedRegistryPatchCount": 18,
+  "inspectedParentSpecificTransitions": 5,
+  "queryStringEsmBridgeTracked": true,
+  "obsoleteMobileLockRemoved": true,
+  "privacy": {
+    "genericStorageAllowlist": [
+      "largeTextEnabled"
+    ],
+    "legacyKeysCleaned": [
+      "senior-club.app-state.v4",
+      "senior-club.app-state.v3",
+      "senior-club.app-state.v2",
+      "senior-club.app-state.v1"
+    ],
+    "secureCredentialsStoreUnchanged": true,
+    "inMemoryProfileRefreshedFromServer": true,
+    "lateRotationDuringLogoutRegressionPassed": true,
+    "storageFailureCannotRestoreStaleAccount": true,
+    "offlineProfileAfterRestartProvided": false,
+    "physicalLegacyErasureLimit": "If both deletion and overwrite are denied, old bytes remain but are never hydrated; cleanup retries on later updates."
+  },
+  "checks": {
+    "mobileTestFiles": 50,
+    "mobileTestsPassed": 403,
+    "mobileTypecheckPassed": true,
+    "changedMobileEslintPassed": true,
+    "webTestsPassed": 529,
+    "apiTestsPassed": 433,
+    "apiOptInTestsSkipped": 42,
+    "webAndApiTypechecksPassed": true,
+    "realDependencyCompatibilityTestsPassed": 4,
+    "actualPrismaConfigAndSchemaValidationPassed": true,
+    "actionlintPassed": true,
+    "diffCheckPassed": true,
+    "dockerFilteredDependencyStagePassed": true,
+    "frozenOfflineLockfilePassed": true
+  },
+  "files": {
+    "package.json": "3a33338fdea36e0fa9cd788e8fc3c7cf9c102ba973bb4c67baa86f10ca0d7c28",
+    "pnpm-lock.yaml": "d90e421ce8be658894482d2075e955defcc82ba7c8ade09dc969f2470791d613",
+    "apps/api/package.json": "3939b5ff3b3524669b11fc4600bc9aa9a3652705ff56861c8beffe55d6b5a869",
+    "apps/api/Dockerfile": "3f88725b1026a8ed38bf8a2c804ae616e11929291c8a25e32b5fde5f711a9013",
+    "apps/mobile/package.json": "9f0af9505d695451897f664724dbc4b9ac25bab2a964b5ce4ce04cd299f54c49",
+    "patches/query-string@7.1.3.patch": "c45bcf01a3c61375fbcc866a485046d0782f1ad9f22922668bc749bb5d93b3b5",
+    "scripts/security-dependency-compatibility.test.mjs": "fa6bd95777202d343c4599faef073fe2c4369a2b42cf0861edf98dbf536626cc",
+    "apps/mobile/src/context/app-state.tsx": "ae12a94cbdd3f884bc47bfa03d5d3945cfeaccb47758571001db609fbf902424",
+    "apps/mobile/src/context/app-state-store.ts": "3f7d27fec49d8d556d4cdc20940e2b5eeec000dcb027e4210d5bab8b765b1bf3",
+    "apps/mobile/src/context/persisted-app-state.ts": "fc43ed1fcb53a52442a4a28593ed59d88ea18ff244cd7a1a606bc4780d85e233",
+    "apps/mobile/src/context/app-state-store.test.ts": "06f28f87e4a87ec8b02b2ef4497ee61904b552e7d3603d9f0dd9b472d777eb04",
+    "apps/mobile/src/context/app-state-privacy.test.ts": "3cdd6bd97f3686da4623d51652f4d13eb9da6eb40d1883c1839080a0625869ca",
+    "apps/mobile/src/context/persisted-app-state.test.ts": "023e2000b0d2ea2bbd5700502b072388403798ce542a70be9001aa314777acab",
+    ".github/workflows/ci.yml": "1fe479a8006ae1819c314984652f260752d68b46ecd5674af4a137fb0e695f00",
+    ".dockerignore": "b00341205da5424c2ba194008a1d5c470aa08a4c0aa63609a7116ba632d1b255"
+  },
+  "limitations": [
+    "Hosted CI/CodeQL and fresh production deploy are still required for this follow-up.",
+    "Generic storage and SecureStore regression tests use JS/React fixtures; latest native binary needs rebuild and device handoff.",
+    "A dependency audit with zero known advisories is not a complete product security assessment."
+  ],
+  "dockerDependencyStageInputHashes": {
+    "package.json": "3a33338fdea36e0fa9cd788e8fc3c7cf9c102ba973bb4c67baa86f10ca0d7c28",
+    "pnpm-lock.yaml": "04aa3d5c5d9f55c36ecf58db3c8ee7d81464df4f7649c6902fc125f222663750",
+    "patches/query-string@7.1.3.patch": "fe47b885269a14c517ab79b9f7e5d0b46666cf13e5a80856685262c20aa00da5",
+    "apps/api/Dockerfile": "3f88725b1026a8ed38bf8a2c804ae616e11929291c8a25e32b5fde5f711a9013"
+  },
+  "patchFormatFollowup": "Only the redundant final blank context line was trimmed; executable patch unchanged. The regenerated lock/patch hash passed four actual compatibility tests; hosted full Docker check remains required."
+}

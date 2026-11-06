@@ -116,8 +116,8 @@ export function syncServerProfileCache(
 
 export function readCachedServerProfile(storage?: Storage): CachedServerProfile | null {
   if (typeof window === "undefined") return null;
-  const target = storage ?? window.localStorage;
   try {
+    const target = storage ?? window.localStorage;
     const raw = target.getItem(PROFILE_STORAGE_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as CachedServerProfile;

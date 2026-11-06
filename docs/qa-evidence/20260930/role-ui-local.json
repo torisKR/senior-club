@@ -1,0 +1,853 @@
+{
+  "schemaVersion": 2,
+  "qaAgent": "bounded-local-role-ui",
+  "dateUtc": "2026-09-30",
+  "overallResult": "passed",
+  "productSource": {
+    "commit": "9a376d96f4e8a955fa29ad305c480d2d156d321b",
+    "algorithm": "sha256(relative-path+NUL+file-sha256+NUL), sorted tracked product paths",
+    "fileCount": 622,
+    "compositeSha256": "e2f0bf5d76cc0ae2a5ed8f9b36ca268bb46e5886d9372c9bd49bfcfba6e23c74"
+  },
+  "keyProductFileSha256": {
+    "src/lib/auth/browser-navigation.ts": "b31d07ce97aef9324e30b2b95b5221d0618188c6aee81823a3f08d809b00d8ac",
+    "src/lib/auth/browser-navigation.test.ts": "9368a8fcd4f3d8e990ceb71bd135ac72208e7cc9f87d99ec458ea6e6e1235fff",
+    "src/components/session-continuation.tsx": "da87138f40b7d5ad51d1c94652ad2f1f37a7e1ce0ca928907301a2a729cada06",
+    "src/components/session-continuation.test.ts": "324bb8de28e84d3419a54ffaf80af579611a2e5f18355ccac33575d241a8dd3e",
+    "src/lib/auth/browser-session.ts": "d570d9853520bcae59ad87cc79e0d5e166f8ba59b853c31e92eb95c09fb0e255",
+    "src/proxy.ts": "fc3d505240deca71b45cfe920c863f69412b19418b1d300b7edf87b3b185a567",
+    "src/app/api/auth/continue/route.ts": "abd51fba89b1eab8d086f2ef8ec1a206cf4c4cafe0538eeab2f43dd904618bab",
+    "src/app/auth/continue/page.tsx": "ddbe75f800a88995e73bd6d9217cdde91b99a32c15027acd9a4cd7a76669d542",
+    "src/components/auth-nav.tsx": "c01bb5ddb210babfa1ab15309369f35768555db8250bbde4e0684315bed2ad83",
+    "src/components/profile-session-sync.tsx": "52e769a85dfa46391a76f383e888a9f8fe78185207dd4569eeaec7ecc8c3375c"
+  },
+  "fixtureFileSha256AtReporting": {
+    "apps/api/test/qa-role-ui/browser-logout-only.cjs": "2e98f722f393f376353c5af8c0f59c4eb548ff7f7df7bc8b7ee67c0b74fc4769",
+    "apps/api/test/qa-role-ui/browser-refresh-diagnosis.cjs": "b42b8f45938c8cff67bf433396bf82148aebc0fed7f3a6819b0e062718109365",
+    "apps/api/test/qa-role-ui/browser-two-tabs.cjs": "2e789a610269b27774e721f0543d417d3bc31f8e29f6e95e1ef39c5afee3f092",
+    "apps/api/test/qa-role-ui/browser.cjs": "7591b368c11f13ee5eb91cc399d7b36b27387292c708f7d99bcf67b4591f5e5b",
+    "apps/api/test/qa-role-ui/run.mjs": "ee82462583134b5bedad0b78e984de44fe9c1149d4db04f84337305dc398687c",
+    "apps/api/test/qa-role-ui/server.fixture.ts": "e89fb677804d1339454da5d0f277197bb66497ae6e317ff803b4a586c0b4ed5d",
+    "apps/api/test/qa-role-ui/web-trace.cjs": "c7a85d6383a24fa2760ead859659d5518b325a19779c2f13b34805b7feb445f1"
+  },
+  "finalVerificationRuns": [
+    {
+      "phase": "full",
+      "passed": true,
+      "startedAt": "2026-09-30T08:52:09.526Z",
+      "finishedAt": "2026-09-30T08:52:17.962Z",
+      "passedCheckCount": 19,
+      "failureCount": 0,
+      "checks": [
+        {
+          "passed": true,
+          "requestOrigin": "https://localhost:43132",
+          "browserOrigin": "https://localhost:43132",
+          "forwardedProtocol": "https",
+          "check": "temporary-local-origin-diagnostic"
+        },
+        {
+          "passed": true,
+          "status": 401,
+          "check": "invalid-provider-identity-rejected"
+        },
+        {
+          "passed": true,
+          "role": "MEMBER",
+          "cookieAttributes": [
+            {
+              "httpOnly": true,
+              "secure": true,
+              "sameSite": "Lax",
+              "path": "/"
+            },
+            {
+              "httpOnly": true,
+              "secure": true,
+              "sameSite": "Lax",
+              "path": "/"
+            }
+          ],
+          "check": "member-real-session-and-bff-cookies"
+        },
+        {
+          "passed": true,
+          "namePersisted": true,
+          "phoneNormalizedAndPersisted": true,
+          "onboardingCompleted": true,
+          "check": "member-profile-ui-save-real-db"
+        },
+        {
+          "passed": true,
+          "width": 1440,
+          "document": 1440,
+          "body": 1440,
+          "check": "member-profile-desktop-layout"
+        },
+        {
+          "passed": true,
+          "serverUiStatus": 200,
+          "streamedNotFoundUi": true,
+          "protectedAdminUiAbsent": true,
+          "apiStatus": 403,
+          "code": "ADMIN_REQUIRED",
+          "check": "member-admin-server-ui-and-api-denial"
+        },
+        {
+          "passed": true,
+          "refreshTokenRotated": true,
+          "authenticated": true,
+          "providerReloginRequired": false,
+          "actualMountedSessionRequests": 3,
+          "backendRefreshStatuses": [
+            201
+          ],
+          "backendSessionLive": true,
+          "check": "member-bff-session-refresh-and-protected-ui-restore"
+        },
+        {
+          "passed": true,
+          "status": 201,
+          "actualDatabaseStored": true,
+          "syntheticFixture": true,
+          "check": "member-ugc-ui-create-and-real-db-detail"
+        },
+        {
+          "passed": true,
+          "databaseStatus": "PENDING",
+          "check": "member-existing-pending-application-ui"
+        },
+        {
+          "passed": true,
+          "width": 390,
+          "document": 390,
+          "body": 390,
+          "check": "leader-phone-width-layout"
+        },
+        {
+          "passed": true,
+          "status": "APPROVED",
+          "ownerLeaderRecorded": true,
+          "check": "leader-application-ui-approval-real-db"
+        },
+        {
+          "passed": true,
+          "approved": true,
+          "check": "member-ui-sees-leader-approval-after-reload"
+        },
+        {
+          "passed": true,
+          "databaseStatus": "CANCELED",
+          "crossRoleUi": true,
+          "check": "member-ui-cancel-and-leader-ui-canceled-filter"
+        },
+        {
+          "passed": true,
+          "readStatus": 404,
+          "readCode": "MANAGED_EVENT_NOT_FOUND",
+          "writeStatus": 403,
+          "mutationAbsent": true,
+          "code": "LEADER_SCOPE_REQUIRED",
+          "check": "other-leader-ui-and-mutation-ownership-denial"
+        },
+        {
+          "passed": true,
+          "width": 390,
+          "document": 390,
+          "body": 390,
+          "check": "admin-phone-width-layout"
+        },
+        {
+          "passed": true,
+          "databaseStatus": "IN_REVIEW",
+          "reportFixtureIsSynthetic": true,
+          "check": "admin-report-ui-read-and-review-real-db"
+        },
+        {
+          "passed": true,
+          "publicDetailViewedWithAdminSession": true,
+          "dedicatedAdminUgcDashboardTested": false,
+          "check": "admin-ugc-target-real-ui-detail"
+        },
+        {
+          "passed": true,
+          "backendSessionsRevoked": true,
+          "browserCookiesAbsent": true,
+          "check": "member-ui-logout-cookie-clear-session-revoke-and-denial"
+        },
+        {
+          "passed": true,
+          "migrations": 10,
+          "externalFetchAttempts": 0,
+          "externalBrowserRequests": 0,
+          "kakaoVerifierCalls": 5,
+          "check": "real-migrations-provider-disabled-and-no-external-requests"
+        }
+      ],
+      "pageErrorCount": 0,
+      "externalBrowserRequestCount": 0,
+      "externalProviderFetchCount": 0,
+      "migrationCount": 10,
+      "outboxCount": 2,
+      "nestRefreshStatuses": [
+        201
+      ],
+      "nestRefreshTrace": [
+        {
+          "id": 1,
+          "receivedAt": "2026-09-30T08:52:12.826Z",
+          "finishedAt": "2026-09-30T08:52:12.841Z",
+          "status": 201
+        }
+      ],
+      "sourceUnchangedDuringRun": true,
+      "executedBrowserScript": "apps/api/test/qa-role-ui/browser.cjs",
+      "browserScriptSha256": "7591b368c11f13ee5eb91cc399d7b36b27387292c708f7d99bcf67b4591f5e5b",
+      "cleanup": {
+        "browserSessionClosed": true,
+        "apiExited": true,
+        "webExited": true,
+        "databaseAbsent": true
+      },
+      "privateArtifactsRemoved": true,
+      "artifacts": {
+        "ui-result.json": {
+          "path": "/private/tmp/senior-role-ui-kKA9zF/ui-result.json",
+          "sha256": "be33da19bdfa475141e08c6fd14c54451c3549ccc4fe211834c01eefdb1bb338"
+        },
+        "ledger.json": {
+          "path": "/private/tmp/senior-role-ui-kKA9zF/ledger.json",
+          "sha256": "6355b97a5c481729c130f43c741be486ac2e2139ac90795c3e889a666d8ff5f2"
+        },
+        "source-manifest.json": {
+          "path": "/private/tmp/senior-role-ui-kKA9zF/source-manifest.json",
+          "sha256": "05356f211b8c9bdf4d67a64505268d8dc8195635414c417c247901b047b16b10"
+        },
+        "database-final.json": {
+          "path": "/private/tmp/senior-role-ui-kKA9zF/database-final.json",
+          "sha256": "0a3e341e9f5ee448fb045c27800a52b61ef9ae1bea950766d1e0287705ac56de"
+        },
+        "web-auth-trace.jsonl": {
+          "path": "/private/tmp/senior-role-ui-kKA9zF/web-auth-trace.jsonl",
+          "sha256": "b01190f36191d19e63b91e3fc6156691fdcf679b5fff9787e0ce6247f5f734d7"
+        }
+      },
+      "freshProtectedDocumentTrace": [
+        {
+          "event": "nest-refresh-fetch-start",
+          "at": "2026-09-30T08:52:12.826Z",
+          "id": 1,
+          "parent": {
+            "id": 318,
+            "path": "/api/auth/session"
+          },
+          "origin": "https://localhost:43131",
+          "path": "/v1/auth/refresh"
+        },
+        {
+          "event": "nest-refresh-fetch-response",
+          "at": "2026-09-30T08:52:12.846Z",
+          "id": 1,
+          "parent": {
+            "id": 318,
+            "path": "/api/auth/session"
+          },
+          "status": 201
+        },
+        {
+          "event": "web-request",
+          "at": "2026-09-30T08:52:12.854Z",
+          "id": 326,
+          "path": "/me",
+          "method": "GET",
+          "cookiePresence": {
+            "access": false,
+            "refresh": true
+          },
+          "headerPresence": {
+            "rsc": true,
+            "next-router-prefetch": true,
+            "next-router-segment-prefetch": true,
+            "next-router-state-tree": false,
+            "purpose": false,
+            "sec-purpose": false
+          }
+        },
+        {
+          "event": "web-response",
+          "at": "2026-09-30T08:52:12.856Z",
+          "id": 326,
+          "path": "/me",
+          "status": 307,
+          "locationPath": "/auth/continue",
+          "setCookiePresence": {
+            "access": false,
+            "refresh": false
+          }
+        },
+        {
+          "event": "web-response",
+          "at": "2026-09-30T08:52:12.857Z",
+          "id": 318,
+          "path": "/api/auth/session",
+          "status": 200,
+          "locationPath": null,
+          "setCookiePresence": {
+            "access": true,
+            "refresh": true
+          }
+        },
+        {
+          "event": "web-request",
+          "at": "2026-09-30T08:52:13.136Z",
+          "id": 351,
+          "path": "/api/auth/session",
+          "method": "GET",
+          "cookiePresence": {
+            "access": true,
+            "refresh": true
+          },
+          "headerPresence": {
+            "rsc": false,
+            "next-router-prefetch": false,
+            "next-router-segment-prefetch": false,
+            "next-router-state-tree": false,
+            "purpose": false,
+            "sec-purpose": false
+          }
+        },
+        {
+          "event": "web-response",
+          "at": "2026-09-30T08:52:13.145Z",
+          "id": 351,
+          "path": "/api/auth/session",
+          "status": 200,
+          "locationPath": null,
+          "setCookiePresence": {
+            "access": false,
+            "refresh": false
+          }
+        },
+        {
+          "event": "web-request",
+          "at": "2026-09-30T08:52:13.155Z",
+          "id": 352,
+          "path": "/me",
+          "method": "GET",
+          "cookiePresence": {
+            "access": true,
+            "refresh": true
+          },
+          "headerPresence": {
+            "rsc": false,
+            "next-router-prefetch": false,
+            "next-router-segment-prefetch": false,
+            "next-router-state-tree": false,
+            "purpose": false,
+            "sec-purpose": false
+          }
+        },
+        {
+          "event": "web-response",
+          "at": "2026-09-30T08:52:13.171Z",
+          "id": 352,
+          "path": "/me",
+          "status": 200,
+          "locationPath": null,
+          "setCookiePresence": {
+            "access": false,
+            "refresh": false
+          }
+        },
+        {
+          "event": "web-request",
+          "at": "2026-09-30T08:52:13.218Z",
+          "id": 377,
+          "path": "/api/auth/session",
+          "method": "GET",
+          "cookiePresence": {
+            "access": true,
+            "refresh": true
+          },
+          "headerPresence": {
+            "rsc": false,
+            "next-router-prefetch": false,
+            "next-router-segment-prefetch": false,
+            "next-router-state-tree": false,
+            "purpose": false,
+            "sec-purpose": false
+          }
+        },
+        {
+          "event": "web-response",
+          "at": "2026-09-30T08:52:13.229Z",
+          "id": 377,
+          "path": "/api/auth/session",
+          "status": 200,
+          "locationPath": null,
+          "setCookiePresence": {
+            "access": false,
+            "refresh": false
+          }
+        },
+        {
+          "event": "web-request",
+          "at": "2026-09-30T08:52:13.255Z",
+          "id": 385,
+          "path": "/me",
+          "method": "GET",
+          "cookiePresence": {
+            "access": true,
+            "refresh": true
+          },
+          "headerPresence": {
+            "rsc": true,
+            "next-router-prefetch": true,
+            "next-router-segment-prefetch": false,
+            "next-router-state-tree": true,
+            "purpose": false,
+            "sec-purpose": false
+          }
+        },
+        {
+          "event": "web-response",
+          "at": "2026-09-30T08:52:13.263Z",
+          "id": 385,
+          "path": "/me",
+          "status": 200,
+          "locationPath": null,
+          "setCookiePresence": {
+            "access": false,
+            "refresh": false
+          }
+        }
+      ]
+    },
+    {
+      "phase": "two-tabs",
+      "passed": true,
+      "startedAt": "2026-09-30T08:57:17.694Z",
+      "finishedAt": "2026-09-30T08:57:22.379Z",
+      "passedCheckCount": 5,
+      "failureCount": 0,
+      "checks": [
+        {
+          "passed": true,
+          "tabCount": 2,
+          "sameContext": true,
+          "environments": [
+            {
+              "origin": "https://localhost:43132",
+              "secure": true,
+              "webLocks": true
+            },
+            {
+              "origin": "https://localhost:43132",
+              "secure": true,
+              "webLocks": true
+            }
+          ],
+          "check": "two-tabs-one-secure-context-with-Web-Locks"
+        },
+        {
+          "passed": true,
+          "actualBffSessionResponses": 2,
+          "allAuthenticatedMember": true,
+          "backendRefreshStatuses": [
+            201
+          ],
+          "authCookieCount": 2,
+          "cachesInitiallyEmpty": true,
+          "check": "actual-two-tab-mounted-restore-with-one-Nest-refresh"
+        },
+        {
+          "passed": true,
+          "destinations": [
+            "/me",
+            "/me"
+          ],
+          "check": "both-restored-tabs-render-real-protected-member-UI"
+        },
+        {
+          "passed": true,
+          "logoutStatus": 200,
+          "backendSessionsRevoked": true,
+          "browserAuthCookiesAbsent": true,
+          "mirrorAbsentInBothTabs": true,
+          "destinations": [
+            "/login",
+            "/login"
+          ],
+          "actualUnauthenticatedBffResponses": 5,
+          "check": "actual-profile-logout-revokes-shared-session-and-denies-both-tabs"
+        },
+        {
+          "passed": true,
+          "backendRefreshStatuses": [
+            201
+          ],
+          "migrations": 10,
+          "externalFetchAttempts": 0,
+          "externalBrowserRequests": 0,
+          "check": "two-tab-provider-isolation-and-final-single-rotation"
+        }
+      ],
+      "pageErrorCount": 0,
+      "externalBrowserRequestCount": 0,
+      "externalProviderFetchCount": 0,
+      "migrationCount": 10,
+      "outboxCount": 0,
+      "nestRefreshStatuses": [
+        201
+      ],
+      "nestRefreshTrace": [
+        {
+          "id": 1,
+          "receivedAt": "2026-09-30T08:57:20.067Z",
+          "finishedAt": "2026-09-30T08:57:20.081Z",
+          "status": 201
+        }
+      ],
+      "sourceUnchangedDuringRun": true,
+      "executedBrowserScript": "apps/api/test/qa-role-ui/browser-two-tabs.cjs",
+      "browserScriptSha256": "2e789a610269b27774e721f0543d417d3bc31f8e29f6e95e1ef39c5afee3f092",
+      "cleanup": {
+        "browserSessionClosed": true,
+        "apiExited": true,
+        "webExited": true,
+        "databaseAbsent": true
+      },
+      "privateArtifactsRemoved": true,
+      "artifacts": {
+        "ui-result.json": {
+          "path": "/private/tmp/senior-role-ui-gJ8gkU/ui-result.json",
+          "sha256": "51f678889036261ead83f8352f2bd83e6194ce1026716ce1bf044e3c6e26a6ec"
+        },
+        "ledger.json": {
+          "path": "/private/tmp/senior-role-ui-gJ8gkU/ledger.json",
+          "sha256": "2c42e558d4e9e7a6013de04ea8fe60adfe7e26bfde818f18cc1c19639bbdde8e"
+        },
+        "source-manifest.json": {
+          "path": "/private/tmp/senior-role-ui-gJ8gkU/source-manifest.json",
+          "sha256": "05356f211b8c9bdf4d67a64505268d8dc8195635414c417c247901b047b16b10"
+        },
+        "database-final.json": {
+          "path": "/private/tmp/senior-role-ui-gJ8gkU/database-final.json",
+          "sha256": "0990d739f46bbb900fe569aa2600ae82d88e36ff42a144be6f071a2e48b8c04c"
+        },
+        "web-auth-trace.jsonl": {
+          "path": "/private/tmp/senior-role-ui-gJ8gkU/web-auth-trace.jsonl",
+          "sha256": "b436753f0ae9bb6e87bb71c08f198a782ce33807959e6a77287408d99409d739"
+        }
+      },
+      "actualMountedSessionResponses": [
+        {
+          "tab": 2,
+          "phase": "restore",
+          "at": "2026-09-30T08:57:20.097Z",
+          "status": 200,
+          "authenticated": true,
+          "userIdValid": true,
+          "memberIdMatched": true,
+          "errorCode": null
+        },
+        {
+          "tab": 1,
+          "phase": "restore",
+          "at": "2026-09-30T08:57:20.111Z",
+          "status": 200,
+          "authenticated": true,
+          "userIdValid": true,
+          "memberIdMatched": true,
+          "errorCode": null
+        },
+        {
+          "tab": 1,
+          "phase": "restore",
+          "at": "2026-09-30T08:57:20.805Z",
+          "status": 200,
+          "authenticated": true,
+          "userIdValid": true,
+          "memberIdMatched": true,
+          "errorCode": null
+        },
+        {
+          "tab": 2,
+          "phase": "restore",
+          "at": "2026-09-30T08:57:20.839Z",
+          "status": 200,
+          "authenticated": true,
+          "userIdValid": true,
+          "memberIdMatched": true,
+          "errorCode": null
+        },
+        {
+          "tab": 2,
+          "phase": "logout",
+          "at": "2026-09-30T08:57:21.713Z",
+          "status": 200,
+          "authenticated": false,
+          "userIdValid": false,
+          "memberIdMatched": false,
+          "errorCode": null
+        },
+        {
+          "tab": 1,
+          "phase": "logout",
+          "at": "2026-09-30T08:57:21.720Z",
+          "status": 200,
+          "authenticated": false,
+          "userIdValid": false,
+          "memberIdMatched": false,
+          "errorCode": null
+        },
+        {
+          "tab": 1,
+          "phase": "logout",
+          "at": "2026-09-30T08:57:21.778Z",
+          "status": 200,
+          "authenticated": false,
+          "userIdValid": false,
+          "memberIdMatched": false,
+          "errorCode": null
+        },
+        {
+          "tab": 1,
+          "phase": "logout",
+          "at": "2026-09-30T08:57:21.827Z",
+          "status": 200,
+          "authenticated": false,
+          "userIdValid": false,
+          "memberIdMatched": false,
+          "errorCode": null
+        },
+        {
+          "tab": 2,
+          "phase": "logout",
+          "at": "2026-09-30T08:57:21.843Z",
+          "status": 200,
+          "authenticated": false,
+          "userIdValid": false,
+          "memberIdMatched": false,
+          "errorCode": null
+        }
+      ],
+      "restoreResponseCount": 4,
+      "logoutResponseCount": 5,
+      "restoredCookieAttributes": [
+        {
+          "secure": true,
+          "httpOnly": true,
+          "sameSite": "Lax",
+          "path": "/"
+        },
+        {
+          "secure": true,
+          "httpOnly": true,
+          "sameSite": "Lax",
+          "path": "/"
+        }
+      ]
+    }
+  ],
+  "counts": {
+    "fullPassed": 19,
+    "twoTabPassed": 5,
+    "finalVerificationFailures": 0,
+    "finalVerificationPageErrors": 0,
+    "externalRequests": 0
+  },
+  "prior771RootCause": {
+    "commit": "771efd5a8f612f8472a1a3817435aa90a1b6d861",
+    "capturedAtUtc": [
+      "2026-09-30T08:25:47.739Z",
+      "2026-09-30T08:25:50.969Z"
+    ],
+    "confirmed": "Protected Next prefetch called legacy API continuation and issued three refreshes outside browser helper lock while mounted session rotated once. Continue 401 branches redirected to login with cookie-clearing headers.",
+    "nestRefreshStatuses": [
+      201,
+      401,
+      401,
+      401
+    ],
+    "parentRequestFetchOrdering": [
+      {
+        "event": "nest-refresh-fetch-start",
+        "at": "2026-09-30T08:25:49.512Z",
+        "id": 1,
+        "parent": {
+          "id": 176,
+          "path": "/api/auth/session"
+        },
+        "origin": "https://localhost:43131",
+        "path": "/v1/auth/refresh"
+      },
+      {
+        "event": "nest-refresh-fetch-start",
+        "at": "2026-09-30T08:25:49.517Z",
+        "id": 2,
+        "parent": {
+          "id": 178,
+          "path": "/api/auth/continue"
+        },
+        "origin": "https://localhost:43131",
+        "path": "/v1/auth/refresh"
+      },
+      {
+        "event": "nest-refresh-fetch-start",
+        "at": "2026-09-30T08:25:49.521Z",
+        "id": 3,
+        "parent": {
+          "id": 179,
+          "path": "/api/auth/continue"
+        },
+        "origin": "https://localhost:43131",
+        "path": "/v1/auth/refresh"
+      },
+      {
+        "event": "nest-refresh-fetch-response",
+        "at": "2026-09-30T08:25:49.524Z",
+        "id": 1,
+        "parent": {
+          "id": 176,
+          "path": "/api/auth/session"
+        },
+        "status": 201
+      },
+      {
+        "event": "nest-refresh-fetch-start",
+        "at": "2026-09-30T08:25:49.527Z",
+        "id": 4,
+        "parent": {
+          "id": 183,
+          "path": "/api/auth/continue"
+        },
+        "origin": "https://localhost:43131",
+        "path": "/v1/auth/refresh"
+      },
+      {
+        "event": "nest-refresh-fetch-response",
+        "at": "2026-09-30T08:25:49.535Z",
+        "id": 4,
+        "parent": {
+          "id": 183,
+          "path": "/api/auth/continue"
+        },
+        "status": 401
+      },
+      {
+        "event": "nest-refresh-fetch-response",
+        "at": "2026-09-30T08:25:49.536Z",
+        "id": 2,
+        "parent": {
+          "id": 178,
+          "path": "/api/auth/continue"
+        },
+        "status": 401
+      },
+      {
+        "event": "nest-refresh-fetch-response",
+        "at": "2026-09-30T08:25:49.537Z",
+        "id": 3,
+        "parent": {
+          "id": 179,
+          "path": "/api/auth/continue"
+        },
+        "status": 401
+      }
+    ],
+    "evidencePath": "/private/tmp/senior-role-ui-ZNQ9wF/web-auth-trace.jsonl",
+    "evidenceSha256": "0790b3e97ef285b49044ad9de05eb3ce145bcf7410b984d5c4e27d6e6f94a534",
+    "limitation": "Final auth remained in this trace; earlier eHzIfM lost auth. Does not imply every run logs out."
+  },
+  "supplementaryOwnedCleanup": {
+    "finalVerification": false,
+    "productRestoreOrLogoutExecuted": false,
+    "sourceCommit": "9a376d96f4e8a955fa29ad305c480d2d156d321b",
+    "sourceUnchanged": true,
+    "cleanup": {
+      "browserSessionClosed": true,
+      "apiExited": true,
+      "webExited": true,
+      "databaseAbsent": true
+    },
+    "privateArtifactsRemoved": true,
+    "ledgerPath": "/private/tmp/senior-role-ui-8g7CR0/ledger.json",
+    "ledgerSha256": "ee8235cbcb39f7f155966ef83b1fb3a4183d41ed00d284a6ea4b78bdae4a8ab8"
+  },
+  "independentFinalCleanup": {
+    "databaseCount": 0,
+    "qaListeningPorts": [],
+    "ownedBrowserSession": "senior-role-ui",
+    "ownedBrowserState": "not-open",
+    "reusedPostgresRunning": true,
+    "reusedQaApiHealthy": true,
+    "reusedFinalQaApiHealthy": true,
+    "ownedRuntimeResourcesRemaining": 0,
+    "retainedFilesAreEvidenceOnly": true
+  },
+  "scope": {
+    "stack": "real isolated Nest + Prisma + Next production webpack + HTTPS BFF",
+    "externalIdentityStub": "KakaoTokenVerifier only",
+    "browser": "own playwright-cli senior-role-ui only",
+    "rawManualSessionFetchUsed": false,
+    "businessAuthResponseMocks": false,
+    "passedBusinessApiSuitesRepeated": false,
+    "separateFocusDiagnosisSkipped": true,
+    "twoTabs": "one secure same-origin browser context with real Web Locks; actual mounted /clubs + /me readers; actual profile logout",
+    "providers": "EMAIL/SMS/PUSH disabled; outbox worker disabled; external fetch/browser requests failclosed",
+    "productionDatabaseOrUsersModified": false,
+    "androidOrDeviceControlled": false,
+    "cloudProviderOrPlayWritten": false,
+    "gitPushed": false,
+    "adminUgc": "reported target public detail with admin session",
+    "reportCreation": "synthetic seed; report status UI used real API/DB",
+    "visual": "member 1440px and leader/admin 390px horizontal overflow checks"
+  },
+  "limitations": {
+    "productionActualRoleUiTested": false,
+    "realKakaoProviderTested": false,
+    "firebaseSmsOrPhoneVerificationTested": false,
+    "androidTested": false,
+    "dedicatedAdminUgcDashboardTested": false,
+    "fullVisualAssetsAccessibilityAudit": false,
+    "separateBrowserOrMultiServerConcurrencyTested": false,
+    "forcedAbortLogoutDuringRotationTested": false
+  },
+  "sanitization": {
+    "syntheticNamesAndPhonesIncluded": false,
+    "rawCookiesTokensOrControlIncluded": false,
+    "providerCredentialsIncluded": false,
+    "headerValuesIncluded": false
+  },
+  "sourceIntegrityReference": {
+    "basis": "retained source manifests captured during each isolated run; not current mutable native product files",
+    "manifests": [
+      {
+        "path": "/private/tmp/senior-role-ui-kKA9zF/source-manifest.json",
+        "sha256": "05356f211b8c9bdf4d67a64505268d8dc8195635414c417c247901b047b16b10"
+      },
+      {
+        "path": "/private/tmp/senior-role-ui-gJ8gkU/source-manifest.json",
+        "sha256": "05356f211b8c9bdf4d67a64505268d8dc8195635414c417c247901b047b16b10"
+      }
+    ],
+    "manifestsEqual": true,
+    "nativeUiChangesAfterCaptureIncluded": false,
+    "globalCurrentNativeUiVerified": false
+  },
+  "setupFixtureAdjustment": {
+    "failedBeforeProductRestoreOrLogout": true,
+    "initialCompletedChecks": 0,
+    "cause": "QA origin POST-only route returned GET 405, which Playwright rejected as a preparation document navigation.",
+    "change": "Only the copied temporary QA origin route gained a GET 200 empty HTML document; product/auth/business routes were unchanged.",
+    "businessAssertionsUnchanged": true,
+    "completedTwoTabBusinessFlowRuns": 1,
+    "abortedPreparationCleanup": {
+      "browserSessionClosed": true,
+      "apiExited": true,
+      "webExited": true,
+      "databaseAbsent": true
+    }
+  }
+}

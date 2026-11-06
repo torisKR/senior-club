@@ -1,0 +1,14 @@
+{
+  "readyzCount": 7,
+  "readyzStatus": 200,
+  "clientRoundTripMs": {
+    "median": 34,
+    "min": 30,
+    "max": 122
+  },
+  "legacyPhoneLogin": {
+    "status": 403,
+    "code": "AUTH_PROVIDER_DISABLED"
+  },
+  "notALoadTest": true
+}

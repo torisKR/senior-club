@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -11,7 +10,7 @@ import {
   getEffectiveEventStatus,
   isEventRegistrationOpen,
 } from "@/lib/event-status";
-import { resolveCoverImage } from "@/lib/cover-image";
+import { CoverImage } from "@/components/cover-image";
 import type { Event } from "@/lib/types";
 
 type EventCardProps = {
@@ -50,14 +49,14 @@ export function EventCard({ event, priority = false }: EventCardProps) {
         className="relative block aspect-[16/10] overflow-hidden bg-[var(--canvas-deep)]"
         href={`/events/${event.id}`}
       >
-        <Image
+        <CoverImage
           alt={`${event.title} 모임의 활동 모습`}
           className="object-cover transition duration-500 group-hover:scale-[1.025]"
           fill
           priority={priority}
-          sizes="(max-width: 720px) 100vw, (max-width: 1100px) 50vw, 380px"
-          src={resolveCoverImage(event.image, event.category)}
-          unoptimized={Boolean(event.image?.startsWith("https://"))}
+          sizes="(max-width: 720px) calc(100vw - 1.25rem), (max-width: 767px) calc(100vw - 2rem), (max-width: 1279px) calc(50vw - 1.625rem), 380px"
+          image={event.image}
+          category={event.category}
         />
         <span className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1 text-sm font-black text-[var(--primary-strong)] shadow-sm">
           {CATEGORY_NAMES[event.category] ?? event.category}

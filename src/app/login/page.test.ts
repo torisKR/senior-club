@@ -26,10 +26,11 @@ describe("login page", () => {
     expect(html).toContain("senior-club-mark-v3.png");
   });
 
-  it("renders both Kakao and Google social login options", () => {
+  it("renders Kakao as the only login provider", () => {
     const html = renderToStaticMarkup(React.createElement(LoginPage));
     expect(html).toContain("카카오로 시작하기");
-    expect(html).toContain("Google로 시작하기");
+    expect(html).not.toContain("Google로 시작하기");
+    expect(html).not.toContain("인증번호 받기");
   });
 
   it("renders terms agreement section with master checkbox and view links", () => {
@@ -44,14 +45,11 @@ describe("login page", () => {
     expect(html).toContain("내용보기");
   });
 
-  it("renders phone login fallback with phone and name inputs", () => {
+  it("does not require personal profile fields to log in", () => {
     const html = renderToStaticMarkup(React.createElement(LoginPage));
-    expect(html).toContain("또는 휴대폰 번호로 로그인");
-    expect(html).toContain('id="login-phone"');
-    expect(html).toContain('id="login-name"');
-    expect(html).toContain("010-1234-5678");
-    expect(html).toContain("예: 김정희");
-    expect(html).toContain("인증번호 받기");
+    expect(html).not.toContain('type="tel"');
+    expect(html).not.toContain('id="login-name"');
+    expect(html).toContain("프로필에서 선택해서 입력할 수 있어요");
   });
 
   it("renders journey steps for community introduction", () => {

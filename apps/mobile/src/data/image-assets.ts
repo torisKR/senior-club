@@ -1,53 +1,141 @@
 import type { ImageSource } from 'expo-image';
 
+import { getMobileEnvironment } from '@/config/env';
 import type { Club, Event } from '@/types';
 
 export type AppImageSource = ImageSource | number;
 
-export const fallbackActivityImage = require('@/assets/images/senior-club-hero-v2.jpg');
+// Unmodified copies of the web's public category references, available offline.
+export const fallbackActivityImage = require('../../assets/images/club-senior-hero.jpg');
 
-const gardeningImage = require('@/assets/images/event-gardening-v2.jpg');
-const classicalImage = require('@/assets/images/event-classical-v2.jpg');
-
-const eventImages: Record<string, AppImageSource> = {
-  'event-garden-0719': gardeningImage,
-  'event-garden-0705': gardeningImage,
-  'event-classic-0723': classicalImage,
-  'event-classic-0624': classicalImage,
-  'event-hiking-0726': fallbackActivityImage,
-  'event-photo-0802': fallbackActivityImage,
+const categoryImages: Readonly<Record<string, number>> = {
+  hiking: fallbackActivityImage,
+  gardening: require('../../assets/images/event-gardening.jpg'),
+  classical: require('../../assets/images/event-classical.jpg'),
+  photo: require('../../assets/images/event-photo.jpg'),
+  history: require('../../assets/images/event-history.jpg'),
+  'rail-travel': require('../../assets/images/event-rail.jpg'),
+  reading: require('../../assets/images/event-reading.jpg'),
 };
 
-const clubImages: Record<string, AppImageSource> = {
-  'club-garden': gardeningImage,
-  'club-classic': classicalImage,
-  'club-hiking': fallbackActivityImage,
-  'club-photo': fallbackActivityImage,
-  'club-history': fallbackActivityImage,
-  'club-railway': fallbackActivityImage,
+// Older callers only pass an ID. Explicit API interests always take precedence.
+const legacyEventCategories: Readonly<Record<string, string>> = {
+  'event-garden-0719': 'gardening',
+  'event-garden-0705': 'gardening',
+  'event-classic-0723': 'classical',
+  'event-classic-0624': 'classical',
+  'event-hiking-0726': 'hiking',
+  'event-photo-0802': 'photo',
 };
 
-const clubPhotoImages: Record<string, AppImageSource> = {
-  'garden-photo-1': gardeningImage,
-  'garden-photo-2': gardeningImage,
-  'classic-photo-1': classicalImage,
-  'classic-photo-2': classicalImage,
-  'hiking-photo-1': fallbackActivityImage,
-  'hiking-photo-2': fallbackActivityImage,
+const legacyClubCategories: Readonly<Record<string, string>> = {
+  'club-garden': 'gardening',
+  'club-classic': 'classical',
+  'club-hiking': 'hiking',
+  'club-photo': 'photo',
+  'club-history': 'history',
+  'club-railway': 'rail-travel',
 };
 
-function remoteImage(uri?: string): ImageSource | undefined {
-  return uri ? { uri, cacheKey: uri } : undefined;
+const legacyPhotoCategories: Readonly<Record<string, string>> = {
+  'garden-photo-1': 'gardening',
+  'garden-photo-2': 'gardening',
+  'classic-photo-1': 'classical',
+  'classic-photo-2': 'classical',
+  'hiking-photo-1': 'hiking',
+  'hiking-photo-2': 'hiking',
+};
+
+export interface CoverImageSelection {
+  source: AppImageSource;
+  fallbackSource: number;
+  isReference: boolean;
+  sourceKey: string;
 }
 
-export function getEventImageSource(event: Pick<Event, 'id' | 'imageUri'>): AppImageSource {
-  return eventImages[event.id] ?? remoteImage(event.imageUri) ?? fallbackActivityImage;
+type EventImageInput = Pick<Event, 'id' | 'imageUri'> & Partial<Pick<Event, 'interestId'>>;
+type ClubImageInput = Pick<Club, 'id' | 'imageUri'> & {
+  interestId?: string;
+  interest?: { slug: string };
+  coverImageUrl?: string | null;
+};
+
+function ownValue<T>(values: Readonly<Record<string, T>>, key?: string): T | undefined {
+  return key && Object.hasOwn(values, key) ? values[key] : undefined;
 }
 
-export function getClubImageSource(club: Pick<Club, 'id' | 'imageUri'>): AppImageSource {
-  return clubImages[club.id] ?? remoteImage(club.imageUri) ?? fallbackActivityImage;
+export function getCategoryImageSource(category?: string | null): number {
+  return ownValue(categoryImages, category?.trim()) ?? fallbackActivityImage;
+}
+
+/** Root-relative API paths belong to the configured web origin, never a URL-provided host. */
+function suppliedImage(uri?: string | null): ImageSource | undefined {
+  const candidate = uri?.trim();
+  if (!candidate || candidate.length > 2_048 || /[\u0000-\u001f\u007f\\]/.test(candidate)) {
+    return undefined;
+  }
+
+  try {
+    let parsed: URL;
+    if (candidate.startsWith('/')) {
+      if (candidate.startsWith('//')) return undefined;
+      const pathname = candidate.split(/[?#]/, 1)[0];
+      const unsafePath = pathname.split('/').some((segment) => {
+        const decoded = decodeURIComponent(segment);
+        return decoded === '.' || decoded === '..' || /[\u0000-\u001f\u007f\\/]/.test(decoded);
+      });
+      if (unsafePath) return undefined;
+
+      const origin = new URL(getMobileEnvironment().webUrl);
+      if (origin.protocol !== 'https:' || origin.username || origin.password) return undefined;
+      parsed = new URL(candidate, origin.origin);
+      if (parsed.origin !== origin.origin) return undefined;
+    } else {
+      // Require a conventional absolute HTTPS URL; URL() also accepts some malformed variants.
+      if (!/^https:\/\//i.test(candidate)) return undefined;
+      parsed = new URL(candidate);
+    }
+    if (parsed.protocol !== 'https:' || !parsed.hostname || parsed.username || parsed.password) {
+      return undefined;
+    }
+    return { uri: parsed.href, cacheKey: parsed.href };
+  } catch {
+    // Invalid paths or unavailable approved origins use the bundled reference.
+    return undefined;
+  }
+}
+
+export function selectCoverImage(imageUri?: string | null, category?: string | null): CoverImageSelection {
+  const fallbackSource = getCategoryImageSource(category);
+  const supplied = suppliedImage(imageUri);
+  return {
+    source: supplied ?? fallbackSource,
+    fallbackSource,
+    isReference: !supplied,
+    sourceKey: JSON.stringify([supplied?.uri ?? null, fallbackSource]),
+  };
+}
+
+export function getEventCoverImage(event: EventImageInput): CoverImageSelection {
+  return selectCoverImage(event.imageUri, event.interestId ?? ownValue(legacyEventCategories, event.id));
+}
+
+export function getClubCoverImage(club: ClubImageInput): CoverImageSelection {
+  return selectCoverImage(
+    club.imageUri ?? club.coverImageUrl,
+    club.interest?.slug ?? club.interestId ?? ownValue(legacyClubCategories, club.id),
+  );
+}
+
+// Keep the source-only APIs for callers that do not render a cover.
+export function getEventImageSource(event: EventImageInput): AppImageSource {
+  return getEventCoverImage(event).source;
+}
+
+export function getClubImageSource(club: ClubImageInput): AppImageSource {
+  return getClubCoverImage(club).source;
 }
 
 export function getClubPhotoImageSource(photoId: string, imageUri?: string): AppImageSource {
-  return clubPhotoImages[photoId] ?? remoteImage(imageUri) ?? fallbackActivityImage;
+  return selectCoverImage(imageUri, ownValue(legacyPhotoCategories, photoId)).source;
 }

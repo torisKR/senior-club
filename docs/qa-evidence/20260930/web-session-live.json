@@ -1,0 +1,537 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-30T09:12:21.463595+00:00",
+  "sourceCommit": "9a376d96f4e8a955fa29ad305c480d2d156d321b",
+  "deployment": {
+    "id": "dpl_FumS2oKgsfdmRXbSCESNJrtRPRet",
+    "state": "READY",
+    "target": "production",
+    "canonical": "https://senior.toris.kr",
+    "url": "https://clubsenior-i4ap7n7jr-ironjustlikethatgmailcoms-projects.vercel.app"
+  },
+  "frozenWebSource": {
+    "files": 256,
+    "sha256": "a8810855a54f725e0b0476b35243cd60ee5629329d0705aec9a5c95282835fef",
+    "algorithm": "SHA256 of JSON sorted map of relative path to file SHA256",
+    "nativeSubsequentChangesIncluded": false
+  },
+  "build": {
+    "localUnitTests": 529,
+    "testFiles": 94,
+    "typecheck": "PASS",
+    "eslint": "PASS",
+    "localWebpack": "PASS",
+    "localTurbopack": "port binding denied by environment",
+    "remoteTurbopackCompiledSuccessfully": true,
+    "privateBuildLogSha256": "7967e319281cfbb0442141b5a12c9e302cba5e0e483e863337365a9f249a889c"
+  },
+  "publicRendering": {
+    "passed": true,
+    "checks": 27,
+    "scenarios": [
+      {
+        "name": "seoul-default",
+        "timezoneId": "Asia/Seoul",
+        "width": 1440,
+        "font": false
+      },
+      {
+        "name": "los-angeles-saved-large-profile",
+        "timezoneId": "America/Los_Angeles",
+        "width": 390,
+        "font": true,
+        "profile": true
+      },
+      {
+        "name": "utc-new-year-saved-large",
+        "timezoneId": "UTC",
+        "width": 360,
+        "font": true,
+        "clock": "2027-01-01T00:00:05Z"
+      },
+      {
+        "name": "seoul-storage-denied",
+        "timezoneId": "Asia/Seoul",
+        "width": 390,
+        "font": false,
+        "deny": true
+      }
+    ],
+    "results": [
+      {
+        "scenario": "seoul-default",
+        "path": "/",
+        "status": 200,
+        "scrollWidth": 1440,
+        "width": 1440,
+        "large": false,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "seoul-default",
+        "path": "/events",
+        "status": 200,
+        "scrollWidth": 1440,
+        "width": 1440,
+        "large": false,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "seoul-default",
+        "path": "/clubs",
+        "status": 200,
+        "scrollWidth": 1440,
+        "width": 1440,
+        "large": false,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "seoul-default",
+        "path": "/login?error=QA-rendering-error&returnTo=%2Fevents",
+        "status": 200,
+        "scrollWidth": 1440,
+        "width": 1440,
+        "large": false,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "seoul-default",
+        "path": "/privacy",
+        "status": 200,
+        "scrollWidth": 1440,
+        "width": 1440,
+        "large": false,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "seoul-default",
+        "flow": "client navigation and history",
+        "passed": true
+      },
+      {
+        "scenario": "seoul-default",
+        "flow": "font toggle",
+        "passed": true
+      },
+      {
+        "scenario": "los-angeles-saved-large-profile",
+        "path": "/",
+        "status": 200,
+        "scrollWidth": 390,
+        "width": 390,
+        "large": true,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "los-angeles-saved-large-profile",
+        "path": "/events",
+        "status": 200,
+        "scrollWidth": 390,
+        "width": 390,
+        "large": true,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "los-angeles-saved-large-profile",
+        "path": "/clubs",
+        "status": 200,
+        "scrollWidth": 390,
+        "width": 390,
+        "large": true,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "los-angeles-saved-large-profile",
+        "path": "/login?error=QA-rendering-error&returnTo=%2Fevents",
+        "status": 200,
+        "scrollWidth": 390,
+        "width": 390,
+        "large": false,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "los-angeles-saved-large-profile",
+        "path": "/privacy",
+        "status": 200,
+        "scrollWidth": 390,
+        "width": 390,
+        "large": true,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "los-angeles-saved-large-profile",
+        "flow": "client navigation and history",
+        "passed": true
+      },
+      {
+        "scenario": "los-angeles-saved-large-profile",
+        "flow": "font toggle",
+        "passed": true
+      },
+      {
+        "scenario": "utc-new-year-saved-large",
+        "path": "/",
+        "status": 200,
+        "scrollWidth": 360,
+        "width": 360,
+        "large": true,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "utc-new-year-saved-large",
+        "path": "/events",
+        "status": 200,
+        "scrollWidth": 360,
+        "width": 360,
+        "large": true,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "utc-new-year-saved-large",
+        "path": "/clubs",
+        "status": 200,
+        "scrollWidth": 360,
+        "width": 360,
+        "large": true,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "utc-new-year-saved-large",
+        "path": "/login?error=QA-rendering-error&returnTo=%2Fevents",
+        "status": 200,
+        "scrollWidth": 360,
+        "width": 360,
+        "large": false,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "utc-new-year-saved-large",
+        "path": "/privacy",
+        "status": 200,
+        "scrollWidth": 360,
+        "width": 360,
+        "large": true,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "utc-new-year-saved-large",
+        "flow": "client navigation and history",
+        "passed": true
+      },
+      {
+        "scenario": "utc-new-year-saved-large",
+        "flow": "font toggle",
+        "passed": true
+      },
+      {
+        "scenario": "seoul-storage-denied",
+        "path": "/",
+        "status": 200,
+        "scrollWidth": 390,
+        "width": 390,
+        "large": false,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "seoul-storage-denied",
+        "path": "/events",
+        "status": 200,
+        "scrollWidth": 390,
+        "width": 390,
+        "large": false,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "seoul-storage-denied",
+        "path": "/clubs",
+        "status": 200,
+        "scrollWidth": 390,
+        "width": 390,
+        "large": false,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "seoul-storage-denied",
+        "path": "/login?error=QA-rendering-error&returnTo=%2Fevents",
+        "status": 200,
+        "scrollWidth": 390,
+        "width": 390,
+        "large": false,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "seoul-storage-denied",
+        "path": "/privacy",
+        "status": 200,
+        "scrollWidth": 390,
+        "width": 390,
+        "large": false,
+        "hasGlobalError": false,
+        "newPageErrors": 0
+      },
+      {
+        "scenario": "seoul-storage-denied",
+        "flow": "client navigation and history",
+        "passed": true
+      }
+    ],
+    "pageErrors": 0,
+    "consoleErrors": 0,
+    "failedResources": 0,
+    "sessionStatus": 200,
+    "interestsStatus": 200
+  },
+  "anonymousAuthBoundary": {
+    "observedAt": "2026-09-30T09:10:18.366Z",
+    "deployment": "dpl_FumS2oKgsfdmRXbSCESNJrtRPRet",
+    "origin": "https://senior.toris.kr",
+    "cases": [
+      {
+        "name": "required consent rejects missing",
+        "passed": true,
+        "status": 307
+      },
+      {
+        "name": "required consent rejects duplicate",
+        "passed": true,
+        "status": 307
+      },
+      {
+        "name": "canonical Kakao OAuth entry and safe returnTo",
+        "passed": true,
+        "status": 307,
+        "providerOrigin": "https://kauth.kakao.com",
+        "callbackPath": "/api/auth/kakao/callback"
+      },
+      {
+        "name": "host-only OAuth intent cookie attributes",
+        "passed": true,
+        "cookies": [
+          {
+            "name": "__Host-senior_club_kakao_state",
+            "httpOnly": true,
+            "secure": true,
+            "sameSiteLax": true,
+            "pathRoot": true,
+            "hostOnly": true,
+            "deleted": false
+          }
+        ]
+      },
+      {
+        "name": "mismatched OAuth state rejected",
+        "passed": true,
+        "status": 307
+      },
+      {
+        "name": "cancelled OAuth safely clears intent",
+        "passed": true,
+        "status": 307
+      },
+      {
+        "name": "retired provider /api/auth/phone/request",
+        "passed": true,
+        "status": 410
+      },
+      {
+        "name": "retired provider /api/auth/phone/verify",
+        "passed": true,
+        "status": 410
+      },
+      {
+        "name": "retired provider /api/auth/email/request",
+        "passed": true,
+        "status": 410
+      },
+      {
+        "name": "retired provider /api/auth/email/verify",
+        "passed": true,
+        "status": 410
+      },
+      {
+        "name": "retired provider /api/auth/google",
+        "passed": true,
+        "status": 410
+      },
+      {
+        "name": "anonymous protected profile update denied",
+        "passed": true,
+        "status": 401
+      },
+      {
+        "name": "foreign Origin mutation denied",
+        "passed": true,
+        "status": 403
+      },
+      {
+        "name": "non-JSON mutation denied",
+        "passed": true,
+        "status": 415
+      },
+      {
+        "name": "anonymous logout secure cookie deletion",
+        "passed": true,
+        "status": 200,
+        "cookies": [
+          {
+            "name": "__Host-senior_club_access",
+            "httpOnly": true,
+            "secure": true,
+            "sameSiteLax": true,
+            "pathRoot": true,
+            "hostOnly": true,
+            "deleted": true
+          },
+          {
+            "name": "__Host-senior_club_session",
+            "httpOnly": true,
+            "secure": true,
+            "sameSiteLax": true,
+            "pathRoot": true,
+            "hostOnly": true,
+            "deleted": true
+          }
+        ]
+      }
+    ],
+    "passed": true,
+    "providerAccountLogin": false,
+    "providerTokenExchange": false,
+    "realAccountWrites": 0,
+    "actualSmsSent": 0
+  },
+  "anonymousContinuation": {
+    "observedAt": "2026-09-30T09:11:26.298Z",
+    "deployment": "dpl_FumS2oKgsfdmRXbSCESNJrtRPRet",
+    "origin": "https://senior.toris.kr",
+    "cases": [
+      {
+        "name": "legacy continuation navigation /events?theme=hiking#upcoming",
+        "passed": true,
+        "status": 307,
+        "destination": "/events?theme=hiking#upcoming",
+        "cookieMutation": false
+      },
+      {
+        "name": "legacy continuation prefetch /events?theme=hiking#upcoming",
+        "passed": true,
+        "status": 307,
+        "destination": "/events?theme=hiking#upcoming",
+        "cookieMutation": false
+      },
+      {
+        "name": "legacy continuation navigation https://example.invalid/",
+        "passed": true,
+        "status": 307,
+        "destination": "/",
+        "cookieMutation": false
+      },
+      {
+        "name": "legacy continuation prefetch https://example.invalid/",
+        "passed": true,
+        "status": 307,
+        "destination": "/",
+        "cookieMutation": false
+      },
+      {
+        "name": "legacy continuation navigation /auth/continue?returnTo=%2Fme",
+        "passed": true,
+        "status": 307,
+        "destination": "/",
+        "cookieMutation": false
+      },
+      {
+        "name": "legacy continuation prefetch /auth/continue?returnTo=%2Fme",
+        "passed": true,
+        "status": 307,
+        "destination": "/",
+        "cookieMutation": false
+      },
+      {
+        "name": "legacy continuation navigation /%61uth/continue",
+        "passed": true,
+        "status": 307,
+        "destination": "/",
+        "cookieMutation": false
+      },
+      {
+        "name": "legacy continuation prefetch /%61uth/continue",
+        "passed": true,
+        "status": 307,
+        "destination": "/",
+        "cookieMutation": false
+      },
+      {
+        "name": "mounted anonymous continuation /events?theme=hiking#upcoming",
+        "passed": true,
+        "destination": "/events?theme=hiking#upcoming",
+        "sessionStatus": [
+          200,
+          200
+        ],
+        "width": 390,
+        "scrollWidth": 390
+      },
+      {
+        "name": "mounted anonymous continuation https://example.invalid/",
+        "passed": true,
+        "destination": "/",
+        "sessionStatus": [
+          200,
+          200
+        ],
+        "width": 390,
+        "scrollWidth": 390
+      },
+      {
+        "name": "mounted anonymous continuation /auth/continue?returnTo=%2Fme",
+        "passed": true,
+        "destination": "/",
+        "sessionStatus": [
+          200,
+          200,
+          200
+        ],
+        "width": 390,
+        "scrollWidth": 390
+      }
+    ],
+    "pageErrors": [],
+    "passed": true,
+    "authenticatedProductionRestore": false,
+    "realAccountWrites": 0
+  },
+  "limits": {
+    "realWebProviderLogin": false,
+    "providerTokenExchange": false,
+    "authenticatedProductionRestore": false,
+    "actualSmsSent": 0,
+    "realAccountWrites": 0,
+    "screenshotPixelReview": false,
+    "isolatedAuthenticatedRoleEvidence": "role-ui-local.json"
+  },
+  "cleanup": {
+    "ownedPlaywrightSession": "senior-auth-live-qa",
+    "browserClosed": true,
+    "otherSessionsClosed": false
+  }
+}

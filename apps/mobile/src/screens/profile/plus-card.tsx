@@ -64,7 +64,7 @@ export function PlusCard() {
         <View style={{ gap: Spacing.xs }}>
           <AppText variant="sectionTitle">시니어클럽 플러스</AppText>
           <AppText color="textSecondary">
-            한 번 결제하면 배너 광고가 사라집니다. 모임 찾기·신청·채팅은 그대로 무료입니다.
+            한 번 결제하면 배너 광고가 사라집니다. 마을과 세 가지 놀이는 무료로 즐길 수 있어요.
           </AppText>
         </View>
 
@@ -80,13 +80,24 @@ export function PlusCard() {
         ) : (
           <SeniorButton
             testID="plus-buy"
-            label={busy ? '진행 중…' : '광고 없이 보기 · 4,900원'}
+            label={busy ? '진행 중…' : billing.price ? `광고 없이 보기 · ${billing.price}` : billing.priceLoaded ? '상품을 불러올 수 없어요' : '가격 확인 중…'}
             variant="primary"
-            disabled={!billing.ready || busy}
+            disabled={!billing.ready || !billing.price || busy}
             onPress={() => void runPurchase()}
             accessibilityHint="Google Play에서 한 번 결제하면 배너 광고가 사라집니다"
           />
         )}
+
+        {!billing.owned && billing.priceLoaded && !billing.price ? (
+          <SeniorButton
+            testID="plus-retry-price"
+            label="상품 다시 확인하기"
+            variant="ghost"
+            disabled={busy}
+            onPress={billing.retryPrice}
+            accessibilityHint="Google Play에서 상품 가격을 다시 불러옵니다"
+          />
+        ) : null}
 
         <SeniorButton
           testID="plus-restore"

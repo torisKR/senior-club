@@ -17,3 +17,15 @@ node_modules/
 output/
 *.log
 *.tsbuildinfo
+**/.env*
+!**/.env.example
+**/*.jks
+**/*.keystore
+**/credentials.json
+**/google-services.json
+**/GoogleService-Info.plist
+**/service-account*.json
+.aws/
+docs/
+apps/api/test/
+.github/

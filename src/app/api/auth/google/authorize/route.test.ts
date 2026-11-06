@@ -1,21 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
-vi.mock("server-only", () => ({}));
-import { GET } from "@/app/api/auth/google/authorize/route";
+import { describe, expect, it } from "vitest";
+import { GET } from "./route";
 
-describe("Google authorize", () => {
-  it("sanitizes external returnTo and disables caching", async () => {
-    vi.stubEnv("GOOGLE_CLIENT_ID", "key");
-    const response = await GET(
-      new Request(
-        "https://club.test/api/auth/google/authorize?returnTo=https%3A%2F%2Fevil.test",
-      ),
-    );
+describe("retired Google web login", () => {
+  it("returns to Kakao login with no OAuth or external redirect", async () => {
+    const response = GET(new Request("https://club.test/api/auth/google/authorize?returnTo=https%3A%2F%2Fevil.test&code=unused"));
+    const target = new URL(response.headers.get("location")!);
+    expect(target.origin).toBe("https://club.test");
+    expect(target.pathname).toBe("/login");
+    expect(target.searchParams.get("returnTo")).toBe("/");
+    expect(target.searchParams.get("error")).toContain("카카오");
     expect(response.headers.get("cache-control")).toContain("no-store");
-    const location = new URL(response.headers.get("location")!);
-    const state = JSON.parse(
-      Buffer.from(location.searchParams.get("state")!, "base64url").toString(),
-    );
-    expect(state.returnTo).toBe("/");
-    vi.unstubAllEnvs();
+    expect(response.headers.get("set-cookie")).toContain("google_oauth_state=;");
   });
 });

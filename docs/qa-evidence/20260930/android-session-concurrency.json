@@ -1,0 +1,32 @@
+{
+  "date": "2026-09-30",
+  "sourceCommit": "948c2327c70eaf42b997dd11ae384e1258bfc63f",
+  "scope": "Android authentication concurrency; fixture transport and storage, not live Kakao or native SecureStore verification",
+  "failuresReproducedBeforeFix": 5,
+  "changes": [
+    "Logout and new login invalidate previous in-flight authentication",
+    "Native session storage operations are serialized, including uncancellable writes",
+    "Late issued credentials are rejected and remote revocation is attempted with bounded timeout",
+    "Previous-account protected responses cannot be delivered or retried under a new account, including streamed JSON bodies"
+  ],
+  "validation": {
+    "mobileTestsPassed": 361,
+    "mobileTestFilesPassed": 46,
+    "focusedManagerAndHttpTestsPassed": 30,
+    "focusedTestFilesPassed": 2,
+    "typecheckPassed": true,
+    "scopedEslintPassed": true
+  },
+  "limitations": [
+    "Offline remote revocation cannot be guaranteed",
+    "Failing native storage cannot prove physical credential erasure",
+    "Fixture regression tests do not establish real provider or hardware behavior",
+    "Earlier signed AAB source9a9825b and currently installed APK3fa88a do not include this fix; the new source948c232 signed candidate has static artifact verification only"
+  ],
+  "files": {
+    "apps/mobile/src/api/http-client.ts": "dba8066d573bd54ebe13bae9268373825cccbe3a468609377d656365ead6910d",
+    "apps/mobile/src/auth/auth-session-manager.ts": "ec465bf05e22e9eb56049906110f037eb6bd608d08b360fbc79f2795a85e3751",
+    "apps/mobile/src/auth/auth-session-manager.test.ts": "ee6234c12f56f811b60007326dba6c9142e7a3f222f377a7681c217196bdd159"
+  },
+  "signedCandidateEvidence": "android-auth-session-signed-candidate.json"
+}

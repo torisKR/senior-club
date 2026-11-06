@@ -17,7 +17,7 @@ export function Brand({ className, compact = false, priority = false }: BrandPro
   return (
     <Link
       className={clsx(
-        "group inline-flex min-h-13 shrink-0 items-center gap-2.5 rounded-2xl no-underline",
+        "group inline-flex min-h-14 shrink-0 items-center gap-2.5 rounded-2xl no-underline",
         "focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-[var(--sun)]",
         className,
       )}

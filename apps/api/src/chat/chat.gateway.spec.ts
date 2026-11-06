@@ -101,6 +101,26 @@ describe("ChatGateway realtime authorization", () => {
     }
   });
 
+  it("removes promoted reviewer sockets from message delivery while keeping MEMBER reviewers", async () => {
+    const message = { id: "message-reviewer", message: "회원 메시지" };
+    const member = recipient({ ...principal("reviewer-member", "member-session"), reviewer: true });
+    const promoted = recipient({ ...principal("reviewer-promoted", "promoted-session"), reviewer: true });
+    const authSession = {
+      findFirst: vi.fn().mockResolvedValue({ id: "sender-session" }),
+      findMany: vi.fn().mockResolvedValue([
+        { id: "member-session", userId: "reviewer-member", user: { role: UserRole.MEMBER } },
+        { id: "promoted-session", userId: "reviewer-promoted", user: { role: UserRole.ADMIN } },
+      ]),
+    };
+    const chat = { send: vi.fn().mockResolvedValue(message), entitledMemberIds: vi.fn().mockResolvedValue(new Set(["reviewer-member", "reviewer-promoted"])), blockedInteractionUserIds: vi.fn().mockResolvedValue(new Set()) };
+    const gateway = new ChatGateway({} as TokenService, { authSession } as unknown as PrismaService, chat as unknown as ChatService);
+    gateway.server = { in: vi.fn().mockReturnValue({ fetchSockets: vi.fn().mockResolvedValue([member, promoted]) }) } as never;
+    await gateway.send({ data: { auth: principal("sender", "sender-session") } } as never, { roomId: "room-1", clientMessageId: "client-reviewer", message: "회원 메시지" });
+    expect(member.emit).toHaveBeenCalledWith("message:new", message);
+    expect(promoted.emit).not.toHaveBeenCalled();
+    expect(promoted.leave).toHaveBeenCalledWith("room:room-1");
+  });
+
   it("rejects a sender whose cached socket session has been revoked", async () => {
     const senderPrincipal = principal("sender-1", "session-revoked");
     const chat = {

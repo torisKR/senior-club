@@ -5,6 +5,7 @@ import { ApiException } from "../common/http/api.exception";
 import {
   AccountDeletionStatus,
   ContentStatus,
+  type Prisma,
   UserRole,
   UserStatus,
 } from "../generated/prisma/client";
@@ -13,6 +14,15 @@ import type { RequestAccountDeletionInput } from "./account.contracts";
 
 const REAUTH_WINDOW_MS = 10 * 60 * 1_000;
 const DELETION_GRACE_DAYS = 7;
+export const ACCOUNT_DELETION_FAILED_COOLDOWN_MS = 5 * 60 * 1_000;
+export const ACCOUNT_DELETION_STALE_PROCESSING_MS = 15 * 60 * 1_000;
+
+type ClaimedDeletion = {
+  id: string;
+  userId: string;
+  status: AccountDeletionStatus;
+  updatedAt: Date;
+};
 
 @Injectable()
 export class AccountDeletionService {
@@ -121,165 +131,192 @@ export class AccountDeletionService {
   }
 
   async cancel(principal: AuthenticatedPrincipal) {
-    const request = await this.prisma.accountDeletionRequest.findFirst({
-      where: {
-        userId: principal.userId,
-        status: AccountDeletionStatus.REQUESTED,
-      },
-      orderBy: { requestedAt: "desc" },
-    });
-    if (!request) {
+    return this.prisma.$transaction(async (transaction) => {
+      const request = await transaction.accountDeletionRequest.findFirst({
+        where: {
+          userId: principal.userId,
+          status: AccountDeletionStatus.REQUESTED,
+        },
+        orderBy: { requestedAt: "desc" },
+      });
+      if (request) {
+        // This update takes the same row lock as processing. Recheck after any
+        // wait so a worker's committed completion cannot be canceled.
+        const canceled = await transaction.accountDeletionRequest.updateMany({
+          where: {
+            id: request.id,
+            status: AccountDeletionStatus.REQUESTED,
+            updatedAt: request.updatedAt,
+          },
+          data: { status: AccountDeletionStatus.CANCELED },
+        });
+        if (canceled.count === 1) {
+          await transaction.user.update({
+            where: { id: principal.userId },
+            data: { deletionRequestedAt: null },
+          });
+          return { success: true as const };
+        }
+      }
       throw new ApiException(
         HttpStatus.NOT_FOUND,
         "DELETION_REQUEST_NOT_FOUND",
         "취소할 탈퇴 요청이 없습니다.",
       );
-    }
-    await this.prisma.$transaction([
-      this.prisma.accountDeletionRequest.update({
-        where: { id: request.id },
-        data: { status: AccountDeletionStatus.CANCELED },
-      }),
-      this.prisma.user.update({
-        where: { id: principal.userId },
-        data: { deletionRequestedAt: null },
-      }),
-    ]);
-    return { success: true as const };
+    });
   }
 
   async processNext() {
-    const request = await this.prisma.$transaction(async (transaction) => {
-      const rows = await transaction.$queryRaw<Array<{ id: string }>>`
-        SELECT "id"
-        FROM "account_deletion_requests"
-        WHERE "status" = 'REQUESTED'::"AccountDeletionStatus"
-          AND "scheduled_for" <= NOW()
-        ORDER BY "scheduled_for" ASC
-        LIMIT 1
-        FOR UPDATE SKIP LOCKED
-      `;
-      const id = rows[0]?.id;
-      if (!id) return null;
-      return transaction.accountDeletionRequest.update({
-        where: { id },
-        data: { status: AccountDeletionStatus.PROCESSING },
-      });
-    });
-    if (!request) return false;
-
+    let claimed: ClaimedDeletion | undefined;
     try {
-      await this.anonymize(request.id, request.userId);
-      return true;
+      return await this.prisma.$transaction(async (transaction) => {
+        const rows = await transaction.$queryRaw<ClaimedDeletion[]>`
+          SELECT "id", "user_id" AS "userId", "status", "updated_at" AS "updatedAt"
+          FROM "account_deletion_requests"
+          WHERE "scheduled_for" <= NOW()
+            AND (
+              "status" = 'REQUESTED'::"AccountDeletionStatus"
+              OR (
+                "status" = 'FAILED'::"AccountDeletionStatus"
+                AND "updated_at" <= NOW() - ${ACCOUNT_DELETION_FAILED_COOLDOWN_MS} * INTERVAL '1 millisecond'
+              )
+              OR (
+                "status" = 'PROCESSING'::"AccountDeletionStatus"
+                AND "updated_at" <= NOW() - ${ACCOUNT_DELETION_STALE_PROCESSING_MS} * INTERVAL '1 millisecond'
+              )
+            )
+          ORDER BY "scheduled_for" ASC, "id" ASC
+          LIMIT 1
+          FOR UPDATE SKIP LOCKED
+        `;
+        claimed = rows[0];
+        if (!claimed) return false;
+        // Keep the claim and all anonymization writes uncommitted under the
+        // row lock. A crash rolls everything back to the retryable original row.
+        await transaction.accountDeletionRequest.update({
+          where: { id: claimed.id },
+          data: { status: AccountDeletionStatus.PROCESSING },
+        });
+        await this.anonymize(transaction, claimed.id, claimed.userId);
+        return true;
+      });
     } catch (error) {
-      const code = error instanceof Error ? error.name : "UNKNOWN_ERROR";
-      await this.prisma.accountDeletionRequest.update({
-        where: { id: request.id },
+      if (!claimed) throw error;
+      // The processing transaction has rolled back. Another worker or cancel
+      // may have won since then, including after an ambiguous commit response.
+      await this.prisma.accountDeletionRequest.updateMany({
+        where: {
+          id: claimed.id,
+          status: claimed.status,
+          updatedAt: claimed.updatedAt,
+        },
         data: {
           status: AccountDeletionStatus.FAILED,
-          failureCode: code.slice(0, 100),
+          failureCode: "ACCOUNT_DELETION_FAILED",
         },
       });
       return false;
     }
   }
 
-  private async anonymize(requestId: string, userId: string) {
+  private async anonymize(
+    transaction: Prisma.TransactionClient,
+    requestId: string,
+    userId: string,
+  ) {
     const now = new Date();
-    await this.prisma.$transaction(async (transaction) => {
-      const user = await transaction.user.findUnique({
-        where: { id: userId },
-        select: { email: true },
-      });
-      if (!user) return;
+    const user = await transaction.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    if (!user) throw new Error("ACCOUNT_DELETION_USER_NOT_FOUND");
 
-      await transaction.postAttachment.deleteMany({
-        where: { post: { userId } },
-      });
-      await transaction.reviewAttachment.deleteMany({
-        where: { review: { userId } },
-      });
-      await transaction.chatAttachment.deleteMany({
-        where: { message: { userId } },
-      });
-      await transaction.post.updateMany({
-        where: { userId },
-        data: {
-          status: ContentStatus.DELETED,
-          title: "삭제된 게시글",
-          content: "작성자가 탈퇴하여 내용이 삭제되었습니다.",
-        },
-      });
-      await transaction.comment.updateMany({
-        where: { userId },
-        data: {
-          status: ContentStatus.DELETED,
-          content: "작성자가 탈퇴하여 내용이 삭제되었습니다.",
-        },
-      });
-      await transaction.review.updateMany({
-        where: { userId },
-        data: {
-          status: ContentStatus.DELETED,
-          content: "작성자가 탈퇴하여 내용이 삭제되었습니다.",
-        },
-      });
-      await transaction.chatMessage.updateMany({
-        where: { userId },
-        data: { message: null, deletedAt: now },
-      });
-      await transaction.chatRoomMember.deleteMany({ where: { userId } });
-      await transaction.clubMember.deleteMany({ where: { userId } });
-      await transaction.friendship.deleteMany({
-        where: { OR: [{ requesterId: userId }, { addresseeId: userId }] },
-      });
-      await transaction.userBlock.deleteMany({
-        where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
-      });
-      await transaction.notification.deleteMany({ where: { recipientId: userId } });
-      await transaction.devicePushToken.deleteMany({ where: { userId } });
-      await transaction.idempotencyRecord.deleteMany({ where: { userId } });
-      await transaction.userInterest.deleteMany({ where: { userId } });
-      await transaction.consentRecord.deleteMany({ where: { userId } });
-      await transaction.authIdentity.deleteMany({ where: { userId } });
-      await transaction.authSession.deleteMany({ where: { userId } });
-      await transaction.emailVerification.deleteMany({
-        where: user.email
-          ? { OR: [{ userId }, { email: user.email }] }
-          : { userId },
-      });
-      await transaction.phoneVerification.deleteMany({ where: { userId } });
-      await transaction.user.update({
-        where: { id: userId },
-        data: {
-          email: `deleted+${userId}@invalid.local`,
-          phoneNumber: null,
-          name: "탈퇴한 회원",
-          birthYear: null,
-          region: null,
-          gender: null,
-          avatarUrl: null,
-          bio: null,
-          status: UserStatus.WITHDRAWN,
-          emailVerifiedAt: null,
-          phoneVerifiedAt: null,
-          onboardingCompletedAt: null,
-          termsAgreedAt: null,
-          marketingAgreedAt: null,
-          lastLoginAt: null,
-          deletionRequestedAt: null,
-          anonymizedAt: now,
-        },
-      });
-      await transaction.accountDeletionRequest.update({
-        where: { id: requestId },
-        data: {
-          status: AccountDeletionStatus.COMPLETED,
-          reason: null,
-          completedAt: now,
-          failureCode: null,
-        },
-      });
+    await transaction.postAttachment.deleteMany({
+      where: { post: { userId } },
+    });
+    await transaction.reviewAttachment.deleteMany({
+      where: { review: { userId } },
+    });
+    await transaction.chatAttachment.deleteMany({
+      where: { message: { userId } },
+    });
+    await transaction.post.updateMany({
+      where: { userId },
+      data: {
+        status: ContentStatus.DELETED,
+        title: "삭제된 게시글",
+        content: "작성자가 탈퇴하여 내용이 삭제되었습니다.",
+      },
+    });
+    await transaction.comment.updateMany({
+      where: { userId },
+      data: {
+        status: ContentStatus.DELETED,
+        content: "작성자가 탈퇴하여 내용이 삭제되었습니다.",
+      },
+    });
+    await transaction.review.updateMany({
+      where: { userId },
+      data: {
+        status: ContentStatus.DELETED,
+        content: "작성자가 탈퇴하여 내용이 삭제되었습니다.",
+      },
+    });
+    await transaction.chatMessage.updateMany({
+      where: { userId },
+      data: { message: null, deletedAt: now },
+    });
+    await transaction.chatRoomMember.deleteMany({ where: { userId } });
+    await transaction.clubMember.deleteMany({ where: { userId } });
+    await transaction.friendship.deleteMany({
+      where: { OR: [{ requesterId: userId }, { addresseeId: userId }] },
+    });
+    await transaction.userBlock.deleteMany({
+      where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
+    });
+    await transaction.notification.deleteMany({ where: { recipientId: userId } });
+    await transaction.devicePushToken.deleteMany({ where: { userId } });
+    await transaction.idempotencyRecord.deleteMany({ where: { userId } });
+    await transaction.userInterest.deleteMany({ where: { userId } });
+    await transaction.consentRecord.deleteMany({ where: { userId } });
+    await transaction.authIdentity.deleteMany({ where: { userId } });
+    await transaction.authSession.deleteMany({ where: { userId } });
+    await transaction.emailVerification.deleteMany({
+      where: user.email
+        ? { OR: [{ userId }, { email: user.email }] }
+        : { userId },
+    });
+    await transaction.phoneVerification.deleteMany({ where: { userId } });
+    await transaction.user.update({
+      where: { id: userId },
+      data: {
+        email: `deleted+${userId}@invalid.local`,
+        phoneNumber: null,
+        name: "탈퇴한 회원",
+        birthYear: null,
+        region: null,
+        gender: null,
+        avatarUrl: null,
+        bio: null,
+        status: UserStatus.WITHDRAWN,
+        emailVerifiedAt: null,
+        phoneVerifiedAt: null,
+        onboardingCompletedAt: null,
+        termsAgreedAt: null,
+        marketingAgreedAt: null,
+        lastLoginAt: null,
+        deletionRequestedAt: null,
+        anonymizedAt: now,
+      },
+    });
+    await transaction.accountDeletionRequest.update({
+      where: { id: requestId },
+      data: {
+        status: AccountDeletionStatus.COMPLETED,
+        reason: null,
+        completedAt: now,
+        failureCode: null,
+      },
     });
   }
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import { CoverImage } from "@/components/cover-image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -15,7 +15,6 @@ import {
 
 import { PurposeJourney } from "@/components/purpose-journey";
 import { JsonLd } from "@/components/json-ld";
-import { resolveCoverImage } from "@/lib/cover-image";
 import {
   getPublicClub,
 } from "@/lib/clubs/server";
@@ -110,14 +109,14 @@ export default async function ClubDetailPage({ params }: ClubPageProps) {
             </dl>
           </div>
           <div className="relative min-h-72 lg:min-h-full">
-            <Image
+            <CoverImage
               alt={club.image ? `${club.title} 커뮤니티 대표 이미지` : "시니어클럽 공용 대표 이미지"}
               className="object-cover"
               fill
               priority
               sizes="(max-width: 1024px) 100vw, 50vw"
-              src={resolveCoverImage(club.image, club.interest.slug)}
-              unoptimized={Boolean(club.image?.startsWith("https://"))}
+              image={club.image} category={club.interest.slug}
+
             />
             <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[var(--ink)]/30 to-transparent lg:bg-gradient-to-r" />
           </div>

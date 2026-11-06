@@ -12,6 +12,7 @@ export interface ApiProfile {
   id: string;
   email: string;
   phoneNumber?: string | null;
+  phoneVerifiedAt?: string | null;
   name: string;
   birthYear: number | null;
   region: string | null;
@@ -32,10 +33,11 @@ export interface UpdateProfileInput {
   region: string;
   birthYear: number;
   interestSlugs: string[];
+  phoneNumber?: string | null;
 }
 
 export interface ProfileStateSnapshot {
-  user: User;
+  user: User & { phoneVerifiedAt?: string | null };
   selectedInterestIds: string[];
   onboardingCompleted: boolean;
   onboardingCompletedAt: string | null;
@@ -100,7 +102,9 @@ export function toProfileState(profile: ApiProfile): ProfileStateSnapshot {
       id: profile.id,
       name: profile.name,
       email: profile.email,
-      phoneNumber: profile.phoneNumber,
+      phoneNumber: profile.phoneNumber ?? null,
+      // Missing metadata is explicitly unverified, including older server responses.
+      phoneVerifiedAt: profile.phoneNumber ? profile.phoneVerifiedAt ?? null : null,
       ...(profile.birthYear === null ? {} : { birthYear: profile.birthYear }),
       ageGroup:
         profile.birthYear === null ? '미설정' : ageGroupFromBirthYear(profile.birthYear),

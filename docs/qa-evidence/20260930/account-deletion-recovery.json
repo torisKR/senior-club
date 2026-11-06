@@ -1,0 +1,60 @@
+{
+  "date": "2026-09-30",
+  "sourceCommit": "84c4fe751cc426c1839c44b74a58ff81750b38d3",
+  "scope": "Local PostgreSQL17 and fixture/unit checks; no production account deletion",
+  "changes": [
+    "Claim and anonymization commit atomically under a row lock",
+    "Due FAILED rows retry after five-minute cooldown",
+    "Due stale PROCESSING rows recover after fifteen minutes",
+    "CAS status/timestamp protects completion from later failure or cancellation",
+    "Persisted failure and worker drain logs use fixed safe codes"
+  ],
+  "preserved": [
+    "Original scheduledFor and seven-day grace",
+    "COMPLETED/CANCELED terminal states",
+    "Schema and migrations",
+    "Existing anonymization scope; external provider deletion not added"
+  ],
+  "validation": {
+    "accountUnitTestsPassed": 37,
+    "apiDefaultTestsPassed": 415,
+    "apiDefaultTestsSkipped": 42,
+    "apiDefaultTestFilesPassed": 39,
+    "apiDefaultTestFilesSkipped": 5,
+    "apiTypecheckPassed": true,
+    "apiBuildPassed": true,
+    "databaseGuardTestsPassed": 8,
+    "realDatabaseTestsPassed": 30,
+    "realDatabaseTestsSkipped": 0,
+    "realDatabaseSuitesPassed": 4,
+    "realAccountDeletionTestsPassed": 18,
+    "disposableDatabaseCreatedAndRemoved": true,
+    "suiteCounts": {
+      "kakaoProfilesRoles": 9,
+      "reviewConcurrency": 1,
+      "safetyConcurrency": 2,
+      "accountDeletionRecoveryAndLocks": 18
+    }
+  },
+  "productionDeploymentVerified": true,
+  "workerEnabledInProductionByThisChange": false,
+  "limitations": [
+    "Controlled query-extension barriers/faults delegate SQL, writes, commit and rollback to PostgreSQL",
+    "Crash behavior is proved with injected transaction failure, not a killed production task",
+    "Existing production worker setting remains enabled; automatic scheduled deletion results and external-provider cleanup remain separate acceptance checks"
+  ],
+  "files": {
+    "apps/api/src/account/account-deletion.service.ts": "8f14706087e24f1cb0463c8c4b4b4b14f01d362fbd9e966cdfbd57e1d21c756a",
+    "apps/api/src/account/account-deletion.worker.ts": "c0066797397b6f9a310d4d1c762692a9cc7c4ce1c3c5ad7072b767231af34343",
+    "apps/api/src/account/account-deletion.service.spec.ts": "92cb37cf85f1eb43f845020c90966ee27005816a0cf4e2ce7b330b220bbed758",
+    "apps/api/src/account/account-deletion.worker.spec.ts": "e9f44b93fd7240cda2f4327111088f8b8f5ea1df1d8b0646a4e38a061b651d27",
+    "apps/api/src/account/account-deletion.database.spec.ts": "abc7702191dcad98b355480a9443744f313a9dcf20c8e0e958789c9c0cc086d4",
+    "apps/api/scripts/database-qa.mjs": "a606fb6f8bb285d2466cb054c7ea9b9fea97b714ccabbb58d4953d4c13df4790",
+    "apps/api/scripts/database-qa.test.mjs": "3c82e365ac2f5ead93aedf83d92840a1916ab1c8f85f1b39b86c8d37247e359c"
+  },
+  "productionDeletionExecutedByQa": false,
+  "productionWorkerSettingUnchanged": true,
+  "productionWorkerEnabled": true,
+  "automaticScheduledDeletionOutcomeVerified": false,
+  "productionDeploymentEvidence": "api-deletion-live.json"
+}

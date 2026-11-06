@@ -12,7 +12,8 @@ import {
 } from '@/api/posts-api';
 import { ContentSafetyActions } from '@/components/safety';
 import { AppText, Card, SeniorButton } from '@/components/ui';
-import { Radius, Spacing, TouchTarget } from '@/constants/theme';
+import { FontSizes, FontWeights, LineHeights, Radius, Spacing, TouchTarget } from '@/constants/theme';
+import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
 import { buildLoginHref } from '@/utils/auth-routing';
 
@@ -37,6 +38,7 @@ export function CommentCard({
 }: CommentCardProps) {
   const router = useRouter();
   const theme = useTheme();
+  const { largeTextEnabled } = useAppState();
   const isAuthor = currentUserId !== undefined && currentUserId === comment.author.id;
   const [editing, setEditing] = useState(false);
   const [content, setContent] = useState(comment.content);
@@ -163,6 +165,8 @@ export function CommentCard({
               textAlignVertical="top"
               style={[
                 styles.input,
+
+                { fontSize: FontSizes[largeTextEnabled ? 'large' : 'standard'].body, lineHeight: LineHeights[largeTextEnabled ? 'large' : 'standard'].body },
                 { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border },
               ]}
               accessibilityLabel="수정할 댓글 내용"
@@ -262,8 +266,9 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    fontSize: 18,
-    lineHeight: 27,
+    fontSize: FontSizes.standard.body,
+    lineHeight: LineHeights.standard.body,
+    fontFamily: FontWeights.body,
   },
   actionRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: Spacing.sm },
   ownerActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: Spacing.sm },

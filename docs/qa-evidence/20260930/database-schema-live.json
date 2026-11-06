@@ -1,0 +1,57 @@
+{
+  "phase": "baseline",
+  "taskId": "d829c345c5fa44afb2c5719b7115c2ce",
+  "lastStatus": "STOPPED",
+  "containers": [
+    {
+      "name": "api",
+      "lastStatus": "STOPPED",
+      "exitCode": 0
+    }
+  ],
+  "proof": {
+    "event": "senior-recovery-schema-proof",
+    "mode": "baseline",
+    "authorized": true,
+    "hostnameValidated": true,
+    "privateSocket": true,
+    "tlsProtocol": "TLSv1.3",
+    "readOnly": true,
+    "databaseIdentityMatches": true,
+    "serverVersion": "18.3",
+    "migrationCount": 10,
+    "migrationsMatch": true,
+    "tableCount": 35,
+    "tablesMatch": true,
+    "invalidConstraints": 0,
+    "invalidIndexes": 0,
+    "migrationFingerprint": "3a3c9a49227cb2edf2d01ffddcdbe1294137596044d4391968ec5f4cc974c576",
+    "catalogFingerprint": "54af551a01729eb752fe76c48093492fa8a386a22466063c468009e76e795a67",
+    "catalogCounts": {
+      "columns": 337,
+      "enums": 108,
+      "constraints": 334,
+      "indexes": 122,
+      "sequences": 0,
+      "views": 0,
+      "triggers": 0,
+      "functions": 0,
+      "extensions": 1
+    },
+    "passed": true
+  },
+  "passed": true,
+  "schemaSourceSha256": "72a78a106f4d7e31fb560270e9e4f251acbfffe6df33dbc6833ca37f7282c99b",
+  "scope": "Production repeatable-read read-only transaction inspecting migration history and catalog metadata only",
+  "limitations": [
+    "No business rows were selected",
+    "Not a full Prisma semantic schema diff",
+    "Catalog owner and ACL metadata are excluded",
+    "Not evidence of complete restore or data-quality validation"
+  ],
+  "readerSource": {
+    "readableReaderSha256": "8787f7719086119b2dfc58c797ea43ca16bd96d439ad3ca8477050c7e460c747",
+    "executedCompactReaderSha256": "f6681cdf45b2a723aabfd062d0c02c04d166863e7c7db823c6ad80fa97351f8d",
+    "readableFile": "database-catalog-reader.cjs"
+  }
+}

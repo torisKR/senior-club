@@ -1,0 +1,69 @@
+{
+  "foundation": "shared/design/foundation.ts",
+  "foundationSha256": "da51106313d50fa7c1b476c67d4f005f4cea8460e3ba99b90f7c1eadf138bf5f",
+  "webAdapter": "src/lib/shared-design.ts",
+  "mobileAdapter": "apps/mobile/src/constants/theme.ts",
+  "samePhotoFiles": [
+    {
+      "file": "club-senior-hero.jpg",
+      "sha256": "cf4f51d8054676593ce3ec3f7c4a02072dbf6d1d080324ad9123bcea737a2189",
+      "bytes": 438171,
+      "byteIdentical": true
+    },
+    {
+      "file": "event-gardening.jpg",
+      "sha256": "e74f7e17de1c3fa064ca36ac7d9c20702a0b3b6f3e8e61ee5bf2f0466ba86ac8",
+      "bytes": 529698,
+      "byteIdentical": true
+    },
+    {
+      "file": "event-classical.jpg",
+      "sha256": "6c04cb64b850cde4a22cc6a379a79087e7f72db7cf7f27cad19cefd616f1e67d",
+      "bytes": 472405,
+      "byteIdentical": true
+    },
+    {
+      "file": "event-photo.jpg",
+      "sha256": "6bb1e9189267e2a287d0978915fc8bea377e539fbf7dfa10fa1844883e4dda6d",
+      "bytes": 1014411,
+      "byteIdentical": true
+    },
+    {
+      "file": "event-history.jpg",
+      "sha256": "e20c28e7669a73226b2670f9caae875c54402efe9ff2cd016bafeb2756a9b84d",
+      "bytes": 1065198,
+      "byteIdentical": true
+    },
+    {
+      "file": "event-rail.jpg",
+      "sha256": "dfa7af4fe3ddc24b86d17740f339619d192fec366adba28df6fa88e693123c1a",
+      "bytes": 857878,
+      "byteIdentical": true
+    },
+    {
+      "file": "event-reading.jpg",
+      "sha256": "68b8e9727db267a3fa904af3e85f248b5560e8e16daf30f694e0fb572a6f2492",
+      "bytes": 932478,
+      "byteIdentical": true
+    }
+  ],
+  "fontManifest": "public/fonts/pretendard-1.3.9/manifest.json",
+  "imagePixelsEdited": false,
+  "visualAestheticReviewPerformed": false,
+  "tests": {
+    "web": 484,
+    "mobile": 330,
+    "typecheck": "both passed",
+    "lint": "both passed; native detail patch also scoped lint passed"
+  },
+  "coverImageQA": [
+    "Valid supplied image takes precedence over category fallback.",
+    "Root-relative image URLs resolve only against configured HTTPS web origin.",
+    "Bundled category reference is captioned and accessible as a reference image.",
+    "One failure falls back once; source/recycling key remounts and stale callbacks cannot fail another item."
+  ],
+  "runtime": [
+    "Web production shared CSS token and font resource contract has separate live evidence.",
+    "Native runtime installation and detail corrections recorded separately after final APK verification."
+  ]
+}

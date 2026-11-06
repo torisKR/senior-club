@@ -72,6 +72,11 @@ export interface KakaoLoginInput {
   privacyAccepted: true;
 }
 
+export interface ReviewerLoginInput {
+  termsAccepted: true;
+  privacyAccepted: true;
+}
+
 export interface IssuedSession {
   accessToken: string;
   accessTokenExpiresAt: string;

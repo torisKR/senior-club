@@ -1,0 +1,83 @@
+name: Android Play reviewed screenshot evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Frozen full lowercase main SHA; must equal this run and workflow SHA
+        required: true
+        type: string
+      release_id:
+        description: Same-repo published evidence prerelease ID at this exact SHA
+        required: true
+        type: string
+      release_asset_id:
+        description: Human-uploaded reviewed-screenshots-SHA.zip asset ID in that prerelease
+        required: true
+        type: string
+      zip_sha256:
+        description: SHA-256 computed from the exact ZIP personally reviewed before upload
+        required: true
+        type: string
+      manual_review:
+        description: I reviewed these exact screenshots and all six original manifest attestations
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: android-play-screenshot-evidence-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  issue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out frozen repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install Node.js for existing strict screenshot validator
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test issuer and receiver contracts offline
+        run: python3 -B -m unittest discover -s .github/scripts -p 'test_play_screenshot_*.py' -v
+
+      - name: Verify original human review and immutable Release input
+        id: evidence
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          RELEASE_ASSET_ID: ${{ inputs.release_asset_id }}
+          ZIP_SHA256: ${{ inputs.zip_sha256 }}
+          MANUAL_REVIEW: ${{ inputs.manual_review }}
+        run: python3 -B .github/scripts/issue-play-screenshot-evidence.py
+
+      - name: Issue original manifest and assetRoot
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-play-final-screenshots-${{ github.sha }}
+          path: ${{ steps.evidence.outputs.directory }}/
+          if-no-files-found: error
+          retention-days: 14
+          archive: true
+          overwrite: false
+
+      - name: Preserve human review and input identity receipt
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-play-screenshot-review-${{ github.sha }}
+          path: ${{ steps.evidence.outputs.receipt }}
+          if-no-files-found: error
+          retention-days: 14
+          archive: true
+          overwrite: false

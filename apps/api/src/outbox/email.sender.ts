@@ -3,6 +3,7 @@ import { HttpStatus, Inject, Injectable, Logger } from "@nestjs/common";
 import { ApiException } from "../common/http/api.exception";
 import type { ApiEnv } from "../config/env";
 import { API_ENV } from "../config/env.module";
+import { DisabledChannelError } from "./disabled-channel.error";
 
 export interface SendOtpEmailInput {
   email: string;
@@ -35,6 +36,9 @@ export class ConfiguredEmailSender implements EmailSender {
   constructor(@Inject(API_ENV) private readonly env: ApiEnv) {}
 
   async sendOtp(input: SendOtpEmailInput) {
+    if (this.env.EMAIL_PROVIDER === "disabled") {
+      throw new DisabledChannelError("EMAIL_PROVIDER");
+    }
     if (this.env.EMAIL_PROVIDER === "console") {
       this.logger.log(
         `[development email] ${input.email}: 인증번호 ${input.code} (${input.expiresAt} 만료)`,
@@ -57,6 +61,7 @@ export class ConfiguredEmailSender implements EmailSender {
     status: string;
     idempotencyKey: string;
   }) {
+    if (this.env.EMAIL_PROVIDER === "disabled") throw new DisabledChannelError("EMAIL_PROVIDER");
     const statusLabel =
       input.status === "APPROVED"
         ? "승인"
@@ -92,6 +97,7 @@ export class ConfiguredEmailSender implements EmailSender {
     scheduledFor: string;
     idempotencyKey: string;
   }) {
+    if (this.env.EMAIL_PROVIDER === "disabled") throw new DisabledChannelError("EMAIL_PROVIDER");
     const scheduled = new Intl.DateTimeFormat("ko-KR", {
       year: "numeric",
       month: "long",

@@ -1,3 +1,4 @@
+import { normalizedPhoneNumber } from "../auth/phone-number";
 import { z } from "zod";
 
 const UNSAFE_PROFILE_TEXT = /[<>\u0000-\u001f\u007f]/u;
@@ -43,6 +44,7 @@ export const updateProfileSchema = z
       .array(interestSlugSchema)
       .min(1, "관심사를 1개 이상 선택해 주세요.")
       .max(3, "관심사는 최대 3개까지 선택할 수 있습니다."),
+    phoneNumber: normalizedPhoneNumber.optional().nullable(),
   })
   .strict()
   .refine(

@@ -10,7 +10,7 @@
 | Expo slug | `club-senior` |
 | Android package | `com.toris.seniorclub` |
 | URL scheme | `clubsenior://` |
-| 표시 버전 | `0.1.0` |
+| 표시 버전 | `0.1.1` |
 | 초기 versionCode | `1` |
 
 `com.toris.seniorclub`은 이미 앱 설정과 기존 출시 후보 AAB에서 사용하는 Android package입니다. Play Console에서 앱을 만든 뒤에는 package 이름을 바꿀 수 없습니다.

@@ -1,0 +1,309 @@
+{
+  "mode": "Vercel production dpl_9fK6bmYnVLeaP9PVhbY3HCFSuYcG",
+  "scenarios": [
+    {
+      "name": "seoul-default",
+      "timezoneId": "Asia/Seoul",
+      "width": 1440,
+      "font": false
+    },
+    {
+      "name": "los-angeles-saved-large-profile",
+      "timezoneId": "America/Los_Angeles",
+      "width": 390,
+      "font": true,
+      "profile": true
+    },
+    {
+      "name": "utc-new-year-saved-large",
+      "timezoneId": "UTC",
+      "width": 360,
+      "font": true,
+      "clock": "2027-01-01T00:00:05Z"
+    },
+    {
+      "name": "seoul-storage-denied",
+      "timezoneId": "Asia/Seoul",
+      "width": 390,
+      "font": false,
+      "deny": true
+    }
+  ],
+  "results": [
+    {
+      "scenario": "seoul-default",
+      "path": "/",
+      "status": 200,
+      "scrollWidth": 1440,
+      "width": 1440,
+      "large": false,
+      "title": "시니어클럽 | 같은 관심사로 이어지는 시니어 모임",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "seoul-default",
+      "path": "/events",
+      "status": 200,
+      "scrollWidth": 1440,
+      "width": 1440,
+      "large": false,
+      "title": "모임 찾기 | 시니어클럽",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "seoul-default",
+      "path": "/clubs",
+      "status": 200,
+      "scrollWidth": 1440,
+      "width": 1440,
+      "large": false,
+      "title": "테마 커뮤니티 | 시니어클럽",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "seoul-default",
+      "path": "/login?error=QA-rendering-error&returnTo=%2Fevents",
+      "status": 200,
+      "scrollWidth": 1440,
+      "width": 1440,
+      "large": false,
+      "title": "시니어클럽 | 같은 관심사로 이어지는 시니어 모임",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "seoul-default",
+      "path": "/privacy",
+      "status": 200,
+      "scrollWidth": 1440,
+      "width": 1440,
+      "large": false,
+      "title": "개인정보 처리방침 | 시니어클럽",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "seoul-default",
+      "flow": "client navigation and history",
+      "passed": true
+    },
+    {
+      "scenario": "seoul-default",
+      "flow": "font toggle",
+      "passed": true
+    },
+    {
+      "scenario": "los-angeles-saved-large-profile",
+      "path": "/",
+      "status": 200,
+      "scrollWidth": 390,
+      "width": 390,
+      "large": true,
+      "title": "시니어클럽 | 같은 관심사로 이어지는 시니어 모임",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "los-angeles-saved-large-profile",
+      "path": "/events",
+      "status": 200,
+      "scrollWidth": 390,
+      "width": 390,
+      "large": true,
+      "title": "모임 찾기 | 시니어클럽",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "los-angeles-saved-large-profile",
+      "path": "/clubs",
+      "status": 200,
+      "scrollWidth": 390,
+      "width": 390,
+      "large": true,
+      "title": "테마 커뮤니티 | 시니어클럽",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "los-angeles-saved-large-profile",
+      "path": "/login?error=QA-rendering-error&returnTo=%2Fevents",
+      "status": 200,
+      "scrollWidth": 390,
+      "width": 390,
+      "large": false,
+      "title": "시니어클럽 | 같은 관심사로 이어지는 시니어 모임",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "los-angeles-saved-large-profile",
+      "path": "/privacy",
+      "status": 200,
+      "scrollWidth": 390,
+      "width": 390,
+      "large": true,
+      "title": "개인정보 처리방침 | 시니어클럽",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "los-angeles-saved-large-profile",
+      "flow": "client navigation and history",
+      "passed": true
+    },
+    {
+      "scenario": "los-angeles-saved-large-profile",
+      "flow": "font toggle",
+      "passed": true
+    },
+    {
+      "scenario": "utc-new-year-saved-large",
+      "path": "/",
+      "status": 200,
+      "scrollWidth": 360,
+      "width": 360,
+      "large": true,
+      "title": "시니어클럽 | 같은 관심사로 이어지는 시니어 모임",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "utc-new-year-saved-large",
+      "path": "/events",
+      "status": 200,
+      "scrollWidth": 360,
+      "width": 360,
+      "large": true,
+      "title": "모임 찾기 | 시니어클럽",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "utc-new-year-saved-large",
+      "path": "/clubs",
+      "status": 200,
+      "scrollWidth": 360,
+      "width": 360,
+      "large": true,
+      "title": "테마 커뮤니티 | 시니어클럽",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "utc-new-year-saved-large",
+      "path": "/login?error=QA-rendering-error&returnTo=%2Fevents",
+      "status": 200,
+      "scrollWidth": 360,
+      "width": 360,
+      "large": false,
+      "title": "시니어클럽 | 같은 관심사로 이어지는 시니어 모임",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "utc-new-year-saved-large",
+      "path": "/privacy",
+      "status": 200,
+      "scrollWidth": 360,
+      "width": 360,
+      "large": true,
+      "title": "개인정보 처리방침 | 시니어클럽",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "utc-new-year-saved-large",
+      "flow": "client navigation and history",
+      "passed": true
+    },
+    {
+      "scenario": "utc-new-year-saved-large",
+      "flow": "font toggle",
+      "passed": true
+    },
+    {
+      "scenario": "seoul-storage-denied",
+      "path": "/",
+      "status": 200,
+      "scrollWidth": 390,
+      "width": 390,
+      "large": false,
+      "title": "시니어클럽 | 같은 관심사로 이어지는 시니어 모임",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "seoul-storage-denied",
+      "path": "/events",
+      "status": 200,
+      "scrollWidth": 390,
+      "width": 390,
+      "large": false,
+      "title": "모임 찾기 | 시니어클럽",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "seoul-storage-denied",
+      "path": "/clubs",
+      "status": 200,
+      "scrollWidth": 390,
+      "width": 390,
+      "large": false,
+      "title": "테마 커뮤니티 | 시니어클럽",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "seoul-storage-denied",
+      "path": "/login?error=QA-rendering-error&returnTo=%2Fevents",
+      "status": 200,
+      "scrollWidth": 390,
+      "width": 390,
+      "large": false,
+      "title": "시니어클럽 | 같은 관심사로 이어지는 시니어 모임",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "seoul-storage-denied",
+      "path": "/privacy",
+      "status": 200,
+      "scrollWidth": 390,
+      "width": 390,
+      "large": false,
+      "title": "개인정보 처리방침 | 시니어클럽",
+      "hasGlobalError": false,
+      "newPageErrors": 0
+    },
+    {
+      "scenario": "seoul-storage-denied",
+      "flow": "client navigation and history",
+      "passed": true
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "badResponses": [],
+  "failures": [],
+  "sessionStatus": 200,
+  "interestsStatus": 200,
+  "passed": true,
+  "realAuthWrites": 0,
+  "observedAt": "2026-09-30T06:46:52.931370+00:00",
+  "firstRunObservation": {
+    "console404Count": 2,
+    "scenarios": [
+      "los-angeles-saved-large-profile",
+      "utc-new-year-saved-large"
+    ],
+    "flow": "client events -> home",
+    "resourcePathCaptured": false,
+    "instrumentedRepeatReproduced": false,
+    "rootCauseEstablished": false
+  }
+}

@@ -48,6 +48,8 @@ describe('profile API contract mappers', () => {
         id: 'user-1',
         name: '김시니어',
         email: 'member@example.com',
+        phoneNumber: null,
+        phoneVerifiedAt: null,
         birthYear: 1962,
         ageGroup: '60대',
         region: '서울',
@@ -76,6 +78,31 @@ describe('profile API contract mappers', () => {
     expect(result.selectedInterestIds).toEqual(['hiking']);
     expect(result.onboardingCompleted).toBe(false);
     expect(result.onboardingCompletedAt).toBeNull();
+  });
+
+  it.each([undefined, null])('maps missing or null contact %s to explicit unverified nulls', (phoneNumber) => {
+    const { user } = toProfileState({ ...apiProfile, phoneNumber });
+    expect(user.phoneNumber).toBeNull();
+    expect(user.phoneVerifiedAt).toBeNull();
+  });
+
+  it('keeps a freely saved contact unverified when the server omits proof metadata', () => {
+    const { user } = toProfileState({ ...apiProfile, phoneNumber: '+821012345678' });
+    expect(user.phoneNumber).toBe('+821012345678');
+    expect(user.phoneVerifiedAt).toBeNull();
+  });
+
+  it('retains the server verification time instead of deriving proof from the phone or login', () => {
+    const phoneVerifiedAt = '2026-09-30T01:00:00.000Z';
+    const { user } = toProfileState({ ...apiProfile, phoneNumber: '+821012345678', phoneVerifiedAt });
+    expect(user.phoneNumber).toBe('+821012345678');
+    expect(user.phoneVerifiedAt).toBe(phoneVerifiedAt);
+  });
+
+  it('does not carry orphaned verification metadata when there is no contact number', () => {
+    const { user } = toProfileState({ ...apiProfile, phoneNumber: null, phoneVerifiedAt: '2026-09-30T01:00:00.000Z' });
+    expect(user.phoneNumber).toBeNull();
+    expect(user.phoneVerifiedAt).toBeNull();
   });
 
   it('derives the display-only age group from the exact birth year', () => {

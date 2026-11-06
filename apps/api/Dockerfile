@@ -4,8 +4,8 @@ FROM node:24-bookworm-slim AS runtime-base
 
 # Prisma detects the system TLS implementation through the OpenSSL binary.
 # Keep the same runtime library available in both build and production stages.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends openssl \
+RUN apt-get update -o Acquire::ForceIPv4=true -o Acquire::http::Timeout=30 -o Acquire::Retries=2 \
+    && apt-get install -y --no-install-recommends -o Acquire::ForceIPv4=true -o Acquire::http::Timeout=30 openssl \
     && rm -rf /var/lib/apt/lists/*
 
 FROM runtime-base AS base
@@ -20,6 +20,7 @@ WORKDIR /workspace
 FROM base AS dependencies
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY patches ./patches
 COPY apps/api/package.json apps/api/package.json
 
 RUN --mount=type=cache,id=senior-club-pnpm,target=/pnpm/store \
@@ -35,7 +36,7 @@ COPY apps/api ./apps/api
 
 # Prisma CLI needs a syntactically valid URL while generating the client, but
 # generation does not connect to this address. Runtime DATABASE_URL is injected
-# by Railway and is never baked into the image.
+# by ECS and is never baked into the image.
 RUN DATABASE_URL='postgresql://generate:generate@127.0.0.1:5432/senior_club?schema=public' \
     pnpm exec prisma generate
 RUN pnpm --dir apps/api build

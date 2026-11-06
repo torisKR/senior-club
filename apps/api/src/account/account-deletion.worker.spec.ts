@@ -1,3 +1,4 @@
+import { Logger } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ApiEnv } from "../config/env";
@@ -70,6 +71,67 @@ describe("AccountDeletionWorker", () => {
       await vi.advanceTimersByTimeAsync(600_000);
       expect(harness.processNext).not.toHaveBeenCalled();
     } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("prevents overlapping drains and releases the guard after a failure", async () => {
+    const harness = createHarness([]);
+    let reject!: (reason: unknown) => void;
+    harness.processNext.mockImplementationOnce(() => new Promise<boolean>((_, fail) => {
+      reject = fail;
+    }));
+    const first = harness.worker.drainOnce();
+    await expect(harness.worker.drainOnce()).resolves.toBe(0);
+    expect(harness.processNext).toHaveBeenCalledTimes(1);
+    const rejected = expect(first).rejects.toThrow("database unavailable");
+    reject(new Error("database unavailable"));
+    await rejected;
+    await expect(harness.worker.drainOnce()).resolves.toBe(0);
+    expect(harness.processNext).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    Object.assign(new Error("token=secret phone=+821012345678"), { name: "Private member name" }),
+    "raw token=secret",
+    { code: "Private member name", phoneNumber: "+821012345678" },
+  ])("logs only a fixed safe code for a rejected scheduled drain (%#)", async (error) => {
+    vi.useFakeTimers();
+    const log = vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+    const harness = createHarness([]);
+    try {
+      harness.processNext.mockRejectedValueOnce(error);
+      harness.worker.onApplicationBootstrap();
+      await flushScheduledDrain();
+      expect(log).toHaveBeenCalledExactlyOnceWith("ACCOUNT_DELETION_DRAIN_FAILED");
+      await vi.advanceTimersByTimeAsync(300_000);
+      expect(harness.processNext).toHaveBeenCalledTimes(2);
+    } finally {
+      harness.worker.onApplicationShutdown();
+      log.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not inspect fields on an untrusted thrown value", async () => {
+    vi.useFakeTimers();
+    const log = vi.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+    const readField = vi.fn(() => "sensitive value");
+    const error = Object.defineProperties({}, {
+      name: { get: readField },
+      message: { get: readField },
+      code: { get: readField },
+    });
+    const harness = createHarness([]);
+    try {
+      harness.processNext.mockRejectedValueOnce(error);
+      harness.worker.onApplicationBootstrap();
+      await flushScheduledDrain();
+      expect(log).toHaveBeenCalledExactlyOnceWith("ACCOUNT_DELETION_DRAIN_FAILED");
+      expect(readField).not.toHaveBeenCalled();
+    } finally {
+      harness.worker.onApplicationShutdown();
+      log.mockRestore();
       vi.useRealTimers();
     }
   });

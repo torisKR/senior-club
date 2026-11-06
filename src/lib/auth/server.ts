@@ -13,7 +13,7 @@ export type BackendUserRole = "MEMBER" | "LEADER" | "ADMIN";
 
 export type BackendUser = {
   id: string;
-  email: string;
+  email: string | null;
   phoneNumber?: string | null;
   name: string;
   role: BackendUserRole;

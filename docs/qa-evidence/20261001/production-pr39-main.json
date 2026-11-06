@@ -1,0 +1,234 @@
+{
+  "scope": "Measured PR39 merge/deployment only; later privacy/dependency edits are excluded",
+  "sourceCommit": "4f024c9defc657cae45bc3a8bd6fbdcfbf4bf616",
+  "pullRequest": "https://github.com/torisKR/senior-club/pull/39",
+  "merged": true,
+  "hostedCiRun": 36845058917,
+  "hostedCodeQlRun": 36845058911,
+  "hostedMainDeployRun": 36845686601,
+  "hostedChecks": {
+    "passed": true,
+    "webTests": 529,
+    "apiUnitTestsPassed": 433,
+    "apiOptInTestsSkipped": 42,
+    "mobileTests": 385,
+    "databaseSuites": 4,
+    "databaseTests": 30,
+    "databaseTestsSkipped": 0
+  },
+  "codeQlFindingsFixed": [
+    6,
+    7,
+    8,
+    15,
+    22,
+    23,
+    24,
+    25,
+    26
+  ],
+  "api": {
+    "observedAt": "2026-10-01T10:04:29.506149+00:00",
+    "sourceCommit": "4f024c9defc657cae45bc3a8bd6fbdcfbf4bf616",
+    "taskDefinition": "senior-club-api:27",
+    "imageDigest": "sha256:f8b17b9e4109b9ce87b843b3e558c443258ab70f144eef9c960bcb22d98ab29b",
+    "running": 1,
+    "pending": 0,
+    "rollout": "COMPLETED",
+    "imageMatchesRunningContainer": true,
+    "environmentAndSecretsPreserved": true,
+    "taskRolesAndResourcesPreserved": true,
+    "workerEnabledUnchanged": true,
+    "channelsDisabled": true,
+    "automaticRollbackEnabled": true,
+    "checks": [
+      {
+        "path": "/healthz",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "/readyz",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "/v1/me",
+        "status": 401,
+        "passed": true
+      },
+      {
+        "path": "/v1/admin/reports",
+        "status": 401,
+        "passed": true
+      },
+      {
+        "path": "/v1/auth/email/request",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "path": "/v1/auth/email/verify",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "path": "/v1/auth/phone/request",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "path": "/v1/auth/phone/verify",
+        "status": 403,
+        "passed": true
+      }
+    ],
+    "newTaskLogEventCount": 112,
+    "newTaskErrorCount": 0,
+    "newTaskP2010Count": 0,
+    "freshProviderLoginVerified": false,
+    "automaticScheduledDeletionOutcomeVerified": false,
+    "productionDeletionExecutedByQa": false,
+    "realAccountWrites": 0,
+    "actualSmsSent": 0
+  },
+  "web": {
+    "sourceCommit": "4f024c9defc657cae45bc3a8bd6fbdcfbf4bf616",
+    "deployment": "dpl_FrVMQSneXB6GoVTH3F8EdX2Xb8mN",
+    "tool": "playwright-cli",
+    "checks": [
+      {
+        "scope": "rendering",
+        "count": 27,
+        "passed": true,
+        "pageErrorCount": 0,
+        "realAccountWrites": 0
+      },
+      {
+        "scope": "boundary",
+        "count": 15,
+        "passed": true,
+        "pageErrorCount": 0,
+        "realAccountWrites": 0
+      },
+      {
+        "scope": "continuation",
+        "count": 11,
+        "passed": true,
+        "pageErrorCount": 0,
+        "realAccountWrites": 0
+      }
+    ],
+    "passed": true,
+    "browserSessionClosed": true,
+    "providerAccountLoginVerified": false,
+    "realAccountWrites": 0,
+    "actualSmsSent": 0
+  },
+  "qaApk": {
+    "stage": "native-build-complete",
+    "sha256": "a18ec8b74e17564bd34558a37ca372bc2d41d4d2f518807bed1b6b34afae69fd",
+    "bytes": 64134951,
+    "beforeSha256": "3c52bbd355e6fe1b00790a96485533f8515ce50b59d3cf36409f4bf693bb34f8",
+    "qaDebugSigning": true,
+    "testAds": true,
+    "sourceSha256": "cd00de894871839e7282d45a9e86003eff4b9d2fb64f8c021b8d0ef417d94fa9",
+    "sourceUnchanged": true,
+    "sourceCommit": "e48c6da68d5494db2e630e95d127bbfbca0a1b5f",
+    "artifactRelativePath": "apps/mobile/build-output/android-review-fixes-e48c6da6/app-release.apk",
+    "qaCertificateSha256": "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c",
+    "matchesPreviousQaCertificate": true,
+    "compiledManifestContractPassed": true,
+    "permissionCount": 34,
+    "exportedContractCount": 10,
+    "sharedPhotoCount": 7,
+    "sharedPhotoBytesMatch": true,
+    "materialSymbolsFontBytesMatch": true,
+    "productionApiAndWebUrlsMatch": true,
+    "arm64Only": true,
+    "targetSdk": 36,
+    "package": "com.toris.seniorclub",
+    "versionName": "0.1.1",
+    "versionCode": 212215980,
+    "debuggable": false,
+    "playUploaded": false,
+    "providerLoginVerifiedOnThisArtifact": false,
+    "installedOnDevice": false,
+    "photoRatiosVerifiedOnThisArtifact": false,
+    "deviceHandoffPending": true
+  },
+  "signedAabCandidate": {
+    "package": "com.toris.seniorclub",
+    "versionCode": 212215980,
+    "versionName": "0.1.1",
+    "sha256": "3ad5e615d2d4724195135a13a86f80424e9b10a4d84f5716d8a62ad64bf69702",
+    "certificateSha256": "58d2a5f2d30822599ff5b1d46e3d499e85a25c0ffb6efe396da0daba38b0634b",
+    "commit": "4f024c9defc657cae45bc3a8bd6fbdcfbf4bf616",
+    "execution": "local",
+    "hostedWorkflowRunId": null,
+    "bytes": 93682561,
+    "bundletoolPinnedHashMatches": true,
+    "bundletoolValidationPassed": true,
+    "uploadSignatureAndCertificateVerified": true,
+    "compiledManifestExactContractPassed": true,
+    "permissionCount": 34,
+    "exportedContractCount": 10,
+    "abis": [
+      "arm64-v8a",
+      "armeabi-v7a",
+      "x86",
+      "x86_64"
+    ],
+    "sharedPhotoCount": 7,
+    "sharedPhotosByteIdenticalInBundle": true,
+    "materialSymbolsFontBytesVerified": true,
+    "productionApiAndWebUrlsInJs": true,
+    "productionBannerIdInJs": true,
+    "qaBannerIdAbsentFromConfiguredEnvironment": true,
+    "sdkTestIdLiteralPresentInJs": true,
+    "playUploaded": false,
+    "playVersionReconciled": false,
+    "providerLoginVerifiedOnThisArtifact": false,
+    "deviceInstalled": false,
+    "finalScreenshotReviewComplete": false,
+    "scope": "Local upload-signed AAB candidate only; current installed debug QA APK preserved",
+    "adVerificationLimit": "Configured production banner and bundle literal checked; SDK retains test constants, no ad serving performed",
+    "artifactRelativePath": "apps/mobile/build-output/signed-candidate-4f024c9defc6/app-release.aab",
+    "nativeDesignSourceCommit": "e48c6da68d5494db2e630e95d127bbfbca0a1b5f",
+    "nativeDesignSourceSha256": "cd00de894871839e7282d45a9e86003eff4b9d2fb64f8c021b8d0ef417d94fa9",
+    "nativeQaApkSha256": "a18ec8b74e17564bd34558a37ca372bc2d41d4d2f518807bed1b6b34afae69fd",
+    "nativeQaInstalled": false,
+    "buildSourceSha256": "dabb652b0103b36816650c96628320f2d213fb9040e28136db430b4164afa4dc",
+    "buildSourceFileCount": 244,
+    "sdkPropertyMetadata": {
+      "billing": {
+        "version": "9.1.0",
+        "entry": "base/root/billing.properties",
+        "sha256": "889731fed6ed2cf88896be49cb8d153cef6e45b28ab4c8dcb63126e7e0e9cf1c"
+      },
+      "firebase-auth": {
+        "version": "24.2.0",
+        "entry": "base/root/firebase-auth.properties",
+        "sha256": "d8400c654ccca23b8ff6cf12dff5898064c5ecc6e7bcd6aec6c9d50048af4cc1"
+      },
+      "play-services-ads": {
+        "version": "25.0.0",
+        "entry": "base/root/play-services-ads.properties",
+        "sha256": "d9e8b92372acd40e22372b8ec7068bd65e993004e0527233991a642c835bb5d9"
+      },
+      "user-messaging-platform": {
+        "version": "4.0.0",
+        "entry": "base/root/user-messaging-platform.properties",
+        "sha256": "00a56db523c42386524871d9a24ddb9c82fe2d644ad503367ff8aad3e4600a53"
+      }
+    },
+    "sdkMetadataLimit": "Version strings in exact AAB property entries; does not prove SDK traffic, consent or complete dependency inventory"
+  },
+  "limitations": [
+    "Fresh actual provider login and automatic scheduled deletion outcome not verified on this deployment.",
+    "Newest QA APK is not installed; previous ba5f83b APK remains installed, and device photo/provider QA awaits handoff.",
+    "Local AAB is not a Play submission or final reviewed screenshot artifact.",
+    "Origin ACM/DNS, optional Firebase Phone billing/provider/Admin credentials, actual privacy supplier facts, Play version/signing/Console and final screenshot evidence remain pending.",
+    "Further dependency/privacy changes need fresh CI, deployment and exact-source native builds; do not relabel this evidence."
+  ]
+}

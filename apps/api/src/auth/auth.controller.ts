@@ -15,6 +15,8 @@ import { AccessTokenGuard } from "./access-token.guard";
 import {
   googleLoginSchema,
   kakaoLoginSchema,
+  reviewerLoginSchema,
+  type ReviewerLoginInput,
   refreshSessionSchema,
   requestEmailCodeSchema,
   requestPhoneCodeSchema,
@@ -27,16 +29,20 @@ import {
   type VerifyPhoneCodeInput,
   verifyEmailCodeSchema,
   verifyPhoneCodeSchema,
+  verifyFirebasePhoneSchema,
+  type VerifyFirebasePhoneInput,
   type AuthenticatedPrincipal,
 } from "./auth.contracts";
 import { AuthService } from "./auth.service";
 import { CurrentPrincipal } from "./current-principal.decorator";
+import { DisabledLoginGuard } from "./login-policy";
 
 @Controller("v1/auth")
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post("email/request")
+  @UseGuards(DisabledLoginGuard)
   @Header("Cache-Control", "private, no-store")
   requestEmailCode(
     @Body(new ZodValidationPipe(requestEmailCodeSchema))
@@ -46,6 +52,7 @@ export class AuthController {
   }
 
   @Post("email/verify")
+  @UseGuards(DisabledLoginGuard)
   @Header("Cache-Control", "private, no-store")
   verifyEmailCode(
     @Body(new ZodValidationPipe(verifyEmailCodeSchema))
@@ -60,6 +67,7 @@ export class AuthController {
   }
 
   @Post("phone/request")
+  @UseGuards(DisabledLoginGuard)
   @Header("Cache-Control", "private, no-store")
   requestPhoneCode(
     @Body(new ZodValidationPipe(requestPhoneCodeSchema))
@@ -69,6 +77,7 @@ export class AuthController {
   }
 
   @Post("phone/verify")
+  @UseGuards(DisabledLoginGuard)
   @Header("Cache-Control", "private, no-store")
   verifyPhoneCode(
     @Body(new ZodValidationPipe(verifyPhoneCodeSchema))
@@ -95,7 +104,21 @@ export class AuthController {
     });
   }
 
+  @Post("reviewer")
+  @Header("Cache-Control", "private, no-store")
+  reviewerLogin(
+    @Body(new ZodValidationPipe(reviewerLoginSchema)) input: ReviewerLoginInput,
+    @Req() request: Request,
+    @Headers("user-agent") userAgent?: string,
+  ) {
+    return this.auth.loginWithReviewer(input, {
+      ...(userAgent ? { userAgent } : {}),
+      ...(request.ip ? { ipAddress: request.ip } : {}),
+    });
+  }
+
   @Post("google")
+  @UseGuards(DisabledLoginGuard)
   @Header("Cache-Control", "private, no-store")
   googleLogin(
     @Body(new ZodValidationPipe(googleLoginSchema)) input: GoogleLoginInput,
@@ -106,6 +129,20 @@ export class AuthController {
       ...(userAgent ? { userAgent } : {}),
       ...(request.ip ? { ipAddress: request.ip } : {}),
     });
+  }
+
+  @Post("firebase/verify-phone")
+  @UseGuards(AccessTokenGuard)
+  @Header("Cache-Control", "private, no-store")
+  verifyFirebasePhone(
+    @Body(new ZodValidationPipe(verifyFirebasePhoneSchema))
+    input: VerifyFirebasePhoneInput,
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+  ) {
+    return this.auth.verifyAndLinkFirebasePhone(
+      principal.userId,
+      input.idToken,
+    );
   }
 
   @Post("refresh")

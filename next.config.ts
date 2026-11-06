@@ -12,8 +12,22 @@ const nextConfig: NextConfig = {
     root: process.cwd(),
   },
   typedRoutes: true,
+  async rewrites() {
+    return [
+      {
+        source: "/favicon.ico",
+        destination: "/images/senior-club-mark-v3.png",
+      },
+    ];
+  },
   async headers() {
     return [
+      {
+        source: "/fonts/pretendard-1.3.9/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
       {
         source: "/app-ads.txt",
         headers: [

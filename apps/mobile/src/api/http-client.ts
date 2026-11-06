@@ -7,6 +7,8 @@ export type AuthenticationMode = 'none' | 'optional' | 'required';
 
 export interface AuthTokenSource {
   getAccessToken(): string | null | Promise<string | null>;
+  /** Changes on logout/account changes, but not ordinary token rotation. */
+  getSessionRevision?(): number;
   /** Refreshes and installs the new access token in memory, then returns it. */
   refreshAccessToken(): Promise<string | null>;
   /** Called only when a final 401 or explicit invalid-refresh response proves auth is unusable. */
@@ -265,17 +267,29 @@ export function createHttpClient(options: CreateHttpClientOptions): HttpClient {
   const defaultTimeoutMs = validateTimeout(options.defaultTimeoutMs ?? DEFAULT_TIMEOUT_MS);
   const auth = options.auth;
   let refreshPromise: Promise<string | null> | null = null;
+  let refreshRevision: number | undefined;
 
-  function refreshAccessToken() {
+  function assertSessionRevision(revision?: number) {
+    if (revision !== undefined && revision !== auth?.getSessionRevision?.()) {
+      throw new ApiError({ status: 0, code: 'AUTH_SESSION_CHANGED', message: '로그인 상태가 바뀌었습니다. 다시 시도해 주세요.' });
+    }
+  }
+
+  function refreshAccessToken(revision?: number) {
     if (!auth) {
       return Promise.resolve(null);
     }
-    if (!refreshPromise) {
-      refreshPromise = Promise.resolve()
-        .then(() => auth.refreshAccessToken())
+    if (!refreshPromise || refreshRevision !== revision) {
+      refreshRevision = revision;
+      const pending = Promise.resolve()
+        .then(() => {
+          assertSessionRevision(revision);
+          return auth.refreshAccessToken();
+        })
         .finally(() => {
-          refreshPromise = null;
+          if (refreshPromise === pending) refreshPromise = null;
         });
+      refreshPromise = pending;
     }
     return refreshPromise;
   }
@@ -329,6 +343,12 @@ export function createHttpClient(options: CreateHttpClientOptions): HttpClient {
   async function execute(path: string, requestOptions: HttpRequestOptions = {}) {
     const url = buildRequestUrl(baseUrl, path);
     const request = prepareRequest(requestOptions, createIdempotencyKey, defaultTimeoutMs);
+    const revision = request.auth === 'none' ? undefined : auth?.getSessionRevision?.();
+    const assertCurrentSession = () => assertSessionRevision(revision);
+    const notifyCurrentAuthenticationFailure = async (error: ApiError) => {
+      assertCurrentSession();
+      await notifyAuthenticationFailure(auth, error);
+    };
 
     if (request.auth === 'required' && !auth) {
       throw new ApiError({
@@ -339,12 +359,15 @@ export function createHttpClient(options: CreateHttpClientOptions): HttpClient {
     }
 
     let accessToken = request.auth === 'none' ? null : ((await auth?.getAccessToken()) ?? null);
+    assertCurrentSession();
     if (request.auth === 'required' && !accessToken) {
       try {
-        accessToken = await refreshAccessToken();
+        assertCurrentSession();
+        accessToken = await refreshAccessToken(revision);
+        assertCurrentSession();
       } catch (error) {
         const authError = normalizeRefreshFailure(error);
-        await notifyAuthenticationFailure(auth, authError);
+        await notifyCurrentAuthenticationFailure(authError);
         throw authError;
       }
       if (!accessToken) {
@@ -353,40 +376,45 @@ export function createHttpClient(options: CreateHttpClientOptions): HttpClient {
           code: 'AUTHENTICATION_REQUIRED',
           message: '로그인이 필요합니다.',
         });
-        await notifyAuthenticationFailure(auth, authError);
+        await notifyCurrentAuthenticationFailure(authError);
         throw authError;
       }
     }
 
     let response = await fetchOnce(url, request, accessToken);
+    assertCurrentSession();
     const canRefresh =
       response.status === 401 && request.auth !== 'none' && Boolean(auth) && Boolean(accessToken);
 
     if (canRefresh) {
       try {
         const currentToken = (await auth?.getAccessToken()) ?? null;
+        assertCurrentSession();
         const nextToken =
-          currentToken && currentToken !== accessToken ? currentToken : await refreshAccessToken();
+          currentToken && currentToken !== accessToken ? currentToken : await refreshAccessToken(revision);
+        assertCurrentSession();
 
         if (nextToken) {
           response = await fetchOnce(url, request, nextToken);
+          assertCurrentSession();
         }
       } catch (error) {
         const authError = normalizeRefreshFailure(error);
-        await notifyAuthenticationFailure(auth, authError);
+        await notifyCurrentAuthenticationFailure(authError);
         throw authError;
       }
     }
 
     if (!response.ok) {
       const error = await apiErrorFromResponse(response);
+      assertCurrentSession();
       if (request.auth !== 'none' && isTerminalAuthenticationFailure(error)) {
-        await notifyAuthenticationFailure(auth, error);
+        await notifyCurrentAuthenticationFailure(error);
       }
       throw error;
     }
 
-    return { response, idempotencyKey: request.idempotencyKey };
+    return { response, idempotencyKey: request.idempotencyKey, assertCurrentSession };
   }
 
   return {
@@ -398,13 +426,14 @@ export function createHttpClient(options: CreateHttpClientOptions): HttpClient {
       path: string,
       requestOptions?: HttpRequestOptions,
     ): Promise<HttpResult<T>> {
-      const { response, idempotencyKey } = await execute(path, requestOptions);
+      const { response, idempotencyKey, assertCurrentSession } = await execute(path, requestOptions);
       let body: T;
 
       if (response.status === 204) {
         body = undefined as T;
       } else {
         const text = await response.text();
+        assertCurrentSession();
         try {
           body = JSON.parse(text) as T;
         } catch (error) {
@@ -417,6 +446,7 @@ export function createHttpClient(options: CreateHttpClientOptions): HttpClient {
         }
       }
 
+      assertCurrentSession();
       return {
         body,
         status: response.status,

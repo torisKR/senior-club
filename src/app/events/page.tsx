@@ -188,7 +188,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
             <nav aria-label="관심 테마 선택" className="flex gap-2 overflow-x-auto pb-2">
               <Link
                 aria-current={selectedCategory === "all" ? "page" : undefined}
-                className={`flex min-h-13 shrink-0 items-center rounded-full border-2 px-5 font-black no-underline ${selectedCategory === "all" ? "border-[var(--primary)] bg-[var(--sky-soft)] text-[var(--primary-strong)]" : "border-[var(--line)] bg-white hover:border-[var(--primary)]"}`}
+                className={`flex min-h-14 shrink-0 items-center rounded-full border-2 px-5 font-black no-underline ${selectedCategory === "all" ? "border-[var(--primary)] bg-[var(--sky-soft)] text-[var(--primary-strong)]" : "border-[var(--line)] bg-white hover:border-[var(--primary)]"}`}
                 href={{ pathname: "/events", query: { view: selectedView, ...(searchTerm ? { q: searchTerm } : {}) } }}
               >
                 전체
@@ -198,7 +198,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
                 return (
                   <Link
                     aria-current={isActive ? "page" : undefined}
-                    className={`flex min-h-13 shrink-0 items-center gap-2 rounded-full border-2 px-5 font-black no-underline ${isActive ? "border-[var(--primary)] bg-[var(--sky-soft)] text-[var(--primary-strong)]" : "border-[var(--line)] bg-white hover:border-[var(--primary)]"}`}
+                    className={`flex min-h-14 shrink-0 items-center gap-2 rounded-full border-2 px-5 font-black no-underline ${isActive ? "border-[var(--primary)] bg-[var(--sky-soft)] text-[var(--primary-strong)]" : "border-[var(--line)] bg-white hover:border-[var(--primary)]"}`}
                     href={{ pathname: "/events", query: { category: interest.id, view: selectedView, ...(searchTerm ? { q: searchTerm } : {}) } }}
                     key={interest.id}
                   >
@@ -247,9 +247,9 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
           ) : (
             <div className="panel mt-6 px-6 py-12 text-center">
               <Search aria-hidden="true" className="mx-auto text-[var(--sky)]" size={42} />
-              <h3 className="mt-4 text-xl font-black">조건에 맞는 모임이 아직 없어요</h3>
-              <p className="mt-2 text-[var(--muted)]">검색어를 줄이거나 다른 관심 테마를 골라보세요.</p>
-              <Link className="button-primary mt-6" href="/events"><RotateCcw aria-hidden="true" size={20} /> 전체 모임 다시 보기</Link>
+              <h3 className="mt-4 text-xl font-black">{searchTerm || selectedCategory !== "all" ? "조건에 맞는 모임이 아직 없어요" : "현재 공개된 모임이 없어요"}</h3>
+              <p className="mt-2 text-[var(--muted)]">{searchTerm || selectedCategory !== "all" ? "검색어를 줄이거나 다른 관심 테마를 골라보세요." : "새 일정이 공개되면 이곳에서 확인할 수 있어요. 관심 있는 커뮤니티를 먼저 둘러보세요."}</p>
+              <Link className="button-primary mt-6" href={searchTerm || selectedCategory !== "all" ? "/events" : "/clubs"}><RotateCcw aria-hidden="true" size={20} /> {searchTerm || selectedCategory !== "all" ? "전체 모임 다시 보기" : "커뮤니티 둘러보기"}</Link>
             </div>
           )}
           {catalog?.hasNextPage && catalog.nextCursor ? (

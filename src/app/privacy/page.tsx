@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Clock3, Database, LockKeyhole, Mail, ShieldCheck, Trash2 } from "lucide-react";
 
 import { createPublicPageMetadata } from "@/lib/seo";
+import { AnalyticsSettings } from "@/components/analytics-provider";
 
 export const metadata: Metadata = createPublicPageMetadata({
   title: "개인정보 처리방침",
@@ -13,7 +14,7 @@ const collectedData = [
   {
     title: "계정과 프로필",
     detail:
-      "이름, 휴대폰 번호, 선택적 이메일, 출생연도·연령대, 지역, 관심사를 수집합니다. 현재 로그인 수단은 휴대폰 SMS 일회용 인증번호(OTP)입니다.",
+      "카카오 계정 식별자로 회원을 인증합니다. 카카오가 제공한 닉네임은 초기 표시 이름으로 사용할 수 있으며, 이름·닉네임·전화번호 입력은 선택입니다. 프로필 설정에는 출생연도·연령대, 지역, 관심사를 사용합니다. 웹 로그인은 카카오 계정으로만 제공합니다.",
   },
   {
     title: "활동과 콘텐츠",
@@ -53,7 +54,7 @@ export default function PrivacyPage() {
             <span className="tag">
               <Clock3 aria-hidden="true" className="size-4" /> 시행일 2026년 7월 30일
             </span>
-            <span className="tag">최종 수정 2026년 9월 9일</span>
+            <span className="tag">최종 수정 2026년 10월 2일</span>
           </div>
         </header>
 
@@ -73,13 +74,31 @@ export default function PrivacyPage() {
             ))}
           </div>
           <p className="mt-4 text-[17px] leading-7 text-[var(--muted)] sm:text-[18px]">
-            현재 MVP는 정밀 위치, 연락처, 통화·문자 기록, 건강 정보, 음성 녹음,
-            신용카드 번호, 사용자 사진·파일을 수집하지 않습니다. 성별, 프로필 사진,
-            소셜 로그인도 현재 출시 범위에 없습니다. Android 앱의 배너 광고는
+            현재 MVP는 정밀 위치, 기기의 주소록, 통화·문자 기록, 건강 정보, 음성 녹음,
+            신용카드 번호, 사용자 사진·파일을 수집하지 않습니다. 성별과 프로필 사진은
+            현재 출시 범위에 없습니다. Android 앱의 배너 광고는
             Google AdMob이 처리하며, 시니어클럽 플러스 결제는 Google Play가
             결제 정보를 처리합니다. 기능이나 외부 SDK가 추가되면 수집 항목과 이
             방침도 함께 바뀝니다.
           </p>
+        </section>
+
+        <section id="analytics" aria-labelledby="privacy-analytics" className="mt-10 space-y-5">
+          <h2 id="privacy-analytics" className="section-title">선택적 서비스 이용 분석</h2>
+          <p className="text-[17px] leading-8 text-[var(--muted)]">
+            동의한 기기에 한해 Google Analytics(Google LLC)로 페이지·화면 조회, 세션과 이용 시간을
+            분석합니다. 웹 쿠키와 앱 설치 식별자, 기기·브라우저 정보가 처리될 수 있으며 Google 서버로
+            전송됩니다. 이름, 전화번호, 회원 ID, 채팅·게시글 내용과 로그인 인증 값은 보내지 않습니다.
+            광고 개인화와 Google Signals에는 이용하지 않습니다.
+          </p>
+          <p className="text-[17px] leading-8 text-[var(--muted)]">
+            동의하지 않아도 서비스를 이용할 수 있습니다. 아래 설정 또는 앱의 내 정보에서 언제든
+            끌 수 있습니다. 끄면 이후 분석 수집을 중단하고 이 기기의 분석 식별자를 초기화합니다.
+            이미 전송된 통계가 즉시 삭제되는 것은 아닙니다. 삭제 관련 문의는 이 방침의 문의처로 보내 주세요.
+            웹과 앱의 설정은 각각 저장합니다.
+          </p>
+          <a className="text-[var(--primary-strong)] underline" href="https://policies.google.com/privacy?hl=ko" target="_blank" rel="noreferrer">Google 개인정보 처리방침</a>
+          <AnalyticsSettings />
         </section>
 
         <section aria-labelledby="privacy-purpose" className="mt-10">
@@ -108,16 +127,50 @@ export default function PrivacyPage() {
           </h2>
           <div className="panel mt-5 p-5 sm:p-7">
             <p className="text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
-              회원 가입, 휴대폰 SMS 인증, 프로필 입력, 모임 참여, 콘텐츠 작성과 고객
-              문의 과정에서 이용자가 직접 정보를 제공합니다. SMS·이메일 전송,
+              카카오 로그인, 프로필 입력, 모임 참여, 콘텐츠 작성과 고객
+              문의 과정에서 정보를 제공합니다. 카카오 인증 과정에서 계정 식별자와
+              제공된 닉네임을 확인하며, 카카오 비밀번호는 시니어클럽에 저장하지 않습니다. 이메일 전송,
               클라우드 호스팅·데이터베이스, 푸시 알림과 앱 빌드·배포 서비스가
               시니어클럽을 대신해 필요한 정보를 처리할 수 있습니다.
             </p>
             <p className="mt-4 text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
-              실제 수탁자, 처리 국가, 항목과 기간은 공급자 계약을 확정한 뒤 이
-              페이지에 공개합니다. Android 앱의 배너 광고는 Google AdMob이 광고
-              게재와 측정에 필요한 기기 식별자를 처리할 수 있습니다. 개인정보를
-              광고 사업자에게 판매하지 않습니다.
+              AWS(Amazon Web Services)는 대한민국 서울 리전에서 API와 회원·프로필·활동
+              데이터베이스를 운영합니다. 회원 데이터는 계정 유지와 삭제 처리에 필요한 기간 동안
+              보관하며, 데이터베이스의 순환 백업은 7일입니다. CloudFront는 요청 전달을 위해
+              전 세계 엣지 서버를 사용할 수 있습니다.
+            </p>
+            <p className="mt-4 text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
+              Vercel Inc.는 웹 호스팅과 웹 로그인 요청 전달을 위해 접속 정보와 요청 데이터를
+              처리합니다. Vercel의 미국 및 글로벌 인프라에서 처리될 수 있으며, 서비스 제공과
+              보안에 필요한 기간 및 공급자의 보관·삭제 정책에 따라 처리합니다.
+              {" "}<a className="underline" href="https://vercel.com/legal/privacy-notice" target="_blank" rel="noreferrer">Vercel 개인정보 안내</a>
+            </p>
+            <p className="mt-4 text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
+              카카오(Kakao Corp.)는 이용자가 선택한 카카오 로그인을 처리하고 계정 식별자와
+              제공된 닉네임을 전달합니다. 카카오 비밀번호는 카카오에 입력하며 시니어클럽에
+              저장하지 않습니다. 카카오 서비스의 보관·삭제 기준은
+              {" "}<a className="underline" href="https://www.kakao.com/policy/privacy" target="_blank" rel="noreferrer">카카오 개인정보 처리방침</a>에 따릅니다.
+            </p>
+            <p className="mt-4 text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
+              Google LLC의 Firebase는 선택한 휴대폰 인증의 전화번호·인증 정보와 기기·접속
+              정보를 처리합니다. Google Analytics는 이용 분석에 동의한 경우 화면·세션·설치
+              식별자를 처리하며, 분석 이벤트 보관 기간은 2개월입니다. Google AdMob은 광고
+              제공·측정·부정 이용 방지를 위해 IP 기반 대략적 지역, 광고·앱 설치 식별자,
+              광고 상호작용과 SDK 성능 정보를 처리할 수 있습니다. 개인정보를 광고 사업자에게
+              판매하지 않습니다.
+            </p>
+            <p className="mt-4 text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
+              Firebase Cloud Messaging과 Firebase Installations는 알림 등록·수신을 위해
+              푸시 토큰, 설치 식별자와 앱·기기 정보를 처리합니다. 시니어클럽 서버의 푸시 등록은
+              로그아웃이나 계정 삭제 요청 시 해제합니다. Google 측의 설치·알림 정보는
+              Firebase의 서비스별 보관·삭제 정책에 따릅니다.
+            </p>
+            <p className="mt-4 text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
+              Google 서비스는 미국을 포함한 글로벌 서버에서 처리될 수 있습니다. 인증과 광고
+              정보는 해당 서비스의 보관·삭제 기준에 따르며, Google Play는 앱 내 구매·복원과
+              결제를 처리합니다. 시니어클럽은 카드 번호를 수집하지 않습니다.
+              {" "}<a className="underline" href="https://policies.google.com/privacy?hl=ko" target="_blank" rel="noreferrer">Google 개인정보 처리방침</a>
+              {" "}<a className="underline" href="https://firebase.google.com/support/privacy" target="_blank" rel="noreferrer">Firebase 개인정보 안내</a>
             </p>
           </div>
         </section>
@@ -154,7 +207,7 @@ export default function PrivacyPage() {
           <div className="panel mt-5 p-5 sm:p-7">
             <p className="text-[17px] leading-8 text-[var(--muted)] sm:text-[18px]">
               이용자는 자신의 개인정보를 조회·수정하고 처리 정지 또는 계정 삭제를
-              요청할 수 있습니다. 본인 확인을 위해 가입 휴대폰 번호를 확인할 수 있지만
+              요청할 수 있습니다. 본인 확인에는 로그인한 카카오 계정을 사용하며,
               비밀번호, 주민등록번호, 신분증 사진을 이메일로 요구하지 않습니다.
             </p>
             <a className="button-primary mt-6 w-full sm:w-auto" href="/account-deletion">
@@ -210,10 +263,10 @@ export default function PrivacyPage() {
             <Mail aria-hidden="true" className="size-8 text-[var(--sun)]" />
             <p className="mt-4 text-xl font-black">시니어클럽 개인정보 담당자</p>
             <a
-              className="mt-4 inline-flex min-h-13 items-center rounded-xl bg-white px-5 py-3 text-[18px] font-black text-[var(--ink)]"
-              href="mailto:privacy@clubsenior.kr"
+              className="mt-4 inline-flex min-h-14 items-center rounded-xl bg-white px-5 py-3 text-[18px] font-black text-[var(--ink)]"
+              href="mailto:korea@toris.kr"
             >
-              privacy@clubsenior.kr
+              korea@toris.kr
             </a>
             <p className="mt-4 text-[16px] leading-7 text-white/85 sm:text-[17px]">
               개인정보 관련 문의는 이 이메일로 받습니다.

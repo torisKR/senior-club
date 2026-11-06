@@ -59,7 +59,7 @@ export function FontSizeControl({ className, compact = false }: FontSizeControlP
       aria-label={isLarge ? "기본 글자 크기로 보기" : "글자 크게 보기"}
       aria-pressed={isLarge}
       className={clsx(
-        "inline-flex min-h-13 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 font-extrabold no-underline transition-colors",
+        "inline-flex min-h-14 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 font-extrabold no-underline transition-colors",
         "focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[var(--sun)] motion-reduce:transition-none",
         isLarge
           ? "border-[var(--primary)] bg-[var(--sky-soft)] text-[var(--primary-strong)]"
@@ -72,7 +72,7 @@ export function FontSizeControl({ className, compact = false }: FontSizeControlP
       type="button"
     >
       <ALargeSmall aria-hidden="true" className="size-5" strokeWidth={2.25} />
-      <span className={clsx(compact && "hidden min-[390px]:inline")}>글자 크게</span>
+      <span className={clsx(compact && "hidden min-[480px]:inline")}>글자 크게</span>
       <span className="screen-reader-only">{isLarge ? "켜짐" : "꺼짐"}</span>
     </button>
   );

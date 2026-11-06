@@ -1,14 +1,14 @@
-import { Image } from 'expo-image';
 import { Stack, type Href, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { isApiError } from '@/api/api-error';
 import { clubsApi, isSafeClubSlug, type PublicClub } from '@/api/clubs-api';
 import { apiErrorMessage } from '@/api/error-message';
 import { AppText, Card, EmptyState, Screen, SectionHeader } from '@/components/ui';
-import { Radius, Spacing } from '@/constants/theme';
-import { getClubImageSource } from '@/data/image-assets';
+import { CoverImage, CoverImageRatios } from '@/components/ui/cover-image';
+import { Layout, Radius, Spacing } from '@/constants/theme';
+import { getClubCoverImage } from '@/data/image-assets';
 import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -24,8 +24,6 @@ export function ClubDetailScreen({ slug }: ClubDetailScreenProps) {
   const router = useRouter();
   const theme = useTheme();
   const { selectedInterestIds } = useAppState();
-  const { width } = useWindowDimensions();
-  const isTablet = width >= 760;
   const [club, setClub] = useState<PublicClub | null>(null);
   const [status, setStatus] = useState<DetailStatus>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -161,21 +159,15 @@ export function ClubDetailScreen({ slug }: ClubDetailScreenProps) {
       <Stack.Screen options={{ title: club.title, headerBackTitle: '커뮤니티' }} />
       <Screen contentContainerStyle={{ maxWidth: 980 }}>
         <Card padded={false}>
-          <Image
-            source={getClubImageSource(club)}
-            accessibilityLabel="커뮤니티 안내 이미지"
-            cachePolicy="memory-disk"
-            contentFit="cover"
+          <CoverImage
+            image={getClubCoverImage(club)}
+            accessibilityLabel={`${club.title} 커뮤니티 대표 이미지`}
             recyclingKey={club.id}
             transition={180}
-            style={{
-              width: '100%',
-              aspectRatio: isTablet ? 2.4 : 4 / 3,
-              backgroundColor: theme.backgroundElement,
-            }}
+            aspectRatio={CoverImageRatios.detail}
           />
 
-          <View style={{ padding: Spacing.xxl, gap: Spacing.lg }}>
+          <View style={{ padding: Layout.cardPadding, gap: Spacing.lg }}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }}>
               <View
                 style={{

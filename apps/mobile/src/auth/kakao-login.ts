@@ -8,7 +8,9 @@ import Constants from 'expo-constants';
 let sdkInitialization: Promise<void> | undefined;
 
 function initializeKakao() {
-  const appKey = Constants.expoConfig?.extra?.kakaoNativeAppKey;
+  const appKey =
+    Constants.expoConfig?.extra?.kakaoNativeAppKey ??
+    process.env.EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY;
   if (typeof appKey !== 'string' || appKey.length === 0) {
     throw new Error('Kakao native app key is missing from the Expo configuration.');
   }
@@ -22,6 +24,15 @@ function initializeKakao() {
 export async function requestKakaoAccessToken() {
   await initializeKakao();
   const useKakaoAccountLogin = !(await isKakaoTalkLoginAvailable());
-  const token = await login({ useKakaoAccountLogin });
-  return token.accessToken;
+  try {
+    const token = await login({ useKakaoAccountLogin });
+    return token.accessToken;
+  } catch (error) {
+    // KakaoTalk can be installed but unable to authenticate. Do not retry a
+    // cancelled flow, or recursively retry an account-login failure.
+    const code = error && typeof error === 'object' && 'code' in error ? error.code : undefined;
+    if (useKakaoAccountLogin || code === 'Cancelled') throw error;
+    const token = await login({ useKakaoAccountLogin: true });
+    return token.accessToken;
+  }
 }

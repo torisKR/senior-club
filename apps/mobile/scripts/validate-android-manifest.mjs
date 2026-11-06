@@ -60,7 +60,7 @@ function readIntrospectedConfig() {
     throw new Error('Expo CLI가 없습니다. apps/mobile에서 의존성을 먼저 설치하세요.');
   }
 
-  const result = spawnSync(process.execPath, [expoCli, 'config', '--type', 'introspect', '--json'], {
+  const result = spawnSync(process.execPath, [path.join(root, 'scripts/introspect-android.mjs')], {
     cwd: root,
     encoding: 'utf8',
     env: { ...process.env, CI: '1' },
@@ -89,7 +89,7 @@ function validateProductionFcmClient(config) {
 
   const configuredPath = config.android?.googleServicesFile;
   if (typeof configuredPath !== 'string' || configuredPath.trim().length === 0) {
-    fail('production 빌드에는 EAS file secret GOOGLE_SERVICES_JSON이 필요합니다.');
+    fail('production 빌드에는 package와 일치하는 Firebase Android client 파일의 경로 GOOGLE_SERVICES_JSON이 필요합니다.');
     return;
   }
 
@@ -291,10 +291,10 @@ if (!mainActivity) {
   fail('.MainActivity를 찾을 수 없습니다.');
 } else {
   const mainAttributes = attributes(mainActivity);
-  if (mainAttributes['android:launchMode'] === 'singleTask') {
-    pass('.MainActivity launchMode=singleTask');
+  if (mainAttributes['android:launchMode'] === 'singleTop') {
+    pass('.MainActivity launchMode=singleTop');
   } else {
-    fail('.MainActivity는 deep link 중복 인스턴스를 막기 위해 launchMode=singleTask여야 합니다.');
+    fail('.MainActivity는 외부 결제 인증 후 복귀를 위해 launchMode=singleTop이어야 합니다.');
   }
   if (mainAttributes['android:screenOrientation'] === 'portrait') {
     pass('.MainActivity screenOrientation=portrait');

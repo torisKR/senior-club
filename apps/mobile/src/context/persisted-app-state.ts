@@ -145,11 +145,11 @@ export function createDefaultAppState(): PersistedAppState {
 }
 
 /**
- * Treats the authenticated session as the owner of all persisted member data.
+ * Treats the authenticated session as the owner of in-memory member data.
  * Anonymous state never exposes a previously signed-in member, and a different
- * account never inherits another account's offline profile or participation cache.
+ * account never inherits another account's profile or participation snapshot.
  */
-export function normalizePersistedAppState(value: unknown): PersistedAppState {
+export function normalizeInMemoryAppState(value: unknown): PersistedAppState {
   if (!isRecord(value)) return createDefaultAppState();
 
   const largeTextEnabled = value.largeTextEnabled === true;
@@ -192,5 +192,25 @@ export function normalizePersistedAppState(value: unknown): PersistedAppState {
     participations: cacheBelongsToSession
       ? participationsForUser(value.participations, session.userId)
       : [],
+  };
+}
+
+/** Keep presentation metadata in step with a profile received for this account. */
+export function updateCachedProfile(
+  current: PersistedAppState,
+  updates: Partial<User>,
+): PersistedAppState {
+  if (!current.session || current.user.id !== current.session.userId ||
+      (updates.id !== undefined && updates.id !== current.session.userId)) return current;
+  const user = { ...current.user, ...updates };
+  return {
+    ...current,
+    session: {
+      ...current.session,
+      displayName: user.name,
+      phoneNumber: user.phoneNumber ?? null,
+    },
+    user,
+    selectedInterestIds: updates.interestIds ? [...updates.interestIds] : current.selectedInterestIds,
   };
 }

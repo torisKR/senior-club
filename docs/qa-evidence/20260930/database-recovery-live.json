@@ -1,0 +1,139 @@
+{
+  "scope": "One bounded point-in-time recovery drill in the existing VPC; migration and catalog metadata only",
+  "source": "senior-club-db",
+  "target": "senior-club-recovery-202609300727-f4a592",
+  "runId": "f4a5925a8c",
+  "restoreAt": "2026-09-30T07:20:11+00:00",
+  "startedAt": "2026-09-30T07:31:54.750694+00:00",
+  "schemaProofLoggedAt": "2026-09-30T07:46:00.071000+00:00",
+  "startedToSchemaProofSeconds": 845.3,
+  "startedToCleanupSeconds": 1148.0,
+  "restoreProperties": {
+    "observedAt": "2026-09-30T07:44:37.544037+00:00",
+    "target": "senior-club-recovery-202609300727-f4a592",
+    "status": "available",
+    "private": true,
+    "class": "db.t4g.micro",
+    "version": "18.3",
+    "storageGiB": 20,
+    "storageType": "gp3",
+    "encrypted": true,
+    "sameEncryptionKey": true,
+    "multiAZ": false,
+    "backupRetention": 0,
+    "deletionProtection": false,
+    "sameSubnetGroup": true,
+    "dedicatedGroupOnly": true,
+    "monitoringInterval": 0,
+    "performanceInsights": false,
+    "exactRunTag": true,
+    "readyForReadOnlyInspection": true
+  },
+  "comparisonKeys": [
+    "migrationFingerprint",
+    "catalogFingerprint",
+    "catalogCounts",
+    "tableCount",
+    "migrationCount",
+    "invalidConstraints",
+    "invalidIndexes"
+  ],
+  "baselineAndRestoredMetadataMatch": true,
+  "restoredInspector": {
+    "observedAt": "2026-09-30T07:47:43.810033+00:00",
+    "createdAt": "2026-09-30T16:45:21.662000+09:00",
+    "startedAt": "2026-09-30T16:45:59.003000+09:00",
+    "stoppedAt": "2026-09-30T16:46:27.557000+09:00",
+    "phase": "restored",
+    "taskId": "dd619d3ef1a04b3392334d67867003a9",
+    "lastStatus": "STOPPED",
+    "containers": [
+      {
+        "name": "api",
+        "lastStatus": "STOPPED",
+        "exitCode": 0
+      }
+    ],
+    "proofLoggedAt": "2026-09-30T07:46:00.071000+00:00",
+    "proof": {
+      "event": "senior-recovery-schema-proof",
+      "mode": "restored",
+      "authorized": true,
+      "hostnameValidated": true,
+      "privateSocket": true,
+      "tlsProtocol": "TLSv1.3",
+      "readOnly": true,
+      "databaseIdentityMatches": true,
+      "serverVersion": "18.3",
+      "migrationCount": 10,
+      "migrationsMatch": true,
+      "tableCount": 35,
+      "tablesMatch": true,
+      "invalidConstraints": 0,
+      "invalidIndexes": 0,
+      "migrationFingerprint": "3a3c9a49227cb2edf2d01ffddcdbe1294137596044d4391968ec5f4cc974c576",
+      "catalogFingerprint": "54af551a01729eb752fe76c48093492fa8a386a22466063c468009e76e795a67",
+      "catalogCounts": {
+        "columns": 337,
+        "enums": 108,
+        "constraints": 334,
+        "indexes": 122,
+        "sequences": 0,
+        "views": 0,
+        "triggers": 0,
+        "functions": 0,
+        "extensions": 1
+      },
+      "passed": true
+    },
+    "passed": true
+  },
+  "cleanup": {
+    "observedAt": "2026-09-30T07:51:02.704929+00:00",
+    "targetAbsent": true,
+    "ownedGroupsAbsent": true,
+    "ownedSnapshotCount": 0,
+    "ownedRetainedBackupCount": 0,
+    "sourceAvailable": true,
+    "sourcePrivate": true,
+    "sourceBackupsAndDeletionProtectionPreserved": true,
+    "sharedProductionLogGroupDeleted": false,
+    "newCredentialCreated": false,
+    "passed": true
+  },
+  "networkScope": {
+    "existingVpcAndSubnetGroup": true,
+    "productionSecurityGroupsUnchanged": true,
+    "dedicatedGroupsCreated": 2,
+    "dedicatedGroupsRemaining": 0,
+    "cloneInbound": "TCP 5432 from dedicated inspector SG only",
+    "inspectorInbound": "none",
+    "inspectorEgress": "TCP 5432 to clone SG; TCP 443 to any HTTPS destination",
+    "newTaskDefinitionCreated": false,
+    "productionApplicationStarted": false,
+    "productionWorkerStarted": false
+  },
+  "budget": {
+    "targetUsd": 1,
+    "maximumMinutes": 60,
+    "cloneCount": 1,
+    "withinElapsedBudget": true,
+    "billingHardCap": false,
+    "actualInvoiceVerified": false
+  },
+  "limitations": [
+    "No business rows were selected or compared",
+    "Catalog owner and ACL metadata excluded",
+    "No cutover, failback, Multi-AZ failover or cross-region recovery",
+    "No full physical-block integrity or Prisma semantic diff",
+    "One measured exercise does not establish an RPO/RTO SLA",
+    "Restored sessions and outbox were never activated",
+    "No snapshot-restore path exercised"
+  ],
+  "passed": true,
+  "readerSource": {
+    "readableReaderSha256": "8787f7719086119b2dfc58c797ea43ca16bd96d439ad3ca8477050c7e460c747",
+    "executedCompactReaderSha256": "f6681cdf45b2a723aabfd062d0c02c04d166863e7c7db823c6ad80fa97351f8d",
+    "readableFile": "database-catalog-reader.cjs"
+  }
+}

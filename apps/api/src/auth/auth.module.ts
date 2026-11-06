@@ -5,7 +5,10 @@ import { AuthController, MeController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { GoogleTokenVerifier } from "./google-token-verifier";
 import { KakaoTokenVerifier } from "./kakao-token-verifier";
+import { FirebasePhoneService } from "./firebase-phone.service";
+import { FirebaseReviewerService } from "./firebase-reviewer.service";
 import { TokenService } from "./token.service";
+import { DisabledLoginGuard } from "./login-policy";
 
 @Module({
   controllers: [AuthController, MeController],
@@ -14,8 +17,11 @@ import { TokenService } from "./token.service";
     TokenService,
     KakaoTokenVerifier,
     GoogleTokenVerifier,
+    FirebasePhoneService,
+    FirebaseReviewerService,
     AccessTokenGuard,
+    DisabledLoginGuard,
   ],
-  exports: [AuthService, TokenService, AccessTokenGuard],
+  exports: [AuthService, TokenService, FirebasePhoneService, AccessTokenGuard],
 })
 export class AuthModule {}

@@ -14,7 +14,7 @@ import {
   type CommunityPostDetail,
 } from '@/api/posts-api';
 import { AppText, Card, SeniorButton } from '@/components/ui';
-import { Radius, Spacing, TouchTarget } from '@/constants/theme';
+import { FontSizes, FontWeights, LineHeights, Radius, Spacing, TouchTarget } from '@/constants/theme';
 import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
 import { buildLoginHref, buildOnboardingHref } from '@/utils/auth-routing';
@@ -34,7 +34,7 @@ export function PostComposer({
 }: PostComposerProps) {
   const router = useRouter();
   const theme = useTheme();
-  const { isHydrated, onboardingCompleted, session } = useAppState();
+  const { isHydrated, onboardingCompleted, session, largeTextEnabled } = useAppState();
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -169,6 +169,8 @@ export function PostComposer({
                   returnKeyType="next"
                   style={[
                     styles.input,
+
+                    { fontSize: FontSizes[largeTextEnabled ? 'large' : 'standard'].body, lineHeight: LineHeights[largeTextEnabled ? 'large' : 'standard'].body },
                     { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border },
                   ]}
                   accessibilityLabel="게시글 제목"
@@ -194,6 +196,8 @@ export function PostComposer({
                   textAlignVertical="top"
                   style={[
                     styles.input,
+
+                    { fontSize: FontSizes[largeTextEnabled ? 'large' : 'standard'].body, lineHeight: LineHeights[largeTextEnabled ? 'large' : 'standard'].body },
                     styles.contentInput,
                     { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border },
                   ]}
@@ -261,8 +265,9 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    fontSize: 18,
-    lineHeight: 27,
+    fontSize: FontSizes.standard.body,
+    lineHeight: LineHeights.standard.body,
+    fontFamily: FontWeights.body,
   },
   contentInput: { minHeight: 180 },
   message: {

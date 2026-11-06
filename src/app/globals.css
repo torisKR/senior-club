@@ -1,28 +1,10 @@
 @import "tailwindcss";
 
 :root {
-  --canvas: #edf4f4;
-  --canvas-deep: #dceaea;
-  --surface: #ffffff;
-  --ink: #14342e;
-  --muted: #53655f;
-  --primary: #176956;
-  --primary-strong: #0e5142;
-  --sky: #5da9c6;
-  --sky-soft: #d9eef5;
-  --accent: #bd522f;
-  --accent-soft: #fde7df;
-  --sun: #f0bf4f;
-  --line: #80968f;
-  --success: #277357;
-  --warning: #9a501f;
-  --danger: #a83b35;
-  --focus: #0e5142;
+  /* Palette, dimensions and button roles are emitted by the SSR design adapter. */
   --text-caption: 0.9rem;
   --text-small: 1rem;
   --text-body: 1.125rem;
-  --shadow: 0 18px 50px rgba(20, 52, 46, 0.1);
-  --radius: 20px;
 }
 
 * {
@@ -47,10 +29,10 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(circle at 4% 8%, rgba(93, 169, 198, 0.14), transparent 24rem),
-    linear-gradient(180deg, #f7fbfa 0, var(--canvas) 32rem);
+    radial-gradient(circle at 4% 8%, var(--ambient-tint), transparent 24rem),
+    linear-gradient(180deg, var(--ambient-start) 0, var(--canvas) 32rem);
   color: var(--ink);
-  font-family: "SUIT Variable", "Pretendard Variable", Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+  font-family: var(--font-body);
   font-size: 18px;
   font-weight: 500;
   line-height: 1.65;
@@ -73,9 +55,15 @@ textarea {
 
 button,
 [role="button"],
-input,
-select {
-  min-height: 52px;
+input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+select,
+textarea {
+  min-height: var(--control-min-height);
+}
+
+label:has(input[type="checkbox"]),
+label:has(input[type="radio"]) {
+  min-height: var(--control-min-height);
 }
 
 button:not(:disabled),
@@ -86,11 +74,11 @@ button:not(:disabled),
 button:disabled,
 [aria-disabled="true"] {
   cursor: not-allowed;
-  opacity: 0.58;
+  opacity: var(--control-disabled-opacity);
 }
 
 :focus-visible {
-  outline: 3px solid #fff;
+  outline: 3px solid var(--surface);
   outline-offset: 2px;
   box-shadow: 0 0 0 6px var(--focus);
 }
@@ -112,8 +100,9 @@ img {
   transform: translateY(-180%);
   border-radius: 0.75rem;
   background: var(--ink);
-  color: white;
+  color: var(--surface);
   padding: 0.75rem 1rem;
+  min-height: var(--control-min-height);
   font-weight: 800;
 }
 
@@ -176,14 +165,14 @@ img {
 }
 
 .panel {
-  border: 1px solid var(--line);
+  border: var(--card-border-width) solid var(--line);
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--surface) 96%, var(--sky-soft));
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset;
 }
 
 .soft-panel {
-  border: 1px solid color-mix(in srgb, var(--sky) 25%, var(--line));
+  border: var(--card-border-width) solid color-mix(in srgb, var(--sky) 25%, var(--line));
   border-radius: var(--radius);
   background: var(--sky-soft);
 }
@@ -205,54 +194,90 @@ img {
 .button-primary,
 .button-secondary,
 .button-quiet,
-.button-danger {
+.button-ghost,
+.button-outline,
+.button-danger,
+.button-accent {
   display: inline-flex;
-  min-height: 56px;
+  min-height: var(--control-min-height);
   align-items: center;
   justify-content: center;
-  gap: 0.55rem;
-  border-radius: 0.9rem;
-  padding: 0.75rem 1.15rem;
+  gap: var(--control-gap);
+  border-radius: var(--control-radius);
+  padding: var(--control-padding-y) var(--control-padding-x);
+  border: var(--button-border-width) solid var(--button-border);
+  background: var(--button-background);
+  color: var(--button-text);
   font-weight: 850;
   line-height: 1.15;
   text-decoration: none;
   transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease;
 }
 
-.button-primary:hover,
-.button-secondary:hover,
-.button-quiet:hover,
-.button-danger:hover {
+.button-primary:hover:not(:disabled):not([aria-disabled="true"]),
+.button-secondary:hover:not(:disabled):not([aria-disabled="true"]),
+.button-quiet:hover:not(:disabled):not([aria-disabled="true"]),
+.button-ghost:hover:not(:disabled):not([aria-disabled="true"]),
+.button-outline:hover:not(:disabled):not([aria-disabled="true"]),
+.button-danger:hover:not(:disabled):not([aria-disabled="true"]),
+.button-accent:hover:not(:disabled):not([aria-disabled="true"]) {
   transform: translateY(-1px);
 }
 
 .button-primary {
-  border: 2px solid var(--primary);
-  background: var(--primary);
-  color: #fff;
+  --button-background: var(--button-primary-background);
+  --button-pressed: var(--button-primary-pressed);
+  --button-text: var(--button-primary-text);
+  --button-border: var(--button-primary-border);
+  --button-pressed-border: var(--button-primary-pressed-border);
+  --button-border-width: var(--button-primary-border-width);
 }
 
-.button-primary:hover {
-  border-color: var(--primary-strong);
-  background: var(--primary-strong);
+.button-secondary,
+.button-outline {
+  --button-background: var(--button-secondary-background);
+  --button-pressed: var(--button-secondary-pressed);
+  --button-text: var(--button-secondary-text);
+  --button-border: var(--button-secondary-border);
+  --button-pressed-border: var(--button-secondary-pressed-border);
+  --button-border-width: var(--button-secondary-border-width);
 }
 
-.button-secondary {
-  border: 2px solid var(--primary);
-  background: var(--surface);
-  color: var(--primary-strong);
-}
-
-.button-quiet {
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--ink);
+.button-quiet,
+.button-ghost {
+  --button-background: var(--button-quiet-background);
+  --button-pressed: var(--button-quiet-pressed);
+  --button-text: var(--button-quiet-text);
+  --button-border: var(--button-quiet-border);
+  --button-pressed-border: var(--button-quiet-pressed-border);
+  --button-border-width: var(--button-quiet-border-width);
 }
 
 .button-danger {
-  border: 2px solid var(--danger);
-  background: var(--surface);
-  color: var(--danger);
+  --button-background: var(--button-danger-background);
+  --button-pressed: var(--button-danger-pressed);
+  --button-text: var(--button-danger-text);
+  --button-border: var(--button-danger-border);
+  --button-pressed-border: var(--button-danger-pressed-border);
+  --button-border-width: var(--button-danger-border-width);
+}
+
+.button-accent {
+  --button-background: var(--button-accent-background);
+  --button-pressed: var(--button-accent-pressed);
+  --button-text: var(--button-accent-text);
+  --button-border: var(--button-accent-border);
+  --button-pressed-border: var(--button-accent-pressed-border);
+  --button-border-width: var(--button-accent-border-width);
+}
+
+:is(.button-primary, .button-secondary, .button-quiet, .button-ghost, .button-outline, .button-danger, .button-accent):is(:hover, :active):not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--button-pressed-border);
+  background: var(--button-pressed);
+}
+
+html.large-text :is(.button-primary, .button-secondary, .button-quiet, .button-ghost, .button-outline, .button-danger, .button-accent) {
+  min-height: var(--control-large-min-height);
 }
 
 .form-label {
@@ -265,8 +290,8 @@ img {
 .form-select,
 .form-textarea {
   width: 100%;
-  border: 2px solid var(--line);
-  border-radius: 0.9rem;
+  border: var(--control-border-width) solid var(--line);
+  border-radius: var(--control-radius);
   background: var(--surface);
   color: var(--ink);
   padding: 0.8rem 0.9rem;

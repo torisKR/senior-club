@@ -12,7 +12,7 @@ import {
   type CommunityComment,
 } from '@/api/posts-api';
 import { AppText, Card, SeniorButton } from '@/components/ui';
-import { Radius, Spacing, TouchTarget } from '@/constants/theme';
+import { FontSizes, FontWeights, LineHeights, Radius, Spacing, TouchTarget } from '@/constants/theme';
 import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
 import { buildLoginHref, buildOnboardingHref } from '@/utils/auth-routing';
@@ -32,7 +32,7 @@ export function CommentComposer({
 }: CommentComposerProps) {
   const router = useRouter();
   const theme = useTheme();
-  const { isHydrated, onboardingCompleted, session } = useAppState();
+  const { isHydrated, onboardingCompleted, session, largeTextEnabled } = useAppState();
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState('');
@@ -146,6 +146,8 @@ export function CommentComposer({
             textAlignVertical="top"
             style={[
               styles.input,
+
+              { fontSize: FontSizes[largeTextEnabled ? 'large' : 'standard'].body, lineHeight: LineHeights[largeTextEnabled ? 'large' : 'standard'].body },
               { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border },
             ]}
             accessibilityLabel="댓글 내용"
@@ -211,8 +213,9 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    fontSize: 18,
-    lineHeight: 27,
+    fontSize: FontSizes.standard.body,
+    lineHeight: LineHeights.standard.body,
+    fontFamily: FontWeights.body,
   },
   message: {
     borderWidth: 1,

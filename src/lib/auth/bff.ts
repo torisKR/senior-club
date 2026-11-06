@@ -24,7 +24,7 @@ export interface BackendIssuedSession {
   sessionId: string;
   user: {
     id: string;
-    email: string;
+    email: string | null;
     phoneNumber?: string | null;
     name: string;
     role: "MEMBER" | "LEADER" | "ADMIN";

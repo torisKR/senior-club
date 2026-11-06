@@ -1,3 +1,4 @@
+import { SENIOR_HIKING_COURSES, SENIOR_HOBBY_RECOMMENDATIONS } from "./senior-recommendations";
 import { getSiteUrl } from "@/lib/site-url";
 
 export function createLlmsText(baseUrl = getSiteUrl()) {
@@ -16,7 +17,7 @@ export function createLlmsText(baseUrl = getSiteUrl()) {
 ## 핵심 이용 흐름
 
 1. 관심사와 지역에 맞는 공개 모임을 찾습니다.
-2. 이메일 인증 계정으로 로그인한 뒤 모임을 신청합니다.
+2. 카카오 계정으로 로그인한 뒤 모임을 신청합니다.
 3. 신청 상태와 리더 승인 결과를 회원 계정에서 확인합니다.
 4. 알림을 허용한 회원은 운영 환경에 연결된 이메일·푸시 채널로 관련 안내를 받을 수 있습니다.
 
@@ -30,6 +31,14 @@ export function createLlmsText(baseUrl = getSiteUrl()) {
 - [계정 삭제 안내](${root}/account-deletion): 계정과 연결된 개인정보 삭제 요청 방법
 - [XML 사이트맵](${root}/sitemap.xml): 검색 가능한 공개 페이지와 API로 확인된 커뮤니티·모임 상세 URL
 
+## 시니어 추천 등산 코스 및 인기 취미 활동
+
+코스와 취미의 참고 안내입니다. 실제 모집 중인 모임은 공개 서비스 API의 목록과 상세에서만 확인합니다. 코스 사진은 주제 참고 이미지이며, 방문 전 공식 안내에서 개방 상태와 구간 정보를 확인합니다.
+
+${SENIOR_HIKING_COURSES.map((course) => `- [${course.title}](${course.sourceUrl}): ${course.length}`).join("\n")}
+
+${SENIOR_HOBBY_RECOMMENDATIONS.map((hobby) => `- ${hobby.name}: ${hobby.tagline}`).join("\n")}
+
 ## 현재 정보의 기준
 
 - 모임 일정, 정원, 참가비와 모집 상태는 각 모임 상세 화면의 최신 표시를 기준으로 합니다.
@@ -39,6 +48,6 @@ export function createLlmsText(baseUrl = getSiteUrl()) {
 - 모임 신청, 채팅, 후기와 개인 알림 설정은 본인 인증 로그인이 필요합니다.
 - 개인정보 처리방침, 이용약관과 계정 삭제 안내는 각 공개 페이지의 최신 내용을 기준으로 합니다.
 
-Last-Updated: 2026-09-09
+Last-Updated: 2026-09-30
 `;
 }

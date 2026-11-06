@@ -2,7 +2,9 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 import { SiteShell } from "@/components/site-shell";
+import { AnalyticsProvider } from "@/components/analytics-provider";
 import { SITE_DESCRIPTION, SITE_KEYWORDS, SITE_NAME } from "@/lib/seo";
+import { LightColors, sharedDesignStyle } from "@/lib/shared-design";
 import { getSiteUrl } from "@/lib/site-url";
 
 import "./globals.css";
@@ -69,17 +71,21 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#edf4f4",
+  themeColor: LightColors.background,
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="ko" data-scroll-behavior="smooth">
+    <html lang="ko" data-scroll-behavior="smooth" style={sharedDesignStyle}>
+      <head>
+        {/* eslint-disable-next-line @next/next/no-css-tags -- Serve the pinned subset CSS intact with its relative font URLs. */}
+        <link rel="stylesheet" href="/fonts/pretendard-1.3.9/pretendardvariable-dynamic-subset.css" />
+      </head>
       <body>
         <a className="skip-link" href="#main-content">
           본문으로 바로가기
         </a>
-        <SiteShell>{children}</SiteShell>
+        <AnalyticsProvider><SiteShell>{children}</SiteShell></AnalyticsProvider>
       </body>
     </html>
   );
