@@ -30,7 +30,7 @@ upload 인증서와 사용자가 Play에서 설치하는 앱의 Play App Signing
 
 preflight는 스토어 자산, production Expo/manifest 설정, 공개 정책·app-ads.txt endpoint, 최종 스크린샷을 검사한다. 그 뒤 AAB와 merged manifest를 별도 검사한다. 한 단계의 성공을 실제 기기 동작이나 Play 승인으로 해석하지 않는다.
 
-기준 커밋 `c20a031`의 독립 작업 트리에서 `node scripts/validate-play-assets.mjs`를 `apps/mobile`에서 실행했을 때 `store-listing/feature-graphic-game-1024x500.png`가 없어 실패했다. 이 파일은 해당 커밋에 포함돼 있지 않다. CI와 preflight도 같은 자산 검사를 호출하므로 출시 담당자는 적절한 게임 대표 이미지를 준비한 뒤 최신 소스에서 전체 검사를 다시 실행해야 한다. 이 기록은 다른 출시 게이트의 통과 여부를 뜻하지 않는다.
+게임 대표 이미지 원본과 최종 규격은 [에셋 기록](ASSETS.md)에 설명돼 있다. CI와 preflight는 `store-listing/feature-graphic-game-1024x500.png`를 검사하므로 최신 소스에서 `pnpm --dir apps/mobile validate:play`를 실행해 준비 상태를 확인한다. 이 검사는 다른 출시 게이트의 통과 여부를 뜻하지 않는다.
 
 ## 실행 모드
 
@@ -52,4 +52,4 @@ preflight는 스토어 자산, production Expo/manifest 설정, 공개 정책·a
 - 테스트 기기에서 게임 진행과 데이터 보존, 선택 동의 및 광고 옵션, 테스트 광고, 상품 가격·구매·복원·광고 제거를 각각 확인한다. 현재 문서는 실제 광고나 구매 성공을 주장하지 않는다.
 - CI 결과, 사람의 스크린샷 검토, AAB 해시·upload 인증서, Play 업로드 및 track read-back, 심사 제출·승인·공개를 각각 증거로 남긴다. 어느 단계도 다음 단계의 완료를 대신하지 않는다.
 
-이전 커뮤니티 서비스 및 구버전 후보 기록은 `git show c20a031:docs/PLAY_STORE.md`와 `git log --all -- docs/PLAY_STORE.md`에 남아 있다. 이전 증거를 현재 게임의 출시 완료 기록으로 사용하지 않는다.
+이전 커뮤니티 서비스 및 구버전 후보 기록은 `git show 4403ab76:docs/PLAY_STORE.md`와 `git log --all -- docs/PLAY_STORE.md`에 남아 있다. 이전 증거를 현재 게임의 출시 완료 기록으로 사용하지 않는다.

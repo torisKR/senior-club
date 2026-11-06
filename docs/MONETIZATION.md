@@ -27,4 +27,4 @@ Play가 보유 여부의 기준이다. 구매 대기 상태는 소유로 부여�
 
 RevenueCat은 앱 자체가 구매를 완료하는 observer 구성이다. 앱 계정 없이 SDK의 기기 캐시 ID를 사용하고 구매 또는 사용자가 요청한 복원 뒤 동기화를 시도한다. RevenueCat 관측·동기화는 Play 구매 완료나 권한 부여의 증거가 아니다. 구현은 [`AppBillingProvider`](../apps/mobile/src/billing/AppBillingProvider.tsx), [`remove-ads.ts`](../apps/mobile/src/billing/remove-ads.ts), [`revenuecat-observer.ts`](../apps/mobile/src/billing/revenuecat-observer.ts)를 본다.
 
-출시 전 승인된 Play 테스트에서 상품·표시 가격, 구매 취소·대기·완료, 확인 처리, 재실행·오프라인·환불 후 재조회, 복원과 광고 제거를 각각 확인한다. 실제 테스트 결과는 기기, 설치 출처, 빌드와 시점을 포함해 별도 기록한다. 과거 수익화 계획은 `git show c20a031:docs/MONETIZATION.md`에서 찾는다.
+출시 전 승인된 Play 테스트에서 상품·표시 가격, 구매 취소·대기·완료, 확인 처리, 재실행·오프라인·환불 후 재조회, 복원과 광고 제거를 각각 확인한다. 실제 테스트 결과는 기기, 설치 출처, 빌드와 시점을 포함해 별도 기록한다. 과거 수익화 계획은 `git show 4403ab76:docs/MONETIZATION.md`에서 찾는다.
