@@ -83,7 +83,7 @@ function state() {
   return current;
 }
 
-async function mount() {
+async function mount(offlineGame = false) {
   const { AppStateContext, AppStateProvider } = await import('./app-state');
   const { RequireAuth } = await import('@/components/auth/require-auth');
   function Probe() {
@@ -92,7 +92,7 @@ async function mount() {
     return createElement(RequireAuth, null, createElement('p', null, 'Authenticated page'));
   }
   root = createRoot(container);
-  await act(async () => { root?.render(createElement(AppStateProvider, null, createElement(Probe))); });
+  await act(async () => { root?.render(createElement(AppStateProvider, { offlineGame }, createElement(Probe))); });
 }
 
 async function unmount() {
@@ -181,6 +181,17 @@ beforeEach(() => {
 describe('reviewer app-state integration', () => {
   const consent = { termsAccepted: true, privacyAccepted: true } as const;
   const reviewerRequests = () => mocks.fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname === '/v1/auth/reviewer');
+
+  it('starts the offline game without refreshing the old account or calling the community API', async () => {
+    const savedSession = mocks.secure.get(SECURE_KEY);
+    await mount(true);
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+    expect(state().isHydrated).toBe(true);
+    expect(state().largeTextEnabled).toBe(true);
+    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(mocks.getSecure).not.toHaveBeenCalled();
+    expect(mocks.secure.get(SECURE_KEY)).toBe(savedSession);
+  });
 
   it('publishes the ordinary member session without persisting Firebase proof or password', async () => {
     mocks.secure.clear();

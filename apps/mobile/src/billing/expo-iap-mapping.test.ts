@@ -35,16 +35,32 @@ describe('toBillingPurchase', () => {
       isPending: true,
     });
   });
+
+  it('does not grant an unknown or missing purchase state', () => {
+    expect(toBillingPurchase(purchased({ purchaseState: 'unknown' }))).toBeNull();
+    expect(toBillingPurchase(purchased({ purchaseState: null }))).toBeNull();
+  });
 });
 
 describe('toOwnedProbe', () => {
-  it('ignores other products and pending purchases', () => {
+  it('does not grant pending purchases but reports them for later reconciliation', () => {
     expect(
       toOwnedProbe([
         purchased({ productId: 'other.sku', purchaseToken: 'other' }),
         purchased({ purchaseState: 'pending', purchaseToken: 'pending-token' }),
         purchased({ purchaseToken: 'owned-token' }),
       ]),
-    ).toEqual({ status: 'ok', tokens: ['owned-token'] });
+    ).toEqual({ status: 'ok', tokens: ['owned-token'], pending: true });
+  });
+
+  it('keeps the saved entitlement when a target purchase has an uncertain state or token', () => {
+    expect(toOwnedProbe([purchased({ purchaseState: 'unknown' })])).toEqual({ status: 'unavailable' });
+    expect(toOwnedProbe([purchased({ purchaseToken: '' })])).toEqual({ status: 'unavailable' });
+  });
+
+  it('matches each product separately without granting another cosmetic', () => {
+    const id = 'seniorclub.cosmetic.nacre_putter';
+    expect(toOwnedProbe([purchased({ productId: id })], id)).toEqual({ status: 'ok', tokens: ['tok-1'] });
+    expect(toOwnedProbe([purchased({ productId: id })], REMOVE_ADS_PRODUCT_ID)).toEqual({ status: 'ok', tokens: [] });
   });
 });

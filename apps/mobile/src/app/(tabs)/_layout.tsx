@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 
-import { RequireAuth } from '@/components/auth/require-auth';
+import { ArcadeProvider } from '@/arcade/arcade-store';
+import { RpgProvider } from '@/rpg/rpg-store';
 import { BottomNavigation } from '@/components/navigation/bottom-navigation';
 import { BottomDestinations } from '@/components/navigation/bottom-navigation-layout';
 import { useTheme } from '@/hooks/use-theme';
@@ -8,7 +9,8 @@ import { useTheme } from '@/hooks/use-theme';
 export default function TabsLayout() {
   const theme = useTheme();
   return (
-    <RequireAuth>
+    <ArcadeProvider>
+      <RpgProvider>
       <Tabs
         backBehavior="history"
         tabBar={(props) => <BottomNavigation {...props} />}
@@ -21,6 +23,7 @@ export default function TabsLayout() {
           }} />
         ))}
       </Tabs>
-    </RequireAuth>
+      </RpgProvider>
+    </ArcadeProvider>
   );
 }

@@ -34,9 +34,11 @@ export function isBillingError(value: unknown): value is BillingError {
 
 export interface BillingPort {
   connect(): Promise<void>;
-  ownedTokens(): Promise<BillingProbe>;
+  productPrice(productId: string): Promise<string | null>;
+  ownedTokens(productId?: string): Promise<BillingProbe>;
   buy(productId: string): Promise<BillingPurchase>;
   finish(purchase: BillingPurchase): Promise<void>;
+  subscribeReconciliation?(listener: () => void): () => void;
 }
 
 export interface TokenStore {

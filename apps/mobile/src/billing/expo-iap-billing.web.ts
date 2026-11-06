@@ -7,6 +7,8 @@ export function createExpoIapBilling(): BillingPort {
   return {
     async connect(): Promise<void> {},
 
+    async productPrice(): Promise<null> { return null; },
+
     async ownedTokens(): Promise<BillingProbe> {
       return { status: 'unavailable' };
     },

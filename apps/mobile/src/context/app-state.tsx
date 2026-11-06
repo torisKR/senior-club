@@ -106,8 +106,8 @@ function releaseApprovedSeat(feed: EventFeedState, eventId: EntityId): EventFeed
 
 export const AppStateContext = createContext<AppStateContextValue | undefined>(undefined);
 
-export function AppStateProvider({ children }: PropsWithChildren) {
-  const [isHydrated, setIsHydrated] = useState(false);
+export function AppStateProvider({ children, offlineGame = false }: PropsWithChildren<{ offlineGame?: boolean }>) {
+  const [isHydrated, setIsHydrated] = useState(offlineGame);
   const [authRestoreError, setAuthRestoreError] = useState<string | null>(null);
   const [eventFeeds, setEventFeeds] = useState<EventFeeds>(createInitialEventFeeds);
   const [availableInterests, setAvailableInterests] = useState<Interest[]>([]);
@@ -209,6 +209,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
   );
 
   useEffect(() => {
+    if (offlineGame) return;
     let active = true;
     const unsubscribe = authSessionManager.subscribe((authSnapshot) => {
       if (!active) return;
@@ -239,9 +240,10 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       active = false;
       unsubscribe();
     };
-  }, [syncAuthenticatedSession, updateState]);
+  }, [offlineGame, syncAuthenticatedSession, updateState]);
 
   useEffect(() => {
+    if (offlineGame) return;
     let active = true;
     let retryInFlight = false;
     let retryableFailure = false;
@@ -340,7 +342,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       appStateSubscription.remove();
       unsubscribe();
     };
-  }, []);
+  }, [offlineGame]);
 
   const requestEventView = useCallback(
     (view: EventListView, mode: EventLoadMode): Promise<void> => {
@@ -492,6 +494,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
+    if (offlineGame) return;
     const requestControllers = eventRequestControllers.current;
     const requestPromises = eventRequestPromises.current;
     const requestVersions = eventRequestVersions.current;
@@ -505,19 +508,20 @@ export function AppStateProvider({ children }: PropsWithChildren) {
         requestVersions[view] += 1;
       }
     };
-  }, [ensureEventView]);
+  }, [ensureEventView, offlineGame]);
 
   useEffect(() => {
+    if (offlineGame) return;
     const controller = new AbortController();
     const task = setTimeout(() => void loadInterests(controller.signal), 0);
     return () => {
       clearTimeout(task);
       controller.abort();
     };
-  }, [loadInterests]);
+  }, [loadInterests, offlineGame]);
 
   useEffect(() => {
-    if (!isHydrated || !authenticatedUserId) {
+    if (offlineGame || !isHydrated || !authenticatedUserId) {
       return;
     }
 
@@ -539,7 +543,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       });
 
     return () => controller.abort();
-  }, [applyServerProfile, authenticatedUserId, isHydrated]);
+  }, [applyServerProfile, authenticatedUserId, isHydrated, offlineGame]);
 
   const requestEmailCode = useCallback(
     (input: EmailCodeRequestInput) => authSessionManager.requestEmailCode(input),
