@@ -36,11 +36,11 @@ export function CompanionCoach({ npcId, mood }: { npcId: NpcId; mood: CoachMood 
         <AppText variant="caption" style={styles.meta}>
           {info.name} · 유대 {progress.level}단계 {progress.label}
         </AppText>
-        <AppText variant="body" style={styles.line} numberOfLines={2}>
+        <AppText variant="body" style={styles.line}>
           {COACH_LINES[npcId][mood]}
         </AppText>
         {progress.level >= 2 ? (
-          <AppText variant="caption" style={styles.hint} numberOfLines={2}>
+          <AppText variant="caption" style={styles.hint}>
             💡 {COACH_LINES[npcId].hint}
           </AppText>
         ) : null}
@@ -73,7 +73,6 @@ const styles = StyleSheet.create({
   },
   line: {
     color: '#182620',
-    fontSize: 16,
   },
   hint: {
     color: '#855B00',

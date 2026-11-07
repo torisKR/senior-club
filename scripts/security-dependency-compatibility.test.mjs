@@ -1,17 +1,14 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { createServer } from 'node:http';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
-import { Readable } from 'node:stream';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const rootRequire = createRequire(resolve(root, 'package.json'));
 const mobileRequire = createRequire(resolve(root, 'apps/mobile/package.json'));
-const apiRequire = createRequire(resolve(root, 'apps/api/package.json'));
 const owner = (parent, dependency) => createRequire(parent.resolve(dependency));
 const packageManifest = (parent, dependency) => {
   let directory = dirname(parent.resolve(dependency));
@@ -27,6 +24,16 @@ const packageManifest = (parent, dependency) => {
     assert.notEqual(next, directory, `package metadata not found for ${dependency}`);
     directory = next;
   }
+};
+const assertMinimumVersion = (parent, dependency, minimum) => {
+  const resolved = packageManifest(parent, dependency);
+  const current = resolved.manifest.version.match(/^(\d+)\.(\d+)\.(\d+)$/)?.slice(1).map(Number);
+  const required = minimum.split('.').map(Number);
+  assert.ok(current, `${dependency} must use a stable version`);
+  const comparison = current.findIndex((part, index) => part !== required[index]);
+  assert.ok(comparison === -1 || current[comparison] > required[comparison],
+    `${dependency} ${resolved.manifest.version} must be at least ${minimum}`);
+  return resolved;
 };
 
 test('Expo route/query parsing decodes values, repeated parameters and flags', () => {
@@ -52,23 +59,86 @@ test('actual Expo path parsing terminates on a 60KB malformed query', () => {
   execFileSync(process.execPath, ['-e', child], { cwd: root, timeout: 5000, stdio: 'pipe' });
 });
 
-test('Kakao query-string decodes OAuth-style parameters correctly', async () => {
-  const kakao = owner(mobileRequire, '@react-native-kakao/core/package.json');
-  const queryPackage = packageManifest(kakao, 'query-string');
-  assert.equal(packageManifest(queryPackage.require, 'decode-uri-component').manifest.version, '0.5.1');
-  const { default: queryString } = await import(pathToFileURL(kakao.resolve('query-string')).href);
-  assert.deepEqual({ ...queryString.parse('code=a%2Bb&state=%ED%99%8D%EA%B8%B8%EB%8F%99') }, {
-    code: 'a+b',
-    state: '홍길동',
-  });
-});
-
 test('the obsolete query-string 7 compatibility patch cannot be bypassed by a new dependency', () => {
   const lock = readFileSync(resolve(root, 'pnpm-lock.yaml'), 'utf8');
   const packages = lock.split('\npackages:\n')[1]?.split('\nsnapshots:\n')[0];
   assert.ok(packages, 'expected package and snapshot sections in the pnpm lockfile');
   assert.doesNotMatch(packages, /^ {2}['"]?query-string@7\./m,
     'query-string 7 requires the decoder override and compatibility patch to be restored');
+});
+
+test('security fixes are present in the actual Vitest and Expo dependency paths', () => {
+  for (const manifest of ['package.json', 'apps/mobile/package.json']) {
+    const project = createRequire(resolve(root, manifest));
+    const vitest = assertMinimumVersion(project, 'vitest', '4.1.12');
+    assertMinimumVersion(vitest.require, '@vitest/mocker', '4.1.12');
+    assertMinimumVersion(vitest.require, 'vite', '8.1.6');
+  }
+  const expo = owner(mobileRequire, 'expo/package.json');
+  for (const dependency of ['@expo/cli', '@expo/fingerprint']) {
+    const parent = owner(expo, `${dependency}/package.json`);
+    const glob = assertMinimumVersion(parent, 'glob', '14.0.2');
+    assertMinimumVersion(glob.require, 'minimatch', '11.0.1');
+  }
+  const fingerprint = owner(expo, '@expo/fingerprint/package.json');
+  assertMinimumVersion(fingerprint, 'minimatch', '11.0.1');
+  const parser = owner(mobileRequire, '@typescript-eslint/parser/package.json');
+  const estree = owner(parser, '@typescript-eslint/typescript-estree/package.json');
+  assertMinimumVersion(estree, 'minimatch', '11.0.1');
+});
+
+test('Expo glob consumers discover routes and gitignore files and support early cancellation', async (t) => {
+  const expo = owner(mobileRequire, 'expo/package.json');
+  const cliRoot = dirname(expo.resolve('@expo/cli/package.json'));
+  const cli = owner(expo, '@expo/cli/package.json');
+  const fingerprint = owner(expo, '@expo/fingerprint/package.json');
+  const { anyMatchAsync, everyMatchAsync } = mobileRequire(resolve(cliRoot, 'build/src/utils/glob.js'));
+  const fixture = mkdtempSync(resolve(tmpdir(), 'senior-club-glob-test-'));
+  t.after(() => rmSync(fixture, { recursive: true, force: true }));
+
+  for (const directory of ['src', '.hidden', 'ignored']) mkdirSync(resolve(fixture, directory));
+  for (const file of ['src/users+api.ts', '.hidden/posts+api.tsx', 'src/screen.ts', '.gitignore', 'src/.gitignore', 'ignored/.gitignore']) {
+    writeFileSync(resolve(fixture, file), '');
+  }
+
+  const options = { cwd: fixture, dot: true, ignore: ['ignored/**'] };
+  const pattern = '**/*+api.@(ts|tsx|js|jsx)';
+  const expectedRoutes = ['.hidden/posts+api.tsx', 'src/users+api.ts'];
+  assert.deepEqual((await everyMatchAsync(pattern, options)).sort(), expectedRoutes);
+  assert.deepEqual(cli('glob').sync(pattern, options).sort(), expectedRoutes);
+  const firstRoute = await anyMatchAsync(pattern, options);
+  assert.equal(firstRoute.length, 1);
+  assert.ok(expectedRoutes.includes(firstRoute[0]));
+  assert.deepEqual(await anyMatchAsync('**/*.missing', options), []);
+  assert.deepEqual((await fingerprint('glob').glob('**/.gitignore', options)).sort(), ['.gitignore', 'src/.gitignore']);
+});
+
+test('TypeScript project service minimatch retains dotfile matching', () => {
+  const parser = owner(mobileRequire, '@typescript-eslint/parser/package.json');
+  const estree = owner(parser, '@typescript-eslint/typescript-estree/package.json');
+  const { minimatch } = estree('minimatch');
+  assert.equal(minimatch('.config/project.ts', '**/*.ts', { dot: true }), true);
+  assert.equal(minimatch('.config/project.js', '**/*.ts', { dot: true }), false);
+});
+
+test('Expo fingerprint ignore patterns retain dotfile and negation behavior', () => {
+  const expo = owner(mobileRequire, 'expo/package.json');
+  const fingerprintRoot = dirname(expo.resolve('@expo/fingerprint/package.json'));
+  const { isIgnoredPath } = mobileRequire(resolve(fingerprintRoot, 'build/utils/Path.js'));
+  const patterns = ['**/.cache/**', '**/*.tmp', '!**/keep.tmp'];
+  assert.equal(isIgnoredPath('src/.cache/item', patterns), true);
+  assert.equal(isIgnoredPath('src/remove.tmp', patterns), true);
+  assert.equal(isIgnoredPath('src/keep.tmp', patterns), false);
+  assert.equal(isIgnoredPath('src/screen.ts', patterns), false);
+});
+
+test('ESLint import plugin retains its legacy minimatch makeRe API', () => {
+  const expoLint = owner(mobileRequire, 'eslint-config-expo/package.json');
+  const importPlugin = owner(expoLint, 'eslint-plugin-import/package.json');
+  const minimatch = importPlugin('minimatch');
+  assert.equal(typeof minimatch, 'function');
+  assert.equal(typeof minimatch.makeRe, 'function');
+  assert.equal(minimatch.makeRe('src/**').test('src/screen.ts'), true);
 });
 
 test('Xcode still generates valid project identifiers', () => {
@@ -80,85 +150,12 @@ test('Xcode still generates valid project identifiers', () => {
   assert.match(project.generateUuid(), /^[A-F0-9]{24}$/);
 });
 
-test('UUID dependencies of inspected consumers stay on the reviewed version', () => {
+test('Xcode UUID dependency stays on the reviewed version', () => {
   const expo = owner(mobileRequire, 'expo/package.json');
   const plugins = owner(expo, '@expo/config-plugins/package.json');
-  const admin = owner(apiRequire, 'firebase-admin');
-  const cloudStorage = owner(admin, '@google-cloud/storage');
-  for (const [parent, name] of [[plugins, 'xcode'], [cloudStorage, 'gaxios'], [cloudStorage, 'teeny-request']]) {
-    const consumer = packageManifest(parent, name);
-    if (consumer.manifest.dependencies?.uuid || consumer.manifest.optionalDependencies?.uuid) {
-      assert.equal(consumer.require('uuid/package.json').version, '11.1.1');
-      assert.match(consumer.require('uuid').v4(), /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
-    }
+  const xcode = packageManifest(plugins, 'xcode');
+  if (xcode.manifest.dependencies?.uuid || xcode.manifest.optionalDependencies?.uuid) {
+    assert.equal(xcode.require('uuid/package.json').version, '11.1.1');
+    assert.match(xcode.require('uuid').v4(), /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
   }
-});
-
-test('Google HTTP clients generate UUID v4 multipart boundaries', async (t) => {
-  const admin = owner(apiRequire, 'firebase-admin');
-  const cloudStorage = owner(admin, '@google-cloud/storage');
-  const { request } = cloudStorage('gaxios');
-  const { teenyRequest } = cloudStorage('teeny-request');
-  const received = [];
-  const server = createServer((req, res) => {
-    const chunks = [];
-    req.on('data', (chunk) => chunks.push(chunk));
-    req.on('end', () => {
-      received.push({ contentType: req.headers['content-type'], body: Buffer.concat(chunks).toString() });
-      res.writeHead(200, { 'content-type': 'application/json' });
-      res.end('{"ok":true}');
-    });
-  });
-  await new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', resolve);
-  });
-  t.after(() => new Promise((resolve, reject) => server.close((err) => err ? reject(err) : resolve())));
-  const url = `http://127.0.0.1:${server.address().port}/`;
-
-  const response = await request({
-    url,
-    method: 'POST',
-    multipart: [
-      { headers: new Headers({ 'Content-Type': 'application/json' }), content: '{"kind":"gaxios"}' },
-      { headers: new Headers({ 'Content-Type': 'text/plain' }), content: 'payload' },
-    ],
-  });
-  assert.equal(response.status, 200);
-  await new Promise((resolve, reject) => {
-    teenyRequest({
-      url,
-      method: 'POST',
-      headers: {},
-      multipart: [
-        { 'Content-Type': 'application/json', body: '{"kind":"teeny"}' },
-        { 'Content-Type': 'text/plain', body: Readable.from(['payload']) },
-      ],
-    }, (err, res) => err ? reject(err) : resolve(res));
-  });
-
-  assert.equal(received.length, 2);
-  for (const [index, { contentType, body }] of received.entries()) {
-    const match = /^multipart\/related; boundary=([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(contentType);
-    assert.ok(match, `invalid multipart boundary: ${contentType}`);
-    assert.ok(body.includes(`--${match[1]}--`));
-    assert.ok(body.includes(index === 0 ? '"kind":"gaxios"' : '"kind":"teeny"'));
-    assert.ok(body.includes('payload'));
-  }
-});
-
-test('Prisma config retains the nested merge API used by this project', () => {
-  const prisma = owner(rootRequire, 'prisma/package.json');
-  const config = owner(prisma, '@prisma/config');
-  const { deepmerge } = config('deepmerge-ts');
-  assert.deepEqual(deepmerge({ datasource: { url: 'before', keep: true } }, { datasource: { url: 'after' } }), {
-    datasource: { url: 'after', keep: true },
-  });
-});
-
-test('Next resolves a sharp version containing the image optimizer security fix', () => {
-  const next = owner(rootRequire, 'next/package.json');
-  const version = next('sharp').versions.sharp;
-  const [major, minor, patch] = version.split('.').map(Number);
-  assert.ok(major > 0 || minor > 35 || (minor === 35 && patch >= 5), `Next resolves sharp ${version}; expected at least 0.35.5`);
 });

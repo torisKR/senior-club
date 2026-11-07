@@ -1,103 +1,11 @@
-# Direct Android release (GitHub Actions)
+# Android 직접 릴리스
 
-Updated: 2026-10-01. This is the current workflow contract; deployment and device acceptance are tracked in [release readiness](RELEASE_READINESS.md).
+GitHub Actions의 [Android Play production workflow](../.github/workflows/android-play-production.yml)는 고정된 main 소스를 Expo Android prebuild와 Gradle `bundleRelease`로 빌드한다. `deploy-main.yml`의 수동 실행은 검토된 스크린샷 증거가 있을 때 후보 빌드만 요청하며 Play 제출을 실행하지 않는다.
 
-Android release builds and uploads no longer use EAS cloud, EAS local, EAS credentials, or EAS Submit. The locked Expo CLI runs `expo prebuild --platform android --clean --no-install`, then Gradle `:app:bundleRelease` on the GitHub runner. Legacy `eas.json` is retained for historical/development compatibility, not used by the release workflows.
+모든 모드는 동일한 스크린샷 증거와 production preflight를 요구한다. [인수 문서](PLAY_UPLOAD_HANDOFF.md)의 절차에 따라 사람이 고정 SHA의 화면과 여섯 항목을 직접 검토하고 같은 계정으로 업로드·발급한 결과를 사용한다. 자동 검사나 미리보기로 사람의 검토를 대신하지 않는다.
 
-Current native product source `ba5f83b8f60c6f2c458e48c7e254b03ab2fbb8da` includes the stale-authentication guards and fixes collapsed single-column event/community cards. The earlier source948c QA APK d0c861 passed actual session restoration and five-tab scrolling checks but exposed 2–3px event cards. [Observed prior APK evidence](qa-evidence/20261001/native-auth-session-live.json). The new QA APK `3c52bb…` passed static artifact checks and its installed hash matches; the app process has no observed crash/JS errors. Further visual/provider QA is paused because another user app is foreground. [Current QA candidate limits](qa-evidence/20261001/native-list-card-candidate.json).
+`play-store-production` 환경에는 기존 업로드 키의 `ANDROID_UPLOAD_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `ANDROID_UPLOAD_CERT_SHA256`과 앱에 권한이 있는 `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`, Android Firebase 클라이언트의 `GOOGLE_SERVICES_JSON_BASE64`가 필요하다. 값은 로그나 저장소에 넣지 않는다. 게임은 이전 API·웹 주소 또는 Kakao 인증 키를 요구하지 않는다.
 
-An earlier local upload-signed AAB is from `948c2327c70eaf42b997dd11ae384e1258bfc63f`, SHA-256 `0a1a15f6a29bd1808a1b24013293c67f83bcae5f656909ff573ad0f2c02596f3` (93,681,400 bytes). Four ABIs, target36, exact manifest/signature, production configuration, shared photos/font and SDK metadata passed. [New signed candidate evidence](qa-evidence/20260930/android-auth-session-signed-candidate.json). It does not include the latest card sizing fix and must not be used as the current release binary. Freeze the release source and rebuild. It has no device/provider acceptance, Play version reconciliation, reviewed final screenshot or hosted/upload evidence. Later API and documentation commits are outside this candidate's full source SHA.
+워크플로는 Play 이력과 비교해 새 versionCode를 할당하고, AAB의 패키지·버전·권한·광고 동의 설정·정책 URL·서명 및 업로드 인증서를 검증한다. 제출할 때에는 같은 AAB 바이트와 Play의 응답을 재확인한다. 빌드, 업로드, 검토 제출, 승인과 실제 공개는 서로 다른 상태다.
 
-An earlier local upload-signed candidate was built from `9a9825b32ae47f5abcfdbbc2af1b8f7103cabecd` and its four ABIs, target 36, merged manifest, signature, endpoints, configured ads and photo/font bytes were verified. AAB SHA-256 is `968066c227bf77dfa7ba210cbdd7b3d310c5daa5c2e189514a60543f104086e0`; see [candidate evidence](qa-evidence/20260930/android-scroll-inset-signed-candidate.json). That candidate uses native product source `9a9825b…`, including the fixed scrolling status-bar inset. Its data-preserving debug-certificate QA APK is `3fa88ac99743a0ff593a697b500cdfb99973461139d72eed30ac36263b4a04a7`; source/build/manifest/signature and actual install hash passed, but runtime retesting stopped because another app is foreground. Prior visual/font QA remains tied to source `0d91c27…` / APK `8d117e…`; see [new QA limits](qa-evidence/20260930/native-scroll-inset-candidate.json). Later evidence/documentation changes are outside the candidate's full source SHA. Neither the local candidate nor the QA results establish final screenshot provenance, Play version reconciliation, provider/Play acceptance, or a hosted workflow run.
-
-## Authorization and prerequisites
-
-- Merge through the protected main PR/check/reviewer process. Do not bypass administrator enforcement or self-approve.
-- On 2026-10-01 the user authorized publishing source, shared image assets and sanitized deployment/QA evidence to the public `torisKR/senior-club` repository. Publish through the branch and PR review process; exclude keys, credentials and raw device captures. Hosted checks, reviewed screenshot evidence and Play execution require their own observed results.
-- `deploy-main.yml` calls Android only on `workflow_dispatch` with a nonempty `screenshot_evidence_run_id`, after backend and sites-package success, with `submit_to_play: false`. A push/merge alone does not run that Android job or authorize a Play rollout. A sites package is separate from the actual Vercel web deployment.
-- Manual production dispatch defaults to build-only. Set `binary_update=true` explicitly for an already-published binary with unchanged store assets. Combining it with `submit_to_play=true` completes a production rollout; otherwise an explicit upload is production/draft. Internal remains optional internal/draft. Uploads require main.
-- **Every mode requires exact reviewed screenshot evidence and the full strict production preflight**, including build-only, internal and `binary_update=true`. Published-update validation is an additional check, not a screenshot bypass. Both screenshot receipt and preflight steps in `android-play-production.yml` are unconditional.
-- All Android release paths share one non-cancelling concurrency group. Workflow reruns fail closed. Reconcile an ambiguous upload in Play before a fresh dispatch; never blindly retry or promote another artifact.
-
-## Screenshot evidence and human review
-
-`screenshot_evidence_run_id` must identify a successful first-attempt `main` run of [the trusted issuer](../.github/workflows/android-play-screenshot-evidence.yml) in this repository at the exact full lowercase release SHA. The receiver verifies run/repository/actor/artifact identity and digest; `capture.commit` must exactly equal the consumer's `GITHUB_SHA`. The artifact is `android-play-final-screenshots-<SHA>` and carries the original manifest and assets. Full input and delivery rules are in the current section of [PLAY_UPLOAD_HANDOFF.md](PLAY_UPLOAD_HANDOFF.md).
-
-The same human must actually review the exact screenshots and six original manifest attestations, upload the hash-pinned input ZIP, and directly dispatch the issuer with `manual_review=true` (default false). Preserve the original bytes and review receipt. Do not infer human approval from tests, generate true attestations, relabel a QA capture as a submitted build, or rewrite an old manifest's commit to a new SHA. Keep the manifest outside Git; freeze the release SHA before producing its evidence. Documentation-only commits still change this exact-SHA contract.
-
-The `android-play-internal.yml` wrapper requires and forwards `screenshot_evidence_run_id` and grants `actions: read`. It uses the same strict production receiver; internal mode has no exemption. Local workflow-contract tests and actionlint passed, while actual hosted execution remains unobserved.
-
-## Environment configuration
-
-Use `play-store-production` for production and `play-internal` for internal. Each requires:
-
-| Secret | Source |
-| --- | --- |
-| `ANDROID_UPLOAD_KEYSTORE_BASE64` | Base64 of the **existing Play upload keystore**, never a generated replacement |
-| `ANDROID_KEYSTORE_PASSWORD` | Existing store password |
-| `ANDROID_KEY_ALIAS` | Existing upload alias |
-| `ANDROID_KEY_PASSWORD` | Existing key password |
-| `ANDROID_UPLOAD_CERT_SHA256` | Existing Play upload certificate SHA-256, exactly 64 hexadecimal characters without colons; independently verify in Play Console |
-| `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | Existing app-scoped toris-play-uploader service account |
-| `GOOGLE_SERVICES_JSON_BASE64` | Android Firebase client JSON for `com.toris.seniorclub` |
-| `KAKAO_NATIVE_APP_KEY` | Existing native application key |
-
-Variables: `EXPO_PUBLIC_API_URL=https://d33totqtaqpyfs.cloudfront.net` and `EXPO_PUBLIC_WEB_URL=https://senior.toris.kr`. `EXPO_TOKEN` is no longer consumed.
-
-These inputs are required by the current workflow even for build-only: version allocation queries Play through a temporary edit. Build-only means no binary upload or rollout, not an offline workflow. Node 24/pnpm 9.14.2 and JDK 17 are configured by the workflow. Optional `PLAY_APP_SIGNING_CERTIFICATE_BASE64` is a public DER certificate; final Kakao/Firebase provider validation still requires the actual Play signing identity.
-
-A maintainer must explicitly authorize provisioning signing secrets. Do not print key/password/credential contents, commit them, reset an upload key, or assume the ignored local credentials match Play. Compare the existing certificate with Play's **upload** certificate (not the app-signing certificate) first. Missing signing inputs stop before dependency installation or any Play request. No local credentials are read by CI.
-
-## Version and artifact contract
-
-The allocator reads all Play tracks, bundles and APKs using a temporary edit. The code is the larger of seconds since 2020-01-01 and the observed maximum + 1; Android's 2,100,000,000 limit is checked. The shared lock serializes runs, and the code is checked again against Play immediately before upload. Successful uploads consume the code even if a subsequent edit fails; a fresh release must allocate again. Build-only artifacts are not reserved in Play and are never later uploaded through an implicit latest selector.
-
-The explicit `ANDROID_VERSION_CODE` flows through Expo prebuild. The exact `app-release.aab` is copied to evidence, then checked with checksum-pinned bundletool 1.18.2 and JDK tools: bundle structure, package, code/name, target SDK >=36, release/backup/cleartext settings, blocked permissions, delayed ad measurement consent metadata, actual bundled endpoint strings, cryptographic JAR signature and expected upload certificate.
-
-Upload revalidates the same bytes, verifies Google's returned versionCode and SHA-256, writes only the explicitly selected track/status, validates/commits the edit, and reads the committed track back. No latest-build lookup, implicit retry, promotion or fallback signing exists. `validated-build.json`, merged manifest, AAB and successful `play-release.json` are retained 30 days. Credentials are outside evidence and removed in an always-run cleanup step.
-
-## Commands
-
-After publication authorization, protected-source review, signing configuration and exact human-reviewed evidence are ready, use the actual successful issuer run ID below. These are operator instructions, not evidence that a dispatch or upload occurred.
-
-```sh
-# Build only; screenshot evidence must match the checked-out commit.
-gh workflow run android-play-production.yml --ref main \
-  -f screenshot_evidence_run_id="$reviewed_screenshot_run_id" -f submit_to_play=false
-# Published binary build only; existing listing assets stay unchanged.
-gh workflow run android-play-production.yml --ref main \
-  -f screenshot_evidence_run_id="$reviewed_screenshot_run_id" \
-  -f binary_update=true -f submit_to_play=false
-# Explicit production draft upload (not immediate public rollout).
-gh workflow run android-play-production.yml --ref main \
-  -f screenshot_evidence_run_id="$reviewed_screenshot_run_id" -f submit_to_play=true
-```
-
-The internal wrapper can be dispatched with the same exact issuer ID when all prerequisites are met:
-
-```sh
-gh workflow run android-play-internal.yml --ref main \
-  -f screenshot_evidence_run_id="$reviewed_screenshot_run_id" -f submit_to_play=true
-```
-
-`binary_update=true` plus `submit_to_play=true` selects **production/completed**, not draft, and requires public rollout authorization and the same strict proof.
-
-Do not dispatch `deploy-main.yml` just to test Android: it also deploys the backend and packages the site. Use the explicit build-only Android dispatch above.
-
-## Validation
-
-Use Node 24 and pnpm 9.14.2:
-
-```sh
-pnpm --filter mobile test:release-validators
-pnpm --filter mobile validate:play-production-workflow
-pnpm --filter mobile validate:play-internal-workflow
-pnpm --filter mobile lint
-pnpm --filter mobile typecheck
-pnpm --filter mobile test
-actionlint .github/workflows/android-play-production.yml .github/workflows/android-play-internal.yml
-```
-
-Already-passed broad suites need not be rerun solely for these documentation edits. The commands describe the checks required for relevant source changes and the workflow's actual release gate. Tests use fixtures; source/config/endpoint/screenshot checks do not prove runtime providers, production policy correctness, signing or Play delivery. A build-only result is a validated candidate. Upload success additionally requires exact artifact identity and confirmed Play track/status read-back; production acceptance remains separate.
-
-Before production acceptance, retain the outstanding [readiness requirements](RELEASE_READINESS.md): actual Kakao-only native/web provider and reviewer access; optional Firebase Phone billing/provider/region/Admin/signing setup and real linking; FCM delivery and token cleanup; AdMob consent and actual Play purchase/restore; role-specific UGC/report/block/moderation and deletion processing; current listing/Data Safety/operating privacy terms; CloudFront-to-ALB HTTPS (still pending); final AAB/Play signing, pre-launch and reviewed screenshot evidence. Static metadata and the latest QA APK do not close those requirements. Historical SMS/EAS handoff text must not be copied into current Console declarations.
+검토된 증거 run ID와 공개 출시 권한이 준비된 뒤, production workflow의 `binary_update=true` 및 `submit_to_play=true`는 production 완료 배포를 요청한다. 중간 실패나 결과가 불명확하면 Play 상태를 먼저 확인하고 같은 업로드를 무작정 반복하지 않는다.

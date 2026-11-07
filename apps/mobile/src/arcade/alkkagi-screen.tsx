@@ -1,27 +1,29 @@
 import { Image } from 'expo-image';
+import { randomUUID } from 'expo-crypto';
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { AppText, Card, Screen, SeniorButton } from '@/components/ui';
 import { FontWeights, Layout, Radius, Spacing } from '@/constants/theme';
+import { useAppState } from '@/hooks/use-app-state';
 
 import { playSfx } from '@/audio/sound-manager';
 
-import { createInitialAlkkagiStones, executeAlkkagiFlick, type AlkkagiStone } from './arcade-logic';
+import { createInitialAlkkagiStones, executeAlkkagiFlick, hasAlkkagiProgress, type AlkkagiStone } from './arcade-logic';
 import { useArcade } from './arcade-store';
 import { CompanionCoach } from '@/rpg/companion-coach';
 import { GAME_COACH } from '@/rpg/companion-lines';
 import { useRpg } from '@/rpg/rpg-store';
 import { getRpgStorage } from '@/rpg/rpg-db';
-import { isAlkkagiRound, loadRound, saveRound } from './round-save';
+import { isAlkkagiRound, loadRoundState } from './round-save';
+import { RoundSaveNotice, useRoundSave } from './round-save-notice';
+import { ChangeConfirmation } from './change-confirmation';
 import { PixelFx } from '@/fx/pixel-fx';
 import { FX_MANIFEST } from '@/fx/fx-manifest';
+import { getStoryTrial, StoryTrialNotice } from './story-trial';
 
-const ALKKAGI_BOARD = require('../../assets/game/rpg/pixel/arcade/board_alkkagi.png');
 const STONE_BLACK = require('../../assets/game/rpg/pixel/arcade/stone_black.png');
 const STONE_WHITE = require('../../assets/game/rpg/pixel/arcade/stone_white.png');
-const PAPERWEIGHT_PROP = require('../../assets/game/rpg/pixel/props/spr_alkkagi_paperweight_01.png');
-const CELADON_CUP_PROP = require('../../assets/game/rpg/pixel/props/spr_alkkagi_celadon_cup_01.png');
 const FLICK_GAUGE_UI = require('../../assets/game/rpg/ui/ui_alkkagi_flick_gauge_01.png');
 const ROUND_KEY = 'senior_club_alkkagi_round_v1';
 
@@ -31,12 +33,19 @@ const AI_OPPONENTS = [
   { id: 'master', name: '명인 김 사범', title: '명인 초청전' },
 ] as const;
 
-export function AlkkagiBoardScreen() {
+export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapter?: string; onLeaveStory?: () => void } = {}) {
+  const { width, fontScale } = useWindowDimensions();
+  const { largeTextEnabled } = useAppState();
+  const stackControls = width < 360 || fontScale >= 1.3 || largeTextEnabled;
   const { recordAlkkagiWin, triggerHaptic, state, appearance } = useArcade();
   const { completeQuestStep, recordGameWithNpc, recordStoryResult } = useRpg();
-  const [savedRound] = useState(() => loadRound(getRpgStorage(), ROUND_KEY, isAlkkagiRound));
-  const [opponentIdx, setOpponentIdx] = useState(savedRound?.opponentIdx ?? 0);
-  const opponent = AI_OPPONENTS[opponentIdx] ?? AI_OPPONENTS[0];
+  const [storage] = useState(getRpgStorage);
+  const story = getStoryTrial(storyChapter, 'alkkagi');
+  const roundKey = story ? `${ROUND_KEY}_story_${story.id}` : ROUND_KEY;
+  const [loadedRound] = useState(() => loadRoundState(storage, roundKey, isAlkkagiRound));
+  const savedRound = loadedRound.value;
+  const [opponentIdx, setOpponentIdx] = useState(savedRound?.opponentIdx ?? (story?.id === 'chapter_2' ? 1 : story ? 2 : 0));
+  const opponent = story ? { name: story.climaxTrial.opponentName } : AI_OPPONENTS[opponentIdx] ?? AI_OPPONENTS[0];
 
   const [stones, setStones] = useState<AlkkagiStone[]>(() => savedRound?.stones ?? createInitialAlkkagiStones());
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>(savedRound?.selectedPlayerId ?? 'p2');
@@ -46,9 +55,9 @@ export function AlkkagiBoardScreen() {
   const [bannerText, setBannerText] = useState<string>(
     savedRound?.bannerText ?? '내 흑석(★)과 조준할 백석(◎)을 고른 뒤 [알 튕기기 (타격!)]를 누르세요.',
   );
-  React.useEffect(() => {
-    saveRound(getRpgStorage(), ROUND_KEY, { opponentIdx, stones, selectedPlayerId, selectedTargetId, powerMode, matchDoubleKnockouts, bannerText });
-  }, [opponentIdx, stones, selectedPlayerId, selectedTargetId, powerMode, matchDoubleKnockouts, bannerText]);
+  const [storyAttemptId, setStoryAttemptId] = useState(() => story ? savedRound?.storyAttemptId ?? randomUUID() : undefined);
+  const roundSave = useRoundSave(storage, roundKey, loadedRound, { opponentIdx, stones, selectedPlayerId, selectedTargetId, powerMode, matchDoubleKnockouts, bannerText, storyAttemptId });
+  const [pendingOpponent, setPendingOpponent] = useState<number | null>(null);
   const [scrollCallout, setScrollCallout] = useState<string | null>(null);
   // 타격 지점에 터지는 충격 이펙트 (pixelfx `impacts/crit-hit`)
   const [impactFx, setImpactFx] = useState<{ key: number; x: number; y: number } | null>(null);
@@ -68,7 +77,19 @@ export function AlkkagiBoardScreen() {
     setSelectedTargetId('a2');
     setMatchDoubleKnockouts(0);
     setScrollCallout(null);
-    setBannerText(`${AI_OPPONENTS[nextOppIdx].name}과의 새 대국이 시작되었습니다!`);
+    setImpactFx(null);
+    if (story) setStoryAttemptId(randomUUID());
+    setPendingOpponent(null);
+    setBannerText(`${story?.climaxTrial.opponentName ?? AI_OPPONENTS[nextOppIdx].name}과의 새 대국이 시작되었습니다!`);
+  };
+
+  const selectOpponent = (idx: number) => {
+    if (idx === opponentIdx) {
+      setPendingOpponent(null);
+      return;
+    }
+    if (aliveEnemies.length > 0 && hasAlkkagiProgress(stones)) setPendingOpponent(idx);
+    else resetMatch(idx);
   };
 
   const cycleNextShooter = () => {
@@ -77,6 +98,13 @@ export function AlkkagiBoardScreen() {
     const idx = alivePlayers.findIndex((s) => s.id === activeShooter?.id);
     const next = alivePlayers[(idx + 1) % alivePlayers.length];
     setSelectedPlayerId(next.id);
+  };
+
+  const cycleNextTarget = () => {
+    if (!aliveEnemies.length) return;
+    triggerHaptic('light');
+    const idx = aliveEnemies.findIndex((s) => s.id === activeTarget?.id);
+    setSelectedTargetId(aliveEnemies[(idx + 1) % aliveEnemies.length].id);
   };
 
   const handleFlick = () => {
@@ -97,10 +125,11 @@ export function AlkkagiBoardScreen() {
     if (remainingAi.length === 0) {
       playSfx('chime', state.soundEnabled);
       setStones(result.stones);
-      setBannerText(`🎉 대국 승리! 상대 알을 모두 장외로 밀어냈습니다! (+${160 + nextDoubleCount * 50} CP)`);
+      const storyNote = story ? (story.id === 'chapter_2' || nextDoubleCount > 0 ? ' 이야기 목표를 마쳤습니다.' : ' 이야기 목표인 일석이조는 이루지 못해 다시 도전할 수 있습니다.') : '';
+      setBannerText(`🎉 대국 승리! 상대 알을 모두 장외로 밀어냈습니다! (+${160 + nextDoubleCount * 50} CP)${storyNote}`);
       recordAlkkagiWin(nextDoubleCount);
       completeQuestStep('alkkagi');
-      recordStoryResult({ type: 'alkkagi', doubleKnockouts: nextDoubleCount });
+      if (story && storyAttemptId) recordStoryResult({ type: 'alkkagi', doubleKnockouts: nextDoubleCount, chapterId: story.id, attemptId: storyAttemptId });
       recordGameWithNpc(GAME_COACH.alkkagi);
       return;
     }
@@ -122,15 +151,17 @@ export function AlkkagiBoardScreen() {
     <Screen testID="alkkagi-screen" contentContainerStyle={styles.container}>
       {/* 1. 상단 대국 현황판 (Art Bible §7: 28pt ExtraBold tabular-nums) */}
       <View style={styles.hudCard}>
-        <View style={styles.oppTabsRow}>
-          {AI_OPPONENTS.map((opp, idx) => {
+        <View style={[styles.oppTabsRow, stackControls && styles.stackedRow]}>
+          {!story ? AI_OPPONENTS.map((opp, idx) => {
             const active = idx === opponentIdx;
             return (
               <Pressable
                 key={opp.id}
+                testID={`alkkagi-opponent-${opp.id}`}
                 accessibilityRole="button"
-                onPress={() => resetMatch(idx)}
-                style={[styles.oppTab, active && styles.oppTabActive]}>
+                accessibilityState={{ selected: active }}
+                onPress={() => selectOpponent(idx)}
+                style={[styles.oppTab, stackControls && styles.stackedControl, active && styles.oppTabActive]}>
                 <AppText
                   variant="caption"
                   style={{
@@ -141,11 +172,11 @@ export function AlkkagiBoardScreen() {
                 </AppText>
               </Pressable>
             );
-          })}
+          }) : <AppText variant="bodyStrong" style={{ color: '#FCF9F2' }}>{opponent.name}과 이야기 대국</AppText>}
         </View>
 
-        <View style={styles.versusRow}>
-          <View style={styles.sideStatBox}>
+        <View style={[styles.versusRow, stackControls && styles.stackedRow]}>
+          <View style={[styles.sideStatBox, stackControls && styles.stackedControl]}>
             <AppText variant="caption" style={styles.sideLabel}>나 (흑석 ★)</AppText>
             <AppText variant="title" style={styles.playerStoneCount}>
               남은 알 {alivePlayers.length}개
@@ -154,7 +185,7 @@ export function AlkkagiBoardScreen() {
           <View style={styles.vsBadge}>
             <AppText variant="bodyStrong" style={{ color: '#F0BF4F' }}>VS</AppText>
           </View>
-          <View style={[styles.sideStatBox, { alignItems: 'flex-end' }]}>
+          <View style={[styles.sideStatBox, stackControls && styles.stackedControl, { alignItems: stackControls ? 'flex-start' : 'flex-end' }]}>
             <AppText variant="caption" style={styles.sideLabel}>{opponent.name} (백석)</AppText>
             <AppText variant="title" style={styles.enemyStoneCount}>
               남은 알 {aliveEnemies.length}개
@@ -162,6 +193,19 @@ export function AlkkagiBoardScreen() {
           </View>
         </View>
       </View>
+
+      {pendingOpponent !== null ? (
+        <ChangeConfirmation
+          message={`${AI_OPPONENTS[pendingOpponent].name}으로 바꾸면 현재 대국의 진행이 사라집니다. 바꾸시겠습니까?`}
+          onCancel={() => setPendingOpponent(null)}
+          onConfirm={() => resetMatch(pendingOpponent)}
+        />
+      ) : null}
+      <RoundSaveNotice status={roundSave.status} onRetry={roundSave.retry} />
+      {story && storyAttemptId ? <StoryTrialNotice chapter={story} onLeave={onLeaveStory} canAbandon={aliveEnemies.length > 0} onAbandon={() => {
+        recordStoryResult({ type: 'alkkagi', outcome: 'failure', chapterId: story.id, attemptId: storyAttemptId });
+        resetMatch(opponentIdx);
+      }} /> : null}
 
       {/* 일석이조 족자 배너 */}
       {scrollCallout ? (
@@ -181,30 +225,14 @@ export function AlkkagiBoardScreen() {
         mood={aliveEnemies.length === 0 ? 'success' : 'start'}
       />
 
-      {/* 2. 비자나무 원목 바둑판 보드 (ASSET-013) + 인터랙티브 흑석/백석 */}
+      {/* 배경에 돌 그림을 넣지 않아 누를 수 있는 돌만 보이도록 합니다. */}
       <View style={styles.boardFrame}>
-        <Image source={ALKKAGI_BOARD} style={styles.boardImage} contentFit="cover" />
-        <View style={styles.boardScrim} />
-
-        {/* 보드 베젤 소품 (Art Bible §6: 소품은 외곽 베젤에만, 플레이 영역 침범 금지)
-            - 좌하단 벼루 누르개 / 우하단 청자 잔: 알이 없는 양 모서리에만 걸치도록 배치
-            - pointerEvents none + 알보다 먼저 렌더되어 알이 항상 위에 그려짐 */}
-        <Image
-          source={PAPERWEIGHT_PROP}
-          style={styles.bezelPaperweight}
-          contentFit="contain"
-          pointerEvents="none"
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        />
-        <Image
-          source={CELADON_CUP_PROP}
-          style={styles.bezelCeladonCup}
-          contentFit="contain"
-          pointerEvents="none"
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        />
+        {Array.from({ length: 9 }, (_, index) => (
+          <React.Fragment key={`grid-${index}`}>
+            <View pointerEvents="none" style={[styles.gridVertical, { left: `${10 + index * 10}%` }]} />
+            <View pointerEvents="none" style={[styles.gridHorizontal, { top: `${10 + index * 10}%` }]} />
+          </React.Fragment>
+        ))}
 
         {/* 조준선 (내 알 → 목표 상대 알) */}
         {activeShooter && activeTarget ? (
@@ -227,7 +255,8 @@ export function AlkkagiBoardScreen() {
               key={stone.id}
               testID={`alkkagi-stone-${stone.id}`}
               accessibilityRole="button"
-              accessibilityLabel={stone.owner === 'player' ? `내 흑석 ${stone.id}` : `상대 백석 ${stone.id}`}
+              accessibilityLabel={`${stone.owner === 'player' ? '내 흑석' : '상대 백석'} ${stone.id.slice(1)}번`}
+              accessibilityState={{ selected: isSelectedShooter || isSelectedTarget }}
               onPress={() => {
                 triggerHaptic('light');
                 if (stone.owner === 'player') setSelectedPlayerId(stone.id);
@@ -241,6 +270,9 @@ export function AlkkagiBoardScreen() {
                 { left: `${stone.x}%`, top: `${stone.y}%` },
               ]}>
               <Image source={stoneImage} style={styles.stoneSprite} contentFit="contain" />
+              <AppText style={[styles.stoneLabel, stone.owner === 'player' ? styles.playerStoneLabel : styles.enemyStoneLabel]}>
+                {stone.owner === 'player' ? '★' : '◎'}{stone.id.slice(1)}
+              </AppText>
               {stone.owner === 'player' && appearance.stone === 'celadon' ? (
                 <View testID={`celadon-stone-decoration-${stone.id}`} style={styles.celadonStoneMark} />
               ) : null}
@@ -273,16 +305,25 @@ export function AlkkagiBoardScreen() {
             {bannerText}
           </AppText>
           <SeniorButton
+            testID="btn-alkkagi-same-opponent"
+            label="같은 상대와 다시 대국하기"
+            variant="secondary"
+            onPress={() => resetMatch(opponentIdx)}
+          />
+          {!story ? <SeniorButton
             testID="btn-alkkagi-rematch"
             label="다음 사범과 새 대국 시작하기 ▶"
             variant="primary"
             onPress={() => resetMatch((opponentIdx + 1) % AI_OPPONENTS.length)}
-          />
+          /> : null}
         </Card>
       ) : (
         <Card style={styles.controlCard}>
           <AppText variant="bodyStrong" style={{ color: '#182620' }}>
             {bannerText}
+          </AppText>
+          <AppText variant="caption" style={styles.selectionGuide}>
+            내 돌 ★{activeShooter?.id.slice(1)} · 목표 돌 ◎{activeTarget?.id.slice(1)} 선택 중. 돌을 직접 누르거나 아래 버튼으로 바꾸세요.
           </AppText>
 
           <Image
@@ -294,7 +335,7 @@ export function AlkkagiBoardScreen() {
             importantForAccessibility="no-hide-descendants"
           />
 
-          <View style={styles.powerSelectRow}>
+          <View style={[styles.powerSelectRow, stackControls && styles.stackedRow]}>
             {([
               { id: 'precision', label: '정밀 타격', sub: '내 알 보호' },
               { id: 'strong', label: '강력 타격', sub: '장외 밀어내기' },
@@ -306,19 +347,20 @@ export function AlkkagiBoardScreen() {
                   key={mode.id}
                   testID={`alkkagi-power-${mode.id}`}
                   accessibilityRole="button"
+                  accessibilityState={{ selected }}
                   onPress={() => {
                     triggerHaptic('light');
                     setPowerMode(mode.id);
                   }}
-                  style={[styles.powerChip, selected && styles.powerChipSelected]}>
+                  style={[styles.powerChip, stackControls && styles.stackedControl, selected && styles.powerChipSelected]}>
                   <AppText
                     variant="bodyStrong"
-                    style={{ color: selected ? '#FCF9F2' : '#182620' }}>
+                    style={{ color: selected ? '#FFFFFF' : '#182620', textAlign: 'center' }}>
                     {mode.label}
                   </AppText>
                   <AppText
                     variant="caption"
-                    style={{ color: selected ? '#FDE7DF' : '#526451', fontSize: 12 }}>
+                    style={{ color: selected ? '#FFFFFF' : '#526451', textAlign: 'center' }}>
                     {mode.sub}
                   </AppText>
                 </Pressable>
@@ -326,8 +368,8 @@ export function AlkkagiBoardScreen() {
             })}
           </View>
 
-          <View style={styles.actionRow}>
-            <View style={{ flex: 1 }}>
+          <View style={[styles.actionRow, stackControls && styles.stackedRow]}>
+            <View style={stackControls ? styles.stackedControl : { flex: 1 }}>
               <SeniorButton
                 testID="btn-alkkagi-switch-stone"
                 label="다음 내 알 선택"
@@ -335,15 +377,16 @@ export function AlkkagiBoardScreen() {
                 onPress={cycleNextShooter}
               />
             </View>
-            <View style={{ flex: 1.4 }}>
+            <View style={stackControls ? styles.stackedControl : { flex: 1 }}>
               <SeniorButton
-                testID="btn-alkkagi-flick"
-                label="알 튕기기 (타격!)"
-                variant="accent"
-                onPress={handleFlick}
+                testID="btn-alkkagi-switch-target"
+                label="다음 상대 알 선택"
+                variant="secondary"
+                onPress={cycleNextTarget}
               />
             </View>
           </View>
+          <SeniorButton testID="btn-alkkagi-flick" label="알 튕기기 (타격!)" variant="accent" onPress={handleFlick} />
         </Card>
       )}
     </Screen>
@@ -369,9 +412,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 6,
   },
+  stackedRow: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  stackedControl: {
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: 'auto',
+    alignSelf: 'stretch',
+  },
   oppTab: {
     flex: 1,
-    minHeight: 44,
+    minWidth: 48,
+    minHeight: 48,
     borderRadius: Radius.md,
     borderWidth: 1.5,
     borderColor: '#D8B384',
@@ -379,6 +433,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
+    paddingVertical: 6,
   },
   oppTabActive: {
     backgroundColor: '#F0BF4F',
@@ -445,41 +500,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#D8B384',
     position: 'relative',
   },
-  boardImage: {
-    width: '100%',
-    height: '100%',
-  },
-  boardScrim: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(216, 179, 132, 0.28)',
-  },
-  bezelPaperweight: {
-    position: 'absolute',
-    left: -6,
-    bottom: -8,
-    width: '17%',
-    aspectRatio: 258 / 221,
-    opacity: 0.95,
-  },
-  bezelCeladonCup: {
-    position: 'absolute',
-    right: -4,
-    bottom: -6,
-    width: '13%',
-    aspectRatio: 194 / 162,
-    opacity: 0.95,
-  },
+  gridVertical: { position: 'absolute', top: '10%', bottom: '10%', width: 1, backgroundColor: '#86552F' },
+  gridHorizontal: { position: 'absolute', left: '10%', right: '10%', height: 1, backgroundColor: '#86552F' },
   stoneBase: {
     position: 'absolute',
-    width: 46,
-    height: 46,
-    marginLeft: -23,
-    marginTop: -23,
-    borderRadius: 23,
+    width: 48,
+    height: 48,
+    marginLeft: -24,
+    marginTop: -24,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -487,6 +516,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  stoneLabel: { position: 'absolute', fontSize: 12, lineHeight: 17, fontFamily: FontWeights.strong },
+  playerStoneLabel: { color: '#FFF1C7' },
+  enemyStoneLabel: { color: '#182620' },
+  selectionGuide: { color: '#315B38' },
   celadonStone: {
     borderWidth: 2,
     borderColor: '#87CFB9',
@@ -542,6 +575,7 @@ const styles = StyleSheet.create({
   },
   powerChip: {
     flex: 1,
+    minWidth: 48,
     minHeight: 54,
     borderRadius: Radius.md,
     borderWidth: 1.5,

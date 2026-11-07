@@ -319,7 +319,7 @@ checkText('store-listing/ko-KR/full-description.txt', 4000);
 
 // PNG color types: 2 = RGB, 6 = RGBA.
 checkPng('store-listing/icon-512-v2.png', 512, 512, 6, 1_048_576);
-checkPng('store-listing/feature-graphic-1024x500-v2.png', 1024, 500, 2, 1_048_576);
+checkPng('store-listing/feature-graphic-game-1024x500.png', 1024, 500, 2, 1_048_576);
 checkPng('assets/images/senior-club-icon-v2.png', 1024, 1024, 6, 1_048_576);
 checkPng('assets/images/senior-club-adaptive-foreground-v2.png', 1024, 1024, 6, 1_048_576);
 checkPng('assets/images/senior-club-splash-v3.png', 1024, 1024, 6, 1_048_576);
@@ -334,9 +334,6 @@ for (const stalePath of ['store-listing/icon-512.png', 'store-listing/screenshot
 
 const app = readJson('app.json').expo;
 const eas = readJson('eas.json');
-const notificationPlugin = app.plugins?.find(
-  (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-notifications',
-)?.[1];
 const splashPlugin = app.plugins?.find(
   (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-splash-screen',
 )?.[1];
@@ -344,9 +341,7 @@ const appAssetReferences = [
   ['app icon', app.icon],
   ['adaptive foreground', app.android?.adaptiveIcon?.foregroundImage],
   ['adaptive monochrome', app.android?.adaptiveIcon?.monochromeImage],
-  ['notification icon', notificationPlugin?.icon],
   ['splash', splashPlugin?.image],
-  ['web favicon', app.web?.favicon],
 ];
 const resolvedAppAssets = new Map();
 
@@ -367,42 +362,22 @@ if (monochromePath) {
   });
 }
 
-const notificationPath = resolvedAppAssets.get('notification icon');
-if (notificationPath) {
-  checkRgbaAsset(notificationPath, {
-    width: 96,
-    height: 96,
-    maxBytes: 65_536,
-    requireMonochrome: true,
-    expectedVisibleColor: 0xffffff,
-  });
-}
-
-const faviconPath = resolvedAppAssets.get('web favicon');
-if (faviconPath) {
-  checkRgbaAsset(faviconPath, {
-    width: 96,
-    height: 96,
-    maxBytes: 131_072,
-  });
-}
-
-const uiLogoPath = 'assets/images/senior-club-logo-ui-v3.png';
-try {
-  const loginScreen = fs.readFileSync(path.join(root, 'src/screens/auth/login-screen.tsx'), 'utf8');
-  if (!loginScreen.includes('senior-club-logo-ui-v3.png')) {
-    fail('login screen must reference senior-club-logo-ui-v3.png');
-  } else {
-    pass('login screen references senior-club-logo-ui-v3.png');
+for (const [screen, asset, width, height] of [
+  ['src/arcade/master-hall-screen.tsx', 'assets/game/rpg/pixel/ui/badge_master.png', 312, 312],
+  ['src/arcade/alkkagi-screen.tsx', 'assets/game/rpg/pixel/arcade/stone_black.png', 120, 120],
+  ['src/arcade/sacheonseong-screen.tsx', 'assets/game/rpg/pixel/tileset/tile_crane.png', 108, 108],
+]) {
+  try {
+    if (!fs.readFileSync(path.join(root, screen), 'utf8').includes(path.basename(asset))) {
+      fail(`${screen} must reference ${asset}`);
+    } else {
+      pass(`${screen} references ${asset}`);
+    }
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
   }
-} catch (error) {
-  fail(error instanceof Error ? error.message : String(error));
+  checkRgbaAsset(asset, { width, height, maxBytes: 1_048_576 });
 }
-checkRgbaAsset(uiLogoPath, {
-  width: 256,
-  height: 256,
-  maxBytes: 262_144,
-});
 
 try {
   const tabIcons = inspectNavigationIcons(root);

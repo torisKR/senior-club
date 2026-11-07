@@ -54,7 +54,14 @@ apps/mobile/.expo/
 **/node_modules/
 30.1.9:41825
 
-# Cloudflare/OpenNext/Sites generated output
+# Cloudflare/OpenNext generated output
 .open-next/
 .wrangler/
 dist/
+
+# pixel art build caches (regenerate with node tools/pixel-art/build.mjs)
+tools/pixel-art/.fx-build/
+tools/pixel-art/.player-tiers/
+.spritegen-probe/
+tools/pixel-art/runtime-preview/dist/
+tools/pixel-art/runtime-preview/shots/

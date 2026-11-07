@@ -2,9 +2,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
-import releaseApiUrl from '../src/config/release-api-url.js';
-
-const { getReleaseApiUrlViolation } = releaseApiUrl;
+import { getExpoExportViolation } from './validate-android-exports.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const expoCli = path.join(root, 'node_modules', 'expo', 'bin', 'cli');
@@ -14,11 +12,6 @@ const expectedActivePermissions = new Set([
   'android.permission.VIBRATE',
   'com.android.vending.BILLING',
 ]);
-const expectedExportedComponents = new Set([
-  'activity:.MainActivity',
-  'activity:com.kakao.sdk.auth.AuthCodeHandlerActivity',
-]);
-
 let failureCount = 0;
 
 function fail(message) {
@@ -97,16 +90,20 @@ function validateProductionFcmClient(config) {
     ? configuredPath
     : path.resolve(root, configuredPath);
   let document;
+  let file;
   try {
-    const stats = fs.statSync(absolutePath);
+    file = fs.openSync(absolutePath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    const stats = fs.fstatSync(file);
     if (!stats.isFile() || stats.size === 0 || stats.size > 1_048_576) {
       fail('GOOGLE_SERVICES_JSON은 1MB 이하의 비어 있지 않은 파일이어야 합니다.');
       return;
     }
-    document = JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
+    document = JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch {
     fail('GOOGLE_SERVICES_JSON 파일을 읽거나 JSON으로 해석할 수 없습니다.');
     return;
+  } finally {
+    if (file !== undefined) fs.closeSync(file);
   }
 
   if (document?.type === 'service_account' || typeof document?.private_key === 'string') {
@@ -132,33 +129,6 @@ function validateProductionFcmClient(config) {
   pass(`production Firebase Android client=${expectedPackage}`);
 }
 
-function validateReleaseApiUrl() {
-  const appEnvironment = process.env.EXPO_PUBLIC_APP_ENV;
-  if (appEnvironment !== 'preview' && appEnvironment !== 'production') {
-    pass('개발 검증에서는 release API URL 검사를 건너뜁니다.');
-    return;
-  }
-
-  const candidate = process.env.EXPO_PUBLIC_API_URL?.trim();
-  let apiUrl;
-  try {
-    apiUrl = candidate ? new URL(candidate) : null;
-  } catch {
-    apiUrl = null;
-  }
-  const releaseUrlViolation = apiUrl ? getReleaseApiUrlViolation(apiUrl) : null;
-  if (!apiUrl || releaseUrlViolation) {
-    fail(
-      `${appEnvironment} 빌드에는 공개 HTTPS EXPO_PUBLIC_API_URL이 필요합니다.${
-        releaseUrlViolation ? ` (${releaseUrlViolation})` : ''
-      }`,
-    );
-    return;
-  }
-
-  pass(`${appEnvironment} API origin=${apiUrl.origin}`);
-}
-
 let config;
 try {
   config = readIntrospectedConfig();
@@ -173,7 +143,6 @@ if (!manifest) {
   process.exit(1);
 }
 
-validateReleaseApiUrl();
 validateProductionFcmClient(config);
 
 const manifestAttributes = attributes(manifest);
@@ -273,15 +242,11 @@ for (const componentType of ['activity', 'activity-alias', 'service', 'receiver'
 const exportedComponentKeys = exportedComponents.map(
   ({ type, name }) => `${type}:${String(name)}`,
 );
-if (
-  exportedComponentKeys.length === expectedExportedComponents.size &&
-  exportedComponentKeys.every((component) => expectedExportedComponents.has(component))
-) {
-  pass('외부 공개 컴포넌트: MainActivity와 Kakao 인증 콜백만 허용');
+const exportedViolation = getExpoExportViolation(exportedComponentKeys);
+if (!exportedViolation) {
+  pass('외부 공개 컴포넌트: MainActivity 필수, 기존 Kakao 콜백은 존재할 때만 허용');
 } else {
-  fail(
-    `예상하지 않은 외부 공개 컴포넌트: ${exportedComponentKeys.join(', ') || '없음'}`,
-  );
+  fail(`${exportedViolation}: ${exportedComponentKeys.join(', ') || '없음'}`);
 }
 
 const mainActivity = asArray(application?.activity).find(

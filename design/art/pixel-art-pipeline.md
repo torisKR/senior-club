@@ -126,10 +126,8 @@ sprite-gen `recolor`로 팔레트 스왑을 굽습니다.
 # 전체 재굽기 (pixelize → tiles → tiers → fx → preview)
 node tools/pixel-art/build.mjs
 
-# 실행 환경 검증 (실제 RN 컴포넌트를 react-native-web으로 렌더)
-node tools/pixel-art/runtime-preview/build.mjs
-python3 -m http.server 8101 --directory tools/pixel-art/runtime-preview/dist
-node tools/pixel-art/runtime-preview/check.cjs
+# Android 번들 검증
+pnpm --dir apps/mobile exec expo export --platform android
 
 # 일부만
 node tools/pixel-art/pixelize.mjs
@@ -163,4 +161,5 @@ node tools/pixel-art/render-fx.mjs promotion
   번들 성공·자산 포함 여부(md5)로 대체했습니다.
 - Expo 웹(`expo start --web`)은 `expo-sqlite`의 워커 청크 생성 실패로 앱 전체를 띄울 수 없습니다
   (모바일 전용 네이티브 의존). 그래서 마을 맵·이펙트 컴포넌트만 스토어 목과 함께 렌더하는
-  하네스를 썼습니다. 하네스는 `tools/pixel-art/runtime-preview/`에 있습니다.
+  하네스를 썼습니다. 당시 코드의 출처는 Git `8201a93:tools/pixel-art/runtime-preview/`이며
+  캡처 파일은 `design/previews/`에 보존합니다. 현재 제품은 Android만 지원합니다.

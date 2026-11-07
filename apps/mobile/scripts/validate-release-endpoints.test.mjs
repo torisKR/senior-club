@@ -6,367 +6,147 @@ import {
   ENDPOINT_BODY_LIMIT_BYTES,
   getResponseBodyViolation,
   getResponseMetadataViolation,
+  NOTION_PUBLIC_PAGE_ENDPOINT,
   validateReleaseEndpoints,
 } from './validate-release-endpoints.mjs';
+import policyConfig from '../src/config/public-policy-url.js';
 
-const VALID_ENVIRONMENT = {
-  EXPO_PUBLIC_API_URL: 'https://api.senior-club.kr/v1',
-  EXPO_PUBLIC_WEB_URL: 'https://senior-club.kr',
-};
-
-function response({
-  url,
-  status = 200,
-  contentType,
-  contentLength,
-  body,
-  redirected = false,
-  type = 'basic',
-  textImpl,
-}) {
+function response({ url, status = 200, contentType, contentLength, body = '', redirected = false, type = 'basic', textImpl }) {
   return {
-    url,
-    status,
-    redirected,
-    type,
-    headers: {
-      get(name) {
-        if (name.toLowerCase() === 'content-type') return contentType;
-        if (name.toLowerCase() === 'content-length') return contentLength ?? null;
-        return null;
-      },
-    },
-    async text() {
-      return textImpl ? textImpl() : body;
-    },
+    url, status, redirected, type,
+    headers: { get(name) {
+      if (name.toLowerCase() === 'content-type') return contentType;
+      if (name.toLowerCase() === 'content-length') return contentLength ?? null;
+      return null;
+    } },
+    async text() { return textImpl ? textImpl() : body; },
   };
 }
 
 function successResponse(url) {
-  if (url.endsWith('/readyz')) {
-    return response({
-      url,
-      contentType: 'application/json; charset=utf-8',
-      body: JSON.stringify({ status: 'ready' }),
-    });
+  if (url === NOTION_PUBLIC_PAGE_ENDPOINT) {
+    const pageId = buildReleaseEndpointChecks()[1].pageId;
+    return response({ url, contentType: 'application/json', body: JSON.stringify({ recordMap: { block: {
+      [pageId]: { value: { role: 'reader', value: { id: pageId, content: ['body'], properties: { title: [['시니어클럽 개인정보처리방침']] } } } },
+      body: { value: { value: { properties: { title: [['광고와 RevenueCat 구매 안내']] } } } },
+    } } }) });
   }
-  return response({
-    url,
-    contentType: 'text/html; charset=utf-8',
-    body: '<!doctype html><html lang="ko"><body>시니어클럽 정책</body></html>',
-  });
+  return url === policyConfig.APP_ADS_URL
+    ? response({ url, contentType: 'text/plain; charset=utf-8', body: `google.com, ${policyConfig.ADMOB_PUBLISHER_ID}, DIRECT, f08c47fec0942fa0\n` })
+    : response({ url, contentType: 'text/html; charset=utf-8', body: '<!doctype html><html><body>시니어클럽 개인정보처리방침</body></html>' });
 }
 
-test('pure endpoint builder requires public HTTPS URLs and fixes release paths', () => {
-  const checks = buildReleaseEndpointChecks(VALID_ENVIRONMENT);
-
-  assert.deepEqual(
-    checks.map(({ kind, url }) => ({ kind, url })),
-    [
-      { kind: 'readiness', url: 'https://api.senior-club.kr/readyz' },
-      { kind: 'policy', url: 'https://senior-club.kr/terms' },
-      { kind: 'policy', url: 'https://senior-club.kr/privacy' },
-      { kind: 'policy', url: 'https://senior-club.kr/account-deletion' },
-    ],
-  );
-
-  assert.throws(
-    () => buildReleaseEndpointChecks({ ...VALID_ENVIRONMENT, EXPO_PUBLIC_API_URL: '' }),
-    /EXPO_PUBLIC_API_URL.*필요/,
-  );
-  assert.throws(
-    () => buildReleaseEndpointChecks({ EXPO_PUBLIC_API_URL: VALID_ENVIRONMENT.EXPO_PUBLIC_API_URL }),
-    /EXPO_PUBLIC_WEB_URL.*필요/,
-  );
-  assert.throws(
-    () =>
-      buildReleaseEndpointChecks({
-        ...VALID_ENVIRONMENT,
-        EXPO_PUBLIC_API_URL: 'http://127.0.0.1:3000',
-      }),
-    /공개 HTTPS URL/,
-  );
-  assert.throws(
-    () =>
-      buildReleaseEndpointChecks({
-        ...VALID_ENVIRONMENT,
-        EXPO_PUBLIC_WEB_URL: 'https://example.com',
-      }),
-    /문서 예시용/,
-  );
-  assert.throws(
-    () =>
-      buildReleaseEndpointChecks({
-        ...VALID_ENVIRONMENT,
-        EXPO_PUBLIC_WEB_URL: 'https://senior-club.kr/app',
-      }),
-    /origin만 입력/,
-  );
-
-  for (const invalidApiUrl of [
-    'not-a-url',
-    'https://user:secret@api.senior-club.kr',
-    'https://api.senior-club.kr?stage=prod',
-    'https://api.senior-club.kr#readyz',
-  ]) {
-    assert.throws(
-      () =>
-        buildReleaseEndpointChecks({
-          ...VALID_ENVIRONMENT,
-          EXPO_PUBLIC_API_URL: invalidApiUrl,
-        }),
-      /EXPO_PUBLIC_API_URL/,
-    );
-  }
+test('game release checks the exact public policy and app-ads file without a community server', () => {
+  const checks = buildReleaseEndpointChecks();
+  assert.deepEqual(checks.map(({ kind, url }) => ({ kind, url })), [
+    { kind: 'policy', url: policyConfig.PRIVACY_POLICY_URL },
+    { kind: 'notionPolicy', url: NOTION_PUBLIC_PAGE_ENDPOINT },
+    { kind: 'appAds', url: policyConfig.APP_ADS_URL },
+  ]);
+  for (const check of checks) assert.equal(new URL(check.url).protocol, 'https:');
 });
 
-test('live validator requests all endpoints without following redirects', async () => {
+test('live validator reads both destinations and the anonymous policy body without redirects', async () => {
   const calls = [];
-  const fetchImpl = async (url, options) => {
-    calls.push({ url, options });
-    return successResponse(url);
-  };
-
   const results = await validateReleaseEndpoints({
-    environment: VALID_ENVIRONMENT,
-    fetchImpl,
+    fetchImpl: async (url, options) => { calls.push({ url, options }); return successResponse(url); },
     timeoutMs: 100,
   });
-
-  assert.equal(results.length, 4);
-  assert.equal(calls.length, 4);
+  assert.equal(results.length, 3);
   for (const call of calls) {
-    assert.equal(call.options.method, 'GET');
+    assert.equal(call.options.method, call.url === NOTION_PUBLIC_PAGE_ENDPOINT ? 'POST' : 'GET');
     assert.equal(call.options.redirect, 'manual');
     assert.ok(call.options.signal instanceof AbortSignal);
   }
-  assert.deepEqual(
-    calls.slice(1).map(({ url }) => new URL(url).origin),
-    Array(3).fill('https://senior-club.kr'),
-  );
+  const anonymousCall = calls.find(({ url }) => url === NOTION_PUBLIC_PAGE_ENDPOINT);
+  assert.equal(JSON.parse(anonymousCall.options.body).pageId, buildReleaseEndpointChecks()[1].pageId);
+  assert.equal(anonymousCall.options.headers.Authorization, undefined);
 });
 
-test('response metadata rejects redirects, non-200 status, and final URL changes', () => {
-  const check = buildReleaseEndpointChecks(VALID_ENVIRONMENT)[1];
-
-  assert.match(
-    getResponseMetadataViolation(check, response({
-      url: check.url,
-      status: 302,
-      contentType: 'text/html',
-      body: '',
-    })),
-    /HTTP 302/,
-  );
-  assert.match(
-    getResponseMetadataViolation(check, response({
-      url: 'https://senior-club.kr/privacy',
-      contentType: 'text/html',
-      body: '',
-      redirected: true,
-    })),
-    /redirect/,
-  );
-  assert.match(
-    getResponseMetadataViolation(check, response({
-      url: 'https://policy.senior-club.kr/terms',
-      contentType: 'text/html',
-      body: '',
-    })),
-    /최종 URL/,
-  );
+test('metadata rejects redirects, failures, and changed destinations', () => {
+  const [check] = buildReleaseEndpointChecks();
+  assert.match(getResponseMetadataViolation(check, response({ url: check.url, status: 302 })), /HTTP 302/);
+  assert.match(getResponseMetadataViolation(check, response({ url: check.url, redirected: true })), /redirect/);
+  assert.match(getResponseMetadataViolation(check, response({ url: 'https://toris.kr/', redirected: false })), /최종 URL/);
 });
 
-test('readiness endpoint requires JSON with status ready', () => {
-  const check = buildReleaseEndpointChecks(VALID_ENVIRONMENT)[0];
-
-  assert.match(getResponseBodyViolation(check, 'text/html', '{}'), /JSON이 아닙니다/);
-  assert.match(getResponseBodyViolation(check, 'application/json', '{'), /유효한 JSON/);
-  assert.match(
-    getResponseBodyViolation(check, 'application/json', '{"status":"not_ready"}'),
-    /"ready"/,
-  );
-  assert.equal(
-    getResponseBodyViolation(check, 'application/health+json', '{"status":"ready"}'),
-    null,
-  );
-});
-
-test('policy endpoints require non-empty HTML without release blocker wording', () => {
-  const check = buildReleaseEndpointChecks(VALID_ENVIRONMENT)[1];
-
+test('policy requires a nonempty HTML document without draft wording', () => {
+  const [check] = buildReleaseEndpointChecks();
   assert.match(getResponseBodyViolation(check, 'application/json', '{}'), /HTML이 아닙니다/);
-  assert.match(getResponseBodyViolation(check, 'text/html', '   '), /비어 있습니다/);
-  for (const blocker of [
-    'MVP 운영 초안', '임시 문의처', '법인 정보 미확정',
-    '실제 수탁자, 처리 국가, 항목과 기간은 공급자 계약을 확정한 뒤 이 페이지에 공개합니다.',
-  ]) {
-    assert.match(
-      getResponseBodyViolation(check, 'text/html', `<html>${blocker}</html>`),
-      /출시 차단 문구/,
-    );
-  }
-  assert.match(
-    getResponseBodyViolation(check, 'text/html', '<html>출시\n 전 확인 안내</html>'),
-    /출시 차단 문구/,
-  );
-  assert.equal(
-    getResponseBodyViolation(check, 'text/html; charset=utf-8', '<html>확정 정책</html>'),
-    null,
-  );
+  assert.match(getResponseBodyViolation(check, 'text/html', ' '), /비어 있습니다/);
+  assert.match(getResponseBodyViolation(check, 'text/html', '<html>운영 초안</html>'), /출시 차단 문구/);
+  assert.equal(getResponseBodyViolation(check, 'text/html; charset=utf-8', '<html>정책</html>'), null);
 });
 
-test('live validator fails closed on redirect responses and invalid content', async () => {
-  await assert.rejects(
-    validateReleaseEndpoints({
-      environment: VALID_ENVIRONMENT,
-      timeoutMs: 100,
-      fetchImpl: async (url) =>
-        url.endsWith('/terms')
-          ? response({
-              url,
-              status: 301,
-              contentType: 'text/html',
-              body: '',
-            })
-          : successResponse(url),
-    }),
-    /공개 정책 \/terms 검증 실패: HTTP 301/,
-  );
-
-  await assert.rejects(
-    validateReleaseEndpoints({
-      environment: VALID_ENVIRONMENT,
-      timeoutMs: 100,
-      fetchImpl: async (url) =>
-        url.endsWith('/privacy')
-          ? response({
-              url,
-              contentType: 'text/html',
-              body: '<html>MVP 운영 초안</html>',
-            })
-          : successResponse(url),
-    }),
-    /출시 차단 문구 "초안"/,
-  );
+test('app-ads requires the correct Google seller, DIRECT relationship and certificate', () => {
+  const [, , check] = buildReleaseEndpointChecks();
+  assert.equal(getResponseBodyViolation(check, 'text/plain', `# seller\ngoogle.com, ${policyConfig.ADMOB_PUBLISHER_ID}, DIRECT, f08c47fec0942fa0 # comment`), null);
+  for (const body of [
+    `google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0`,
+    `google.com, ${policyConfig.ADMOB_PUBLISHER_ID}, RESELLER, f08c47fec0942fa0`,
+    `google.com, ${policyConfig.ADMOB_PUBLISHER_ID}, DIRECT, wrong`,
+  ]) assert.match(getResponseBodyViolation(check, 'text/plain', body), /판매자 항목/);
+  assert.match(getResponseBodyViolation(check, 'text/html', '<html></html>'), /텍스트가 아닙니다/);
 });
 
-test('live validator rejects followed redirects and silent final URL changes', async () => {
-  await assert.rejects(
-    validateReleaseEndpoints({
-      environment: VALID_ENVIRONMENT,
-      timeoutMs: 100,
-      fetchImpl: async (url) =>
-        url.endsWith('/terms')
-          ? response({
-              url: 'https://senior-club.kr/privacy',
-              contentType: 'text/html',
-              body: '<html>정책</html>',
-              redirected: true,
-            })
-          : successResponse(url),
-    }),
-    /redirect 응답은 허용되지 않습니다/,
-  );
-
-  await assert.rejects(
-    validateReleaseEndpoints({
-      environment: VALID_ENVIRONMENT,
-      timeoutMs: 100,
-      fetchImpl: async (url) =>
-        url.endsWith('/terms')
-          ? response({
-              url: 'https://policy.senior-club.kr/terms',
-              contentType: 'text/html',
-              body: '<html>정책</html>',
-            })
-          : successResponse(url),
-    }),
-    /최종 URL이 요청 URL과 다릅니다/,
-  );
-});
-
-test('live validator times out even when fetch does not settle', async () => {
-  const signals = [];
-  const startedAt = Date.now();
-
-  await assert.rejects(
-    validateReleaseEndpoints({
-      environment: VALID_ENVIRONMENT,
-      timeoutMs: 10,
-      fetchImpl: async (_url, options) => {
-        signals.push(options.signal);
-        return new Promise(() => {});
-      },
-    }),
-    /10ms timeout/,
-  );
-
-  assert.ok(Date.now() - startedAt < 500);
-  assert.equal(signals.length, 4);
-  assert.ok(signals.some((signal) => signal.aborted));
-});
-
-test('live validator timeout covers stalled response body reads', async () => {
-  let readinessSignal;
-
-  await assert.rejects(
-    validateReleaseEndpoints({
-      environment: VALID_ENVIRONMENT,
-      timeoutMs: 10,
-      fetchImpl: async (url, options) => {
-        if (!url.endsWith('/readyz')) return successResponse(url);
-        readinessSignal = options.signal;
-        return response({
-          url,
-          contentType: 'application/json',
-          textImpl: () => new Promise(() => {}),
-        });
-      },
-    }),
-    /API readiness 요청 실패: 10ms timeout/,
-  );
-
-  assert.equal(readinessSignal?.aborted, true);
-});
-
-test('live validator rejects declared and actual oversized bodies', async () => {
-  await assert.rejects(
-    validateReleaseEndpoints({
-      environment: VALID_ENVIRONMENT,
-      timeoutMs: 100,
-      fetchImpl: async (url) =>
-        url.endsWith('/terms')
-          ? response({
-              url,
-              contentType: 'text/html',
-              contentLength: String(ENDPOINT_BODY_LIMIT_BYTES.policy + 1),
-              textImpl: () => {
-                throw new Error('oversized declared bodies must not be read');
-              },
-            })
-          : successResponse(url),
-    }),
-    /Content-Length.*2097152 byte 제한/,
-  );
-
-  const oversizedReadiness = JSON.stringify({
-    status: 'ready',
-    padding: 'x'.repeat(ENDPOINT_BODY_LIMIT_BYTES.readiness),
+test('anonymous Notion content must be readable, belong to the policy, and include purchase and ad terms', () => {
+  const [, check] = buildReleaseEndpointChecks();
+  const valid = successResponse(NOTION_PUBLIC_PAGE_ENDPOINT);
+  return valid.text().then((body) => {
+    assert.equal(getResponseBodyViolation(check, 'application/json', body), null);
+    for (const changed of [
+      body.replace('"reader"', '"none"'),
+      body.replace('RevenueCat', 'missing'),
+      body.replace('시니어클럽', '다른 앱'),
+      body.replace('광고와', '출시 전 광고와'),
+    ]) assert.notEqual(getResponseBodyViolation(check, 'application/json', changed), null);
+    assert.match(getResponseBodyViolation(check, 'text/html', '<html></html>'), /JSON/);
   });
-  await assert.rejects(
-    validateReleaseEndpoints({
-      environment: VALID_ENVIRONMENT,
-      timeoutMs: 100,
-      fetchImpl: async (url) =>
-        url.endsWith('/readyz')
-          ? response({
-              url,
-              contentType: 'application/json',
-              body: oversizedReadiness,
-            })
-          : successResponse(url),
-    }),
-    /실제 본문.*65536 byte 제한/,
-  );
+});
+
+test('validator fails closed for an unavailable policy or invalid ads file', async () => {
+  await assert.rejects(validateReleaseEndpoints({
+    fetchImpl: async (url) => url === policyConfig.PRIVACY_POLICY_URL
+      ? response({ url, status: 403 }) : successResponse(url), timeoutMs: 100,
+  }), /공개 개인정보처리방침 검증 실패: HTTP 403/);
+  await assert.rejects(validateReleaseEndpoints({
+    fetchImpl: async (url) => url === policyConfig.APP_ADS_URL
+      ? response({ url, contentType: 'text/plain', body: 'wrong' }) : successResponse(url), timeoutMs: 100,
+  }), /판매자 항목/);
+});
+
+test('timeout covers stalled fetch and response body reads', async () => {
+  const signals = [];
+  await assert.rejects(validateReleaseEndpoints({
+    timeoutMs: 10,
+    fetchImpl: async (_url, options) => { signals.push(options.signal); return new Promise(() => {}); },
+  }), /10ms timeout/);
+  assert.equal(signals.length, 3);
+  assert.ok(signals.some((signal) => signal.aborted));
+
+  let policySignal;
+  await assert.rejects(validateReleaseEndpoints({
+    timeoutMs: 10,
+    fetchImpl: async (url, options) => {
+      if (url !== policyConfig.PRIVACY_POLICY_URL) return successResponse(url);
+      policySignal = options.signal;
+      return response({ url, contentType: 'text/html', textImpl: () => new Promise(() => {}) });
+    },
+  }), /공개 개인정보처리방침 요청 실패: 10ms timeout/);
+  assert.equal(policySignal?.aborted, true);
+});
+
+test('oversized declared and actual responses are rejected', async () => {
+  await assert.rejects(validateReleaseEndpoints({
+    timeoutMs: 100,
+    fetchImpl: async (url) => url === policyConfig.PRIVACY_POLICY_URL
+      ? response({ url, contentType: 'text/html', contentLength: String(ENDPOINT_BODY_LIMIT_BYTES.policy + 1), textImpl: () => { throw new Error('should not read'); } })
+      : successResponse(url),
+  }), /Content-Length.*2097152 byte 제한/);
+  await assert.rejects(validateReleaseEndpoints({
+    timeoutMs: 100,
+    fetchImpl: async (url) => url === policyConfig.APP_ADS_URL
+      ? response({ url, contentType: 'text/plain', body: 'x'.repeat(ENDPOINT_BODY_LIMIT_BYTES.appAds + 1) })
+      : successResponse(url),
+  }), /실제 본문.*65536 byte 제한/);
 });

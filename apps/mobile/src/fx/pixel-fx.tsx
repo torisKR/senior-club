@@ -4,6 +4,9 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { FX_MANIFEST, type FxName } from './fx-manifest';
 import { frameAt, frameCell } from './fx-timing';
+import { useReduceMotion } from './use-reduce-motion';
+
+const STATIC_EFFECT_HOLD_MS = 400;
 
 /**
  * pixelfx로 구운 스프라이트시트 (tools/pixel-art/render-fx.mjs 산출물).
@@ -39,36 +42,58 @@ export interface PixelFxProps {
 export function PixelFx({ name, scale = 1, loop, onDone, style }: PixelFxProps) {
   const meta = FX_MANIFEST[name];
   const shouldLoop = loop ?? meta.loop;
-  const [frame, setFrame] = useState(0);
+  const reduceMotion = useReduceMotion();
+  const [playback, setPlayback] = useState({ name, shouldLoop, frame: 0 });
+  const frame = playback.name === name && playback.shouldLoop === shouldLoop ? playback.frame : 0;
   const doneRef = useRef(false);
+  const onDoneRef = useRef(onDone);
 
   const frameWidth = meta.frameWidth * scale;
   const frameHeight = meta.frameHeight * scale;
 
   useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
+
+  useEffect(() => {
     doneRef.current = false;
-    if (meta.frames <= 1) return;
+  }, [name, shouldLoop]);
+
+  useEffect(() => {
+    if (reduceMotion === null || doneRef.current) return;
+
+    const finish = () => {
+      if (doneRef.current) return;
+      doneRef.current = true;
+      onDoneRef.current?.();
+    };
+
+    if (reduceMotion) {
+      if (shouldLoop) return;
+      const timer = setTimeout(finish, STATIC_EFFECT_HOLD_MS);
+      return () => clearTimeout(timer);
+    }
+
+    if (meta.frames <= 1) {
+      if (!shouldLoop) finish();
+      return;
+    }
 
     const startedAt = Date.now();
     const timer = setInterval(() => {
       const next = frameAt(Date.now() - startedAt, meta.fps, meta.frames, shouldLoop);
-      setFrame(next);
+      setPlayback({ name, shouldLoop, frame: next });
       if (!shouldLoop && next >= meta.frames - 1) {
         clearInterval(timer);
+        finish();
       }
     }, Math.max(16, Math.round(1000 / meta.fps)));
 
     return () => clearInterval(timer);
-  }, [meta, shouldLoop]);
+  }, [name, meta, shouldLoop, reduceMotion]);
 
-  useEffect(() => {
-    if (shouldLoop || doneRef.current) return;
-    if (frame < meta.frames - 1) return;
-    doneRef.current = true;
-    onDone?.();
-  }, [frame, meta.frames, shouldLoop, onDone]);
-
-  const cell = useMemo(() => frameCell(frame, meta.columns), [frame, meta.columns]);
+  const visibleFrame = reduceMotion === false ? frame : Math.floor((meta.frames - 1) / 2);
+  const cell = useMemo(() => frameCell(visibleFrame, meta.columns), [visibleFrame, meta.columns]);
 
   return (
     <View

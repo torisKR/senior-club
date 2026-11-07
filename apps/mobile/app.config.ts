@@ -2,7 +2,6 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 import { AndroidConfig, withAndroidManifest } from 'expo/config-plugins';
 
 const GOOGLE_ANDROID_TEST_APP_ID = 'ca-app-pub-3940256099942544~3347511713';
-const GOOGLE_IOS_TEST_APP_ID = 'ca-app-pub-3940256099942544~1458002511';
 const PRODUCTION_ADMOB_ANDROID_APP_ID = 'ca-app-pub-3004906966180197~9575830978';
 const ADMOB_APP_ID = /^ca-app-pub-\d{16}~\d{10}$/;
 
@@ -38,17 +37,8 @@ function googleServicesFile(): string | undefined {
   return path || undefined;
 }
 
-function kakaoNativeAppKey(): string {
-  const nativeAppKey = process.env.KAKAO_NATIVE_APP_KEY?.trim();
-  if (!nativeAppKey || !/^[a-f0-9]{32}$/i.test(nativeAppKey)) {
-    throw new Error('KAKAO_NATIVE_APP_KEY는 Kakao Developers의 32자리 네이티브 앱 키여야 합니다.');
-  }
-  return nativeAppKey;
-}
-
 export default ({ config }: ConfigContext): ExpoConfig => {
   const servicesFile = googleServicesFile();
-  const nativeAppKey = kakaoNativeAppKey();
   const versionCode = process.env.ANDROID_VERSION_CODE;
   if (versionCode !== undefined && (!/^[1-9][0-9]*$/.test(versionCode) || Number(versionCode) > 2100000000)) {
     throw new Error('ANDROID_VERSION_CODE must be a positive Android version code.');
@@ -56,10 +46,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   return {
     ...config,
-    extra: {
-      ...config.extra,
-      kakaoNativeAppKey: nativeAppKey,
-    },
     android: {
       ...config.android,
       ...(versionCode ? { versionCode: Number(versionCode) } : {}),
@@ -69,23 +55,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...(config.plugins ?? []),
       withBillingSafeActivity,
       '@react-native-firebase/app',
-      '@react-native-firebase/auth',
-      [
-        '@react-native-kakao/core',
-        {
-          nativeAppKey,
-          android: {
-            authCodeHandlerActivity: true,
-          },
-        },
-      ],
       'expo-iap',
       [
         'react-native-google-mobile-ads',
         {
           androidAppId: configuredAndroidAppId(),
           delayAppMeasurementInit: true,
-          iosAppId: GOOGLE_IOS_TEST_APP_ID,
         },
       ],
     ],

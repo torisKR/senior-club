@@ -67,12 +67,40 @@ function changeComponent(name, rewrite, xml = validManifest) {
   return xml.slice(0, start) + rewrite(xml.slice(start, end)) + xml.slice(end);
 }
 
-test('merged contracts accept the necessary Firebase callbacks and protected SDK components', async () => {
+function gameManifest() {
+  let game = validManifest;
+  for (const name of [
+    'com.kakao.sdk.auth.AuthCodeHandlerActivity',
+    'com.google.firebase.auth.internal.GenericIdpActivity',
+    'com.google.firebase.auth.internal.RecaptchaActivity',
+    'com.google.android.gms.auth.api.signin.RevocationBoundService',
+    'androidx.work.impl.background.systemjob.SystemJobService',
+    'com.google.firebase.iid.FirebaseInstanceIdReceiver',
+    'androidx.work.impl.diagnostics.DiagnosticsReceiver',
+  ]) game = changeComponent(name, () => '', game);
+  return game;
+}
+
+test('merged contracts still constrain legacy Firebase callbacks and protected SDK components', async () => {
   const result = await validate(validManifest);
   assert.equal(result.permissions.length, 4);
   assert.equal(result.exportedComponents.length, 10);
   assert.ok(result.exportedComponents.includes('activity:com.google.firebase.auth.internal.RecaptchaActivity'));
   assert.ok(result.exportedComponents.includes('activity:com.google.firebase.auth.internal.GenericIdpActivity'));
+});
+
+test('game manifest can omit legacy Kakao, auth and notification exports without a Kakao key', async () => {
+  const game = gameManifest();
+  const gameConfig = { android: { package: 'com.toris.seniorclub' }, scheme: 'clubsenior' };
+  const result = await validateMergedAndroidManifest(game, { expoConfig: gameConfig });
+  assert.deepEqual(result.exportedComponents, [
+    'activity:com.toris.seniorclub.MainActivity',
+    'receiver:androidx.profileinstaller.ProfileInstallReceiver',
+    'receiver:com.amazon.device.iap.ResponseReceiver',
+  ]);
+  await assert.rejects(validateMergedAndroidManifest(validManifest, { expoConfig: gameConfig }), /Unreviewed exported component: activity:com\.kakao/);
+  await assert.rejects(validateMergedAndroidManifest(changeComponent('.MainActivity', () => '', game), { expoConfig: gameConfig }), /Required merged SDK\/app component missing/);
+  await assert.rejects(validateMergedAndroidManifest(changeComponent('com.amazon.device.iap.ResponseReceiver', () => '', game), { expoConfig: gameConfig }), /Required merged SDK\/app component missing/);
 });
 
 test('actual AAB enum encodings preserve the exact signature and launch mode contracts', async () => {
@@ -252,13 +280,12 @@ test('CLI requires a real merged file, reports actual counts, and fails when it 
     const missing = spawnSync(process.execPath, [script, path.join(temporaryDirectory, 'missing.xml')], { encoding: 'utf8' });
     assert.equal(missing.status, 1);
     assert.match(missing.stderr, /Merged release manifest missing/);
-    const currentConfig = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '../app.json'), 'utf8')).expo;
     const manifestPath = path.join(temporaryDirectory, 'AndroidManifest.xml');
-    fs.writeFileSync(manifestPath, validManifest.replace(`kakao${config.extra.kakaoNativeAppKey}`, `kakao${currentConfig.extra.kakaoNativeAppKey}`));
+    fs.writeFileSync(manifestPath, gameManifest());
     const passed = spawnSync(process.execPath, [script, manifestPath], { encoding: 'utf8' });
     assert.equal(passed.status, 0, passed.stderr);
     assert.match(passed.stdout, /4 allowlisted permissions/);
-    assert.match(passed.stdout, /10 exact exports/);
+    assert.match(passed.stdout, /3 exact allowlisted export contracts/);
   } finally {
     fs.rmSync(temporaryDirectory, { recursive: true, force: true });
   }

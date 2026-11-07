@@ -6,11 +6,3 @@
 /.github/dependabot.yml @torisKR
 /.github/CODEOWNERS     @torisKR
 /SECURITY.md            @torisKR
-
-# Authentication, sessions and the browser-facing BFF.
-/apps/api/src/auth/     @torisKR
-/src/lib/auth/          @torisKR
-/src/app/api/auth/      @torisKR
-
-# Data model and migrations.
-/prisma/                @torisKR

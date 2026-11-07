@@ -133,7 +133,7 @@ export function createExpoIapBilling(): BillingPort {
 
         requestPurchase({
           type: 'in-app',
-          request: { google: { skus: [productId] }, apple: { sku: productId } },
+          request: { google: { skus: [productId] } },
         }).catch((error: unknown) => {
           if (settled) return;
           cleanup();

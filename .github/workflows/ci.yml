@@ -21,21 +21,7 @@ jobs:
     timeout-minutes: 30
     env:
       CI: "true"
-      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/senior_club?schema=public
-      AUTH_ACCESS_TOKEN_SECRET: ci-only-access-token-secret-at-least-32-characters
-      AUTH_OTP_PEPPER: ci-only-otp-pepper-secret-at-least-32-characters
-      AUTH_OTP_ENCRYPTION_KEY_BASE64: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
-      AUTH_DEV_OTP_EXPOSE: "false"
-      EMAIL_PROVIDER: console
-      PUSH_PROVIDER: disabled
-      OUTBOX_WORKER_ENABLED: "false"
-      NEXT_PUBLIC_APP_URL: https://web.invalid
-      SENIOR_CLUB_API_BASE_URL: https://api.invalid
-      CORS_ORIGINS: https://web.invalid
       EXPO_PUBLIC_APP_ENV: development
-      EXPO_PUBLIC_API_URL: http://10.0.2.2:4000
-      EXPO_PUBLIC_WEB_URL: http://localhost:3000
-      KAKAO_NATIVE_APP_KEY: 0123456789abcdef0123456789abcdef
 
     steps:
       - name: Check out repository
@@ -56,101 +42,21 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Validate Prisma schema
-        run: pnpm prisma:validate
-
       - name: Verify security dependency compatibility
         run: node --test scripts/security-dependency-compatibility.test.mjs
-
-      - name: Check web
-        run: |
-          pnpm lint
-          pnpm typecheck
-          pnpm test
-          pnpm build
-          pnpm build:sites
-
-      - name: Check API
-        run: |
-          node --test .github/scripts/prepare-api-task.test.mjs
-          node --test apps/api/test/qa-role-ui/web-trace.test.cjs
-          pnpm --filter @senior-club/api test:e2e:db:guard
-          pnpm --filter @senior-club/api typecheck
-          pnpm --filter @senior-club/api test
-          pnpm --filter @senior-club/api build
 
       - name: Check Android app
         run: |
           pnpm --filter mobile lint
           pnpm --filter mobile typecheck
           pnpm --filter mobile test
+          pnpm --filter mobile exec expo export --platform android --output-dir /tmp/senior-club-android-export
+
+      - name: Check release validators
+        run: |
           pnpm --filter mobile test:release-validators
           pnpm --filter mobile test:manifest:merged
           pnpm --filter mobile validate:play-internal-workflow
           pnpm --filter mobile validate:play-production-workflow
           pnpm --filter mobile validate:play
           pnpm --filter mobile validate:manifest
-          pnpm --filter mobile exec expo export --platform android --output-dir /tmp/senior-club-android-export
-
-      - name: Build API container
-        run: docker build --file apps/api/Dockerfile --tag senior-club-api:ci .
-
-      - name: Check API compatibility on Node 26
-        run: docker buildx build --file apps/api/Dockerfile --target node26-api-regression --output type=cacheonly .
-
-      - name: Verify API container contract
-        run: bash .github/scripts/verify-api-image.sh senior-club-api:ci
-
-  database-quality:
-    name: Kakao, profile, roles, and safety on disposable PostgreSQL
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: senior-qa-local-only
-          POSTGRES_DB: senior_role_qa_20260930
-        ports:
-          - 55432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d senior_role_qa_20260930"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      CI: "true"
-      NODE_ENV: test
-      RUN_DATABASE_E2E: "true"
-      DATABASE_QA_URL: postgresql://postgres:senior-qa-local-only@127.0.0.1:55432/senior_role_qa_20260930?sslmode=disable
-      DATABASE_URL: postgresql://postgres:senior-qa-local-only@127.0.0.1:55432/senior_role_qa_20260930?sslmode=disable
-      EMAIL_PROVIDER: disabled
-      SMS_PROVIDER: disabled
-      PUSH_PROVIDER: disabled
-      OUTBOX_WORKER_ENABLED: "false"
-      AUTH_DEV_OTP_EXPOSE: "false"
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6
-        with:
-          version: 9.14.2
-          run_install: false
-
-      - name: Install Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install locked dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Generate Prisma client
-        run: pnpm --filter @senior-club/api prisma:generate
-
-      - name: Run all DB suites without skipped tests
-        run: pnpm --filter @senior-club/api test:e2e:db

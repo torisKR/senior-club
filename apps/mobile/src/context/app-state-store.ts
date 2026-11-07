@@ -1,8 +1,3 @@
-import {
-  createDefaultAppState,
-  normalizeInMemoryAppState,
-} from '@/context/persisted-app-state';
-import type { PersistedAppState } from '@/types';
 import { storage } from '@/utils/storage';
 
 export const UI_PREFERENCES_STORAGE_KEY = 'senior-club.ui-preferences.v1';
@@ -13,11 +8,13 @@ export const LEGACY_APP_STATE_STORAGE_KEYS = [
   'senior-club.app-state.v1',
 ] as const;
 
-interface UiPreferences {
+export interface UiPreferences {
   largeTextEnabled: boolean;
 }
 
-type PreferenceStorage = Pick<typeof storage, 'getRaw' | 'set' | 'remove'>;
+type PreferenceStorage = Pick<typeof storage, 'getRaw' | 'set'>;
+
+export const defaultPreferences: UiPreferences = { largeTextEnabled: false };
 
 function readPreferences(source: PreferenceStorage, key: string): UiPreferences | null {
   try {
@@ -33,38 +30,14 @@ function readPreferences(source: PreferenceStorage, key: string): UiPreferences 
   }
 }
 
-/** Member data is never read from generic storage, even if legacy cleanup fails. */
+/** Read only the font preference; leave older and unrelated saves untouched. */
 export function createAppStateStore(source: PreferenceStorage = storage) {
-  const preferences = readPreferences(source, UI_PREFERENCES_STORAGE_KEY) ??
+  let current = readPreferences(source, UI_PREFERENCES_STORAGE_KEY) ??
     LEGACY_APP_STATE_STORAGE_KEYS.reduce<UiPreferences | null>(
       (found, key) => found ?? readPreferences(source, key),
       null,
-    ) ?? { largeTextEnabled: false };
-  let current: PersistedAppState = {
-    ...createDefaultAppState(),
-    ...preferences,
-  };
+    ) ?? defaultPreferences;
   const listeners = new Set<() => void>();
-
-  const persistPreferences = () => {
-    // An explicit allowlist also strips unexpected fields from a corrupted/newer cache.
-    const allowed: UiPreferences = { largeTextEnabled: current.largeTextEnabled };
-    try {
-      source.set(UI_PREFERENCES_STORAGE_KEY, allowed);
-    } catch {
-      // Storage availability must not govern authentication or clearing account data.
-    }
-    for (const key of LEGACY_APP_STATE_STORAGE_KEYS) {
-      try {
-        source.remove(key);
-      } catch {
-        // If deletion is unavailable, try replacing the old PII with harmless preferences.
-        try { source.set(key, allowed); } catch { /* Retry cleanup on the next update. */ }
-      }
-    }
-  };
-
-  persistPreferences();
 
   return {
     getSnapshot: () => current,
@@ -72,9 +45,15 @@ export function createAppStateStore(source: PreferenceStorage = storage) {
       listeners.add(listener);
       return () => { listeners.delete(listener); };
     },
-    update(updater: (state: PersistedAppState) => PersistedAppState) {
-      current = normalizeInMemoryAppState(updater(current));
-      persistPreferences();
+    update(updater: (state: UiPreferences) => UiPreferences) {
+      const next = updater(current);
+      if (next.largeTextEnabled === current.largeTextEnabled) return current;
+      current = { largeTextEnabled: next.largeTextEnabled };
+      try {
+        source.set(UI_PREFERENCES_STORAGE_KEY, current);
+      } catch {
+        // The current session remains usable even if platform storage is unavailable.
+      }
       listeners.forEach((listener) => listener());
       return current;
     },

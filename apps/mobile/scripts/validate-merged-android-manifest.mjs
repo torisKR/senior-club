@@ -76,35 +76,37 @@ const callback = (scheme, host, callbackPath) => filter([viewAction], browserCat
 }]);
 
 function exportContracts(config) {
-  if (config?.android?.package !== expectedPackage || config.scheme !== 'clubsenior' ||
-      !/^[a-f0-9]{32}$/i.test(config.extra?.kakaoNativeAppKey ?? '')) {
-    throw new Error('Checked-in Expo package/scheme/Kakao callback configuration is invalid.');
+  if (config?.android?.package !== expectedPackage || config.scheme !== 'clubsenior') {
+    throw new Error('Checked-in Expo package/scheme configuration is invalid.');
   }
-  // These are required exact components, not SDK package-prefix exemptions.
+  // Optional legacy SDK exports must still satisfy exact contracts if present.
+  const kakaoKey = config.extra?.kakaoNativeAppKey;
   return new Map([
     [`activity:${expectedPackage}.MainActivity`, {
       permission: undefined, launchMode: 'singleTop',
       filters: [filter(['android.intent.action.MAIN'], ['android.intent.category.LAUNCHER']), callback(config.scheme)],
     }],
-    ['activity:com.kakao.sdk.auth.AuthCodeHandlerActivity', {
-      permission: undefined, launchMode: 'singleTask',
-      filters: [callback(`kakao${config.extra.kakaoNativeAppKey}`, 'oauth')],
-    }],
-    // Firebase Auth web redirects are necessary for IDP and phone reCAPTCHA callbacks.
-    // They are intentionally unprotected activities with narrowly defined intent contracts.
+    ...(/^[a-f0-9]{32}$/i.test(kakaoKey ?? '') ? [
+      ['activity:com.kakao.sdk.auth.AuthCodeHandlerActivity', {
+        optional: true, permission: undefined, launchMode: 'singleTask',
+        filters: [callback(`kakao${kakaoKey}`, 'oauth')],
+      }],
+    ] : []),
+    // Firebase Auth callbacks are being removed from the game. Until then,
+    // allow them only with their narrowly defined intent contracts.
     ['activity:com.google.firebase.auth.internal.GenericIdpActivity', {
-      permission: undefined, launchMode: 'singleTask', filters: [callback('genericidp', 'firebase.auth', '/')],
+      optional: true, permission: undefined, launchMode: 'singleTask', filters: [callback('genericidp', 'firebase.auth', '/')],
     }],
     ['activity:com.google.firebase.auth.internal.RecaptchaActivity', {
-      permission: undefined, launchMode: 'singleTask', filters: [callback('recaptcha', 'firebase.auth', '/')],
+      optional: true, permission: undefined, launchMode: 'singleTask', filters: [callback('recaptcha', 'firebase.auth', '/')],
     }],
     // Only Play services may deliver account revocation notifications.
     ['service:com.google.android.gms.auth.api.signin.RevocationBoundService', {
-      permission: 'com.google.android.gms.auth.api.signin.permission.REVOCATION_NOTIFICATION', filters: [],
+      optional: true, permission: 'com.google.android.gms.auth.api.signin.permission.REVOCATION_NOTIFICATION', filters: [],
     }],
     // Android's scheduler binds WorkManager jobs under a system-only permission.
     ['service:androidx.work.impl.background.systemjob.SystemJobService', {
-      permission: 'android.permission.BIND_JOB_SERVICE', filters: [],
+      optional: true, permission: 'android.permission.BIND_JOB_SERVICE', filters: [],
     }],
     // RevenueCat brings the Amazon billing receiver; only Amazon's notifier may call it.
     ['receiver:com.amazon.device.iap.ResponseReceiver', {
@@ -113,12 +115,12 @@ function exportContracts(config) {
     }],
     // Firebase's FCM receiver accepts messages only from the protected Google sender.
     ['receiver:com.google.firebase.iid.FirebaseInstanceIdReceiver', {
-      permission: 'com.google.android.c2dm.permission.SEND',
+      optional: true, permission: 'com.google.android.c2dm.permission.SEND',
       filters: [filter(['com.google.android.c2dm.intent.RECEIVE'])],
     }],
     // AndroidX diagnostic/profile broadcasts require the shell/system DUMP permission.
     ['receiver:androidx.work.impl.diagnostics.DiagnosticsReceiver', {
-      permission: 'android.permission.DUMP', filters: [filter(['androidx.work.diagnostics.REQUEST_DIAGNOSTICS'])],
+      optional: true, permission: 'android.permission.DUMP', filters: [filter(['androidx.work.diagnostics.REQUEST_DIAGNOSTICS'])],
     }],
     ['receiver:androidx.profileinstaller.ProfileInstallReceiver', {
       permission: 'android.permission.DUMP',
@@ -305,7 +307,9 @@ export async function validateMergedAndroidManifest(xml, { expoConfig = checkedI
       }
     }
   }
-  for (const key of contracts.keys()) check(seen.has(key), `Required merged SDK/app component missing: ${key}`);
+  for (const [key, contract] of contracts) {
+    if (!contract.optional) check(seen.has(key), `Required merged SDK/app component missing: ${key}`);
+  }
   if (violations.length) throw new Error(violations.join('\n'));
   return { permissions: sorted(permissions), exportedComponents: sorted(exportedComponents) };
 }
@@ -317,7 +321,7 @@ async function main() {
   const result = await validateMergedAndroidManifest(fs.readFileSync(manifestPath, 'utf8'));
   console.log(`PASS compiled merged release manifest: ${manifestPath}`);
   console.log(`PASS ${result.permissions.length} allowlisted permissions; backup/debug/cleartext disabled`);
-  console.log(`PASS ${result.exportedComponents.length} exact exports: 4 intent-constrained activities and 6 permission-protected SDK components`);
+  console.log(`PASS ${result.exportedComponents.length} exact allowlisted export contracts`);
   for (const component of result.exportedComponents) console.log(`PASS export contract ${component}`);
 }
 

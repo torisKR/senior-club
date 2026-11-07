@@ -10,6 +10,7 @@ const fixtures = vi.hoisted(() => ({
   saved: new Map<string, string>(),
   listener: null as ((state: string) => void) | null,
   appState: 'active',
+  dropBackup: false,
 }));
 
 vi.mock('react-native', () => ({
@@ -24,8 +25,22 @@ vi.mock('react-native', () => ({
 
 vi.mock('./rpg-db', () => ({
   getRpgStorage: () => ({
+    supportsGuardedWrites: true,
     getString: (key: string) => fixtures.saved.get(key) ?? null,
+    readStringStrict: (key: string) => fixtures.saved.get(key) ?? null,
     setString: (key: string, value: string) => { fixtures.saved.set(key, value); },
+    guardedWrite: (key: string, expected: string | null, value: string, backup?: { key: string; value: string }) => {
+      if ((fixtures.saved.get(key) ?? null) !== expected) return 'conflict';
+      if (backup) {
+        if (fixtures.dropBackup) return 'backup_failed';
+        const old = fixtures.saved.get(backup.key);
+        if (old !== undefined && old !== backup.value) return 'backup_failed';
+        fixtures.saved.set(backup.key, backup.value);
+        if (fixtures.saved.get(backup.key) !== backup.value) return 'backup_failed';
+      }
+      fixtures.saved.set(key, value);
+      return 'written';
+    },
   }),
 }));
 
@@ -57,6 +72,7 @@ async function transition(state: string) {
 }
 
 function seed(overrides: Record<string, unknown> = {}) {
+  fixtures.saved.delete('senior_club_rpg_state_before_story_v3');
   fixtures.saved.set(KEY, JSON.stringify({
     playerPos: { x: 3, y: 3 },
     stats: { acorns: 777, wisdomExp: 500 },
@@ -74,6 +90,7 @@ beforeEach(() => {
   fixtures.saved.clear();
   fixtures.listener = null;
   fixtures.appState = 'active';
+  fixtures.dropBackup = false;
   container = document.createElement('div');
   document.body.append(container);
   root = null;
@@ -87,13 +104,16 @@ afterEach(async () => {
 });
 
 describe('RPG story save migration', () => {
-  it('moves the old final chapter to the new final chapter without changing other progress', async () => {
+  it('preserves the old final chapter mapping after the player chooses to keep the record', async () => {
     seed({
       currentChapterId: 'chapter_4',
       completedChapterIds: ['chapter_1', 'chapter_2', 'chapter_3'],
       inventory: [{ id: 'water_bottle', name: 'saved', description: '', count: 8, icon: '' }],
     });
     await mount();
+    expect(current.currentChapter.id).toBe('chapter_4');
+    expect(current.state.storyLegacyChoice).toBe('pending');
+    await act(async () => current.resolveLegacyStory('keep'));
     expect(current.currentChapter.id).toBe('chapter_6');
     expect(current.state.completedChapterIds).toEqual(['chapter_1', 'chapter_2', 'chapter_3']);
     expect(current.state.completedTrialIds).toEqual([]);
@@ -158,6 +178,44 @@ describe('offline reward lifecycle', () => {
     await mount();
     expect(current.state.stats.acorns).toBe(777 + reward.earnedAcorns);
     expect(current.pendingOfflineReward).toBeNull();
+  });
+
+  it('retains an accrued reward through the old story choice, restart and one claim', async () => {
+    seed({ currentChapterId: 'chapter_4', completedChapterIds: ['chapter_1', 'chapter_2', 'chapter_3'], lastSavedTimestampMs: START.getTime() - 3600_000 });
+    const original = fixtures.saved.get(KEY);
+    await mount();
+    const reward = calculateOfflineIdleRewards(0, 3600_000, DEFAULT_FACILITIES, DEFAULT_PARTNERS)!;
+    expect(current.state.storyLegacyChoice).toBe('pending');
+    expect(current.pendingOfflineReward).toEqual(reward);
+    expect(fixtures.saved.get('senior_club_rpg_state_before_story_v3')).toBe(original);
+    await unmount(); await mount();
+    expect(current.pendingOfflineReward).toEqual(reward);
+    expect(current.state.storyLegacyChoice).toBe('pending');
+    await act(async () => current.resolveLegacyStory('replay'));
+    await act(async () => { current.claimOfflineReward(); current.claimOfflineReward(); });
+    expect(current.state.stats.acorns).toBe(777 + reward.earnedAcorns);
+    await unmount(); await mount();
+    expect(current.pendingOfflineReward).toBeNull();
+    expect(current.state.stats.acorns).toBe(777 + reward.earnedAcorns);
+  });
+
+  it('does not consume a pending offline reward when the old save cannot be backed up', async () => {
+    seed({ lastSavedTimestampMs: START.getTime() - 3600_000 });
+    const original = fixtures.saved.get(KEY);
+    fixtures.dropBackup = true;
+    await mount();
+    const reward = current.pendingOfflineReward;
+    expect(current.saveProtection).toBe('backup_failed');
+    expect(reward?.cappedElapsedSec).toBe(3600);
+    await act(async () => current.claimOfflineReward());
+    expect(fixtures.saved.get(KEY)).toBe(original);
+    expect(current.pendingOfflineReward).toEqual(reward);
+    expect(current.state.stats.acorns).toBe(777);
+    fixtures.dropBackup = false;
+    await act(async () => current.retrySaveProtection());
+    await act(async () => current.claimOfflineReward());
+    expect(current.pendingOfflineReward).toBeNull();
+    expect(current.state.stats.acorns).toBe(777 + reward!.earnedAcorns);
   });
 
   it('adds repeated offline periods to an unclaimed reward without capping their combined total', async () => {
@@ -242,7 +300,7 @@ describe('offline reward lifecycle', () => {
     await mount();
     await act(async () => {
       current.completeQuestStep('parkgolf');
-      current.recordStoryResult({ type: 'parkgolf', hole: 1, strokesFromPar: 0 });
+      current.recordStoryResult({ type: 'parkgolf', hole: 1, strokesFromPar: 0, chapterId: current.state.currentChapterId, attemptId: 'story-round' });
       current.recordGameWithNpc('golf_captain');
     });
     const saved = JSON.parse(fixtures.saved.get(KEY)!);

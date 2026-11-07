@@ -21,8 +21,6 @@
       "credentialsSource": "local",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL": "https://d33totqtaqpyfs.cloudfront.net",
-        "EXPO_PUBLIC_WEB_URL": "https://senior.toris.kr",
         "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "ca-app-pub-3004906966180197~9575830978",
         "EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID": "ca-app-pub-3004906966180197/2894786837"
       }
@@ -34,24 +32,6 @@
       "environment": "production",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL": "https://d33totqtaqpyfs.cloudfront.net",
-        "EXPO_PUBLIC_WEB_URL": "https://senior.toris.kr",
-        "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "ca-app-pub-3940256099942544~3347511713",
-        "EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID": "ca-app-pub-3940256099942544/9214589741"
-      },
-      "android": {
-        "buildType": "apk"
-      }
-    },
-    "kakaoQaLocal": {
-      "distribution": "internal",
-      "autoIncrement": true,
-      "credentialsSource": "local",
-      "environment": "development",
-      "env": {
-        "EXPO_PUBLIC_APP_ENV": "development",
-        "EXPO_PUBLIC_API_URL": "https://d33totqtaqpyfs.cloudfront.net",
-        "EXPO_PUBLIC_WEB_URL": "https://senior.toris.kr",
         "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "ca-app-pub-3940256099942544~3347511713",
         "EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID": "ca-app-pub-3940256099942544/9214589741"
       },
@@ -91,8 +71,6 @@
       "environment": "production",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL": "https://d33totqtaqpyfs.cloudfront.net",
-        "EXPO_PUBLIC_WEB_URL": "https://senior.toris.kr",
         "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "ca-app-pub-3004906966180197~9575830978",
         "EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID": "ca-app-pub-3004906966180197/2894786837"
       },
