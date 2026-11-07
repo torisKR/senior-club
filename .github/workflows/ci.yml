@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   quality:
-    name: Android checks
+    name: Web, API, and Android checks
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
