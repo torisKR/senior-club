@@ -77,8 +77,8 @@ importers:
         specifier: ~58.0.27
         version: 58.0.27(@babel/core@7.29.13)(expo@58.0.23)(react-dom@19.3.1(react@19.3.1))(react-native-worklets@0.13.1(@babel/core@7.29.13)(@react-native/metro-config@0.88.1(@babel/core@7.29.13))(react-native@0.88.1(@babel/core@7.29.13)(@react-native/metro-config@0.88.1(@babel/core@7.29.13))(@types/react@19.3.0)(react@19.3.1))(react@19.3.1))(react-native@0.88.1(@babel/core@7.29.13)(@react-native/metro-config@0.88.1(@babel/core@7.29.13))(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
       '@react-native-firebase/analytics':
-        specifier: 26.4.0
-        version: 26.4.0(@react-native-firebase/app@26.4.0(expo@58.0.23)(react-native@0.88.1(@babel/core@7.29.13)(@react-native/metro-config@0.88.1(@babel/core@7.29.13))(@types/react@19.3.0)(react@19.3.1))(react@19.3.1))(expo@58.0.23)
+        specifier: 27.1.0
+        version: 27.1.0(@react-native-firebase/app@26.4.0(expo@58.0.23)(react-native@0.88.1(@babel/core@7.29.13)(@react-native/metro-config@0.88.1(@babel/core@7.29.13))(@types/react@19.3.0)(react@19.3.1))(react@19.3.1))(expo@58.0.23)
       '@react-native-firebase/app':
         specifier: 26.4.0
         version: 26.4.0(expo@58.0.23)(react-native@0.88.1(@babel/core@7.29.13)(@react-native/metro-config@0.88.1(@babel/core@7.29.13))(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
@@ -1624,10 +1624,10 @@ packages:
       '@types/react':
         optional: true
 
-  '@react-native-firebase/analytics@26.4.0':
-    resolution: {integrity: sha512-moClYdlCnHTlgJzsK3VJENzhIga6vubK/SqE5NgzlCsjTC60Cs2jcm3phuZXgRL+LggMzz7lu+WirFNpQLk4Hg==}
+  '@react-native-firebase/analytics@27.1.0':
+    resolution: {integrity: sha512-zdYOvaePh6Pz9sJ1a2SX1lrXGEyWf+/idYTLEhpKGoIJfGA9vyYeG7G6xaN5yuObcNrG/sywW36diDKDd2fl+Q==}
     peerDependencies:
-      '@react-native-firebase/app': 26.4.0
+      '@react-native-firebase/app': 27.1.0
       expo: '>=47.0.0'
     peerDependenciesMeta:
       expo:
@@ -6609,7 +6609,7 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
 
-  '@react-native-firebase/analytics@26.4.0(@react-native-firebase/app@26.4.0(expo@58.0.23)(react-native@0.88.1(@babel/core@7.29.13)(@react-native/metro-config@0.88.1(@babel/core@7.29.13))(@types/react@19.3.0)(react@19.3.1))(react@19.3.1))(expo@58.0.23)':
+  '@react-native-firebase/analytics@27.1.0(@react-native-firebase/app@26.4.0(expo@58.0.23)(react-native@0.88.1(@babel/core@7.29.13)(@react-native/metro-config@0.88.1(@babel/core@7.29.13))(@types/react@19.3.0)(react@19.3.1))(react@19.3.1))(expo@58.0.23)':
     dependencies:
       '@react-native-firebase/app': 26.4.0(expo@58.0.23)(react-native@0.88.1(@babel/core@7.29.13)(@react-native/metro-config@0.88.1(@babel/core@7.29.13))(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
       superstruct: 2.0.2
