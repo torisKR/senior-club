@@ -6,8 +6,8 @@
   "dependencies": {
     "@expo/metro-runtime": "~58.0.17",
     "@expo/ui": "~58.0.27",
-    "@react-native-firebase/analytics": "26.4.0",
-    "@react-native-firebase/app": "26.4.0",
+    "@react-native-firebase/analytics": "27.1.0",
+    "@react-native-firebase/app": "27.1.0",
     "expo": "~58.0.23",
     "expo-asset": "~58.0.20",
     "expo-audio": "~58.0.11",
@@ -45,7 +45,7 @@
     "eslint-config-expo": "~58.0.4",
     "typescript": "~6.0.3",
     "vite": "8.3.5",
-    "vitest": "4.1.12"
+    "vitest": "5.1.0"
   },
   "scripts": {
     "eas-build-post-install": "node ./scripts/validate-android-manifest.mjs",
