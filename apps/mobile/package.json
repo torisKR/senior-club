@@ -7,7 +7,7 @@
     "@expo/metro-runtime": "~58.0.17",
     "@expo/ui": "~58.0.27",
     "@react-native-firebase/analytics": "26.4.0",
-    "@react-native-firebase/app": "26.4.0",
+    "@react-native-firebase/app": "27.1.0",
     "expo": "~58.0.23",
     "expo-asset": "~58.0.20",
     "expo-audio": "~58.0.11",
