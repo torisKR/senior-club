@@ -3,6 +3,7 @@ import { randomUUID } from 'expo-crypto';
 import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { PixelRadius } from '@/components/game/pixel-theme';
 import { AppText, Card, Screen, SeniorButton } from '@/components/ui';
 import { FontWeights, Layout, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/hooks/use-app-state';
@@ -20,6 +21,8 @@ import {
   type SacheonseongCell,
 } from './arcade-logic';
 import { useArcade } from './arcade-store';
+import { sacheonseongStars } from './round-stars';
+import { RoundStarsView } from './round-stars-view';
 import { ArcadeSaveNotice } from './arcade-save-notice';
 import { ArcadeQuickSettings } from './arcade-quick-settings';
 import { CompanionCoach } from '@/rpg/companion-coach';
@@ -191,7 +194,7 @@ export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyCh
       playSfx('chime', state.soundEnabled);
       const storyRecorded = story && storyAttemptId ? recordStoryResult({ type: 'sacheonseong', maxCombo: nextMaxCombo, chapterId: story.id, attemptId: storyAttemptId }) : false;
       const storyNote = story ? (!storyRecorded ? ' 이야기 기록이 반영되지 않았어요. 마을에서 진행 상태를 확인해 주세요.' : nextMaxCombo >= 3 ? ' 이야기 목표를 마쳤습니다.' : ' 이야기 목표인 3연속에 이르지 못해 다시 도전할 수 있습니다.') : '';
-      setStatusMessage(`🎉 제${stageNum}국 모든 전통 패 제거 완료! (+${170 + nextMaxCombo * 10} CP · 인장 +1)${storyNote}`);
+      setStatusMessage(`제${stageNum}국 모든 전통 패 제거 완료! (+${170 + nextMaxCombo * 10} CP · 인장 +1)${storyNote}`);
       recordSacheonseongClear(nextMaxCombo);
       completeQuestStep('sacheonseong');
       recordGameWithNpc(GAME_COACH.sacheonseong);
@@ -338,6 +341,7 @@ export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyCh
           {statusMessage}
         </AppText>
 
+        {remainingCount === 0 ? <RoundStarsView stars={sacheonseongStars(maxCombo)} title={`제${stageNum}국 완료!`} /> : null}
         {remainingCount === 0 ? (
           <View style={styles.stageClearCelebration}>
             <View style={styles.stageClearVfx}>
@@ -420,7 +424,7 @@ const styles = StyleSheet.create({
   },
   hudCard: {
     backgroundColor: '#0E5142',
-    borderRadius: Radius.lg,
+    borderRadius: PixelRadius,
     borderWidth: 2,
     borderColor: '#D8B384',
     padding: Spacing.md,
@@ -452,7 +456,7 @@ const styles = StyleSheet.create({
   },
   matBoard: {
     backgroundColor: '#0E5142',
-    borderRadius: Radius.lg,
+    borderRadius: PixelRadius,
     borderWidth: 4,
     borderColor: '#6E4228',
     position: 'relative',
@@ -465,7 +469,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: Radius.lg,
+    borderRadius: PixelRadius,
     zIndex: 0,
   },
   gridRow: {
@@ -476,13 +480,13 @@ const styles = StyleSheet.create({
   emptySlot: {
     width: TILE_WIDTH,
     height: TILE_HEIGHT,
-    borderRadius: Radius.sm,
+    borderRadius: PixelRadius,
     backgroundColor: 'rgba(24, 38, 32, 0.25)',
   },
   tileOuter: {
     width: TILE_WIDTH,
     height: TILE_HEIGHT,
-    borderRadius: Radius.sm,
+    borderRadius: PixelRadius,
     backgroundColor: '#D8B384',
     borderWidth: 2,
     borderColor: '#6E4228',

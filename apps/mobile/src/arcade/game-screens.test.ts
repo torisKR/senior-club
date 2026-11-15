@@ -83,6 +83,7 @@ vi.mock('./arcade-store', () => ({ useArcade: () => mocks.arcade }));
 vi.mock('@/world/use-world-active', () => ({ useWorldActive: () => true }));
 vi.mock('@/audio/focused-background-audio', () => ({ FocusedBackgroundAudio: () => null }));
 vi.mock('@/audio/bgm', () => ({ BGM_CLUB_LOUNGE: 1 }));
+vi.mock('./round-stars-view', () => ({ RoundStarsView: () => null }));
 
 let root: Root;
 let container: HTMLDivElement;

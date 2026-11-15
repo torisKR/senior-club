@@ -3,6 +3,7 @@ import { randomUUID } from 'expo-crypto';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { PixelRadius } from '@/components/game/pixel-theme';
 import { AppText, Card, Screen, SeniorButton } from '@/components/ui';
 import { FontWeights, Layout, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/hooks/use-app-state';
@@ -12,6 +13,8 @@ import { FocusedBackgroundAudio } from '@/audio/focused-background-audio';
 
 import { createInitialAlkkagiStones, executeAlkkagiFlick, hasAlkkagiProgress, type AlkkagiStone } from './arcade-logic';
 import { useArcade } from './arcade-store';
+import { alkkagiStars } from './round-stars';
+import { RoundStarsView } from './round-stars-view';
 import { ArcadeSaveNotice } from './arcade-save-notice';
 import { ArcadeQuickSettings } from './arcade-quick-settings';
 import { CompanionCoach } from '@/rpg/companion-coach';
@@ -129,7 +132,7 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
     const nextDoubleCount = matchDoubleKnockouts + (result.doubleKnockout ? 1 : 0);
     setMatchDoubleKnockouts(nextDoubleCount);
     if (result.doubleKnockout) playSfx('combo', state.soundEnabled);
-    setScrollCallout(result.doubleKnockout ? '📜 일석이조(一石二鳥)! 승리 보상 +50 CP' : null);
+    setScrollCallout(result.doubleKnockout ? '일석이조(一石二鳥)! 승리 보상 +50 CP' : null);
 
     const remainingAi = result.stones.filter((s) => s.owner === 'ai' && s.alive);
     const remainingPlayer = result.stones.filter((s) => s.owner === 'player' && s.alive);
@@ -139,7 +142,7 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
       setStones(result.stones);
       const storyRecorded = story && storyAttemptId ? recordStoryResult({ type: 'alkkagi', doubleKnockouts: nextDoubleCount, chapterId: story.id, attemptId: storyAttemptId }) : false;
       const storyNote = story ? (!storyRecorded ? ' 이야기 기록이 반영되지 않았어요. 마을에서 진행 상태를 확인해 주세요.' : story.id === 'chapter_2' || nextDoubleCount > 0 ? ' 이야기 목표를 마쳤습니다.' : ' 이야기 목표인 일석이조는 이루지 못해 다시 도전할 수 있습니다.') : '';
-      setBannerText(`🎉 대국 승리! 상대 알을 모두 장외로 밀어냈습니다! (+${160 + nextDoubleCount * 50} CP · 인장 +1)${resultDetail ? ` · ${resultDetail}` : ''}${storyNote}`);
+      setBannerText(`대국 승리! 상대 알을 모두 장외로 밀어냈습니다! (+${160 + nextDoubleCount * 50} CP · 인장 +1)${resultDetail ? ` · ${resultDetail}` : ''}${storyNote}`);
       recordAlkkagiWin(nextDoubleCount);
       completeQuestStep('alkkagi');
       recordGameWithNpc(GAME_COACH.alkkagi);
@@ -325,6 +328,7 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
       {/* 3. 하단 조준 및 타격 컨트롤 */}
       {aliveEnemies.length === 0 ? (
         <Card style={styles.victoryCard}>
+          <RoundStarsView stars={alkkagiStars(stones.filter((stone) => stone.owner === 'player' && stone.alive).length)} title="대국 승리!" />
           <AppText variant="sectionTitle" accessibilityLiveRegion="polite" style={{ color: '#0E5142' }}>
             {bannerText}
           </AppText>
@@ -429,7 +433,7 @@ const styles = StyleSheet.create({
   },
   hudCard: {
     backgroundColor: '#24382B',
-    borderRadius: Radius.lg,
+    borderRadius: PixelRadius,
     borderWidth: 2,
     borderColor: '#D8B384',
     padding: Spacing.md,
@@ -453,7 +457,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 48,
     minHeight: 48,
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     borderWidth: 1.5,
     borderColor: '#D8B384',
     backgroundColor: '#182620',
@@ -500,7 +504,7 @@ const styles = StyleSheet.create({
   },
   scrollBanner: {
     backgroundColor: '#FFF1C7',
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     borderWidth: 2,
     borderColor: '#C2410C',
     paddingVertical: 10,
@@ -523,7 +527,7 @@ const styles = StyleSheet.create({
   },
   boardFrame: {
     height: 330,
-    borderRadius: Radius.lg,
+    borderRadius: PixelRadius,
     overflow: 'hidden',
     borderWidth: 3,
     borderColor: '#6E4228',
@@ -607,7 +611,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 48,
     minHeight: 54,
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     borderWidth: 1.5,
     borderColor: '#6E4228',
     backgroundColor: '#FFFFFF',

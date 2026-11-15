@@ -48,6 +48,7 @@ vi.mock('./rpg-db', () => ({ getRpgStorage: () => ({
   },
 }) }));
 vi.mock('expo-audio', () => ({ useAudioPlayer: () => mocks.audio }));
+vi.mock('./review-prompt', () => ({ askForReviewAt: vi.fn() }));
 vi.mock('expo-image', () => ({ Image: () => null }));
 vi.mock('expo-router', () => ({ useRouter: () => ({ push: mocks.push }), useFocusEffect: () => undefined }));
 vi.mock('@/ads/HomeBannerAd', () => ({ HomeBannerAd: () => null }));
