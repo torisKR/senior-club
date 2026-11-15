@@ -162,7 +162,7 @@ export function JournalPanel({ onNotice, nowMs }: { onNotice: (text: string) => 
           <AppText variant="body" style={{ color: '#24382B', fontSize: 16 }}>{q.description}</AppText>
           <View style={styles.questFooterRow}>
             <AppText variant="caption" style={{ color: '#C2410C' }}>
-              보상: +{q.rewardExp} EXP · 🌰 {q.rewardAcorns}개
+              보상: +{q.rewardExp} EXP · 도토리 {q.rewardAcorns}개
             </AppText>
             {q.completed && !q.claimed ? (
               <Pressable

@@ -9,7 +9,7 @@ import { ArcadeSaveNotice } from '@/arcade/arcade-save-notice';
 import { FocusedBackgroundAudio } from '@/audio/focused-background-audio';
 import { playSfx } from '@/audio/sound-manager';
 import { AppText, SeniorButton } from '@/components/ui';
-import { FontWeights, Radius, Spacing } from '@/constants/theme';
+import { FontWeights, Spacing } from '@/constants/theme';
 import { PixelFx } from '@/fx/pixel-fx';
 import { useReduceMotion } from '@/fx/use-reduce-motion';
 import { useEffectiveSafeAreaInsets } from '@/hooks/use-effective-safe-area-insets';
@@ -39,6 +39,12 @@ import { isStoryActionAvailable, STORY_ACTIONS, storyStatus, storyTrialCompleted
 import { STORY_CONTINUATION_DIALOGUE } from './story-data';
 import { portraitFor } from './rpg-sprites';
 import { useRpg } from './rpg-store';
+import { GameIcon } from '@/components/game/game-icon';
+import { TypewriterText } from '@/components/game/typewriter-text';
+
+import { HudStats } from './hud-stats';
+import { askForReviewAt } from './review-prompt';
+import { hud } from './village-hud-styles';
 import { villageStyles as styles } from './village-styles';
 import { BGM_CLUB_LOUNGE } from '@/audio/bgm';
 
@@ -50,7 +56,7 @@ const HUD_MENU = require('../../assets/game/rpg/pixel/hud/menu.png');
 const NOTICE_MS = 4000;
 /** 아침 체조를 하는 마을 광장 (3 x 3) */
 const PLAZA = { minX: 26, maxX: 28, minY: 22, maxY: 24 };
-const HUD_MAP = require('../../assets/game/rpg/pixel/world/signpost.png');
+const HUD_MAP = require('../../assets/game/rpg/pixel/gameui/mapicon.png');
 
 function offlineDuration(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
@@ -354,7 +360,7 @@ export function VillageMapScreen() {
           <View style={[styles.modalBackdrop, { paddingTop: insets.top + Spacing.md, paddingBottom: insets.bottom + Spacing.md }]}>
             <ScrollView style={hud.rewardScroll}>
             <View style={styles.offlineRewardCard}>
-              <AppText style={{ fontSize: 40, textAlign: 'center' }}>🎁</AppText>
+              <GameIcon name="gift" size={64} />
               <AppText variant="sectionTitle" style={styles.offlineTitle}>
                 어르신, 편히 쉬고 오셨습니까?
               </AppText>
@@ -362,12 +368,18 @@ export function VillageMapScreen() {
                 마을 시설에 배치된 이웃 동료들이 쉬는 동안 부지런히 수련과 살림을 도왔습니다! ({offlineDuration(pendingOfflineReward.cappedElapsedSec)} 누적)
               </AppText>
               <View style={styles.rewardBox}>
-                <AppText variant="bodyStrong" style={{ color: '#0E5142' }}>
-                  🌰 도토리 +{pendingOfflineReward.earnedAcorns.toLocaleString()}개 획득
-                </AppText>
-                <AppText variant="bodyStrong" style={{ color: '#855B00' }}>
-                  📖 연륜 +{pendingOfflineReward.earnedExp.toLocaleString()} EXP 누적
-                </AppText>
+                <View style={styles.rewardRow}>
+                  <GameIcon name="acorn" />
+                  <AppText variant="bodyStrong" style={{ color: '#0E5142', flexShrink: 1 }}>
+                    도토리 +{pendingOfflineReward.earnedAcorns.toLocaleString()}개 획득
+                  </AppText>
+                </View>
+                <View style={styles.rewardRow}>
+                  <GameIcon name="quest" />
+                  <AppText variant="bodyStrong" style={{ color: '#855B00', flexShrink: 1 }}>
+                    연륜 +{pendingOfflineReward.earnedExp.toLocaleString()} EXP 누적
+                  </AppText>
+                </View>
               </View>
               <SeniorButton
                 testID="btn-claim-offline-reward"
@@ -450,7 +462,7 @@ export function VillageMapScreen() {
             </View> : null}
             <View style={styles.climaxNotice}>
               <AppText variant="bodyStrong" style={{ color: '#0E5142' }}>
-                🎯 시련: {currentChapter.climaxTrial.opponentName}
+                시련: {currentChapter.climaxTrial.opponentName}
               </AppText>
               <AppText variant="caption" style={{ color: '#24382B' }}>{currentChapter.climaxTrial.description}</AppText>
               <AppText variant="caption" style={{ color: '#24382B' }}>
@@ -501,6 +513,7 @@ export function VillageMapScreen() {
                   playSfx('chime', arcadeState.soundEnabled);
                   setPromotionFx(true);
                   setStoryModalOpen(false);
+                  void askForReviewAt('promotion');
                 }}
               />
               <SeniorButton label="마을로 돌아가기" variant="secondary" onPress={() => setStoryModalOpen(false)} />
@@ -560,9 +573,7 @@ export function VillageMapScreen() {
           <View style={hud.barTrack}>
             <View style={[hud.barFill, { width: `${Math.round((state.stats.vitality / state.stats.maxVitality) * 100)}%` }]} />
           </View>
-          <AppText variant="caption" style={hud.statusText}>
-            활력 {state.stats.vitality} · 🌰 {state.stats.acorns} · 마음 {heartWarmth}°
-          </AppText>
+          <HudStats vitality={state.stats.vitality} acorns={state.stats.acorns} warmth={heartWarmth} />
         </View>
         <View style={hud.buttonColumn}>
           <HudButton wide={wideHud} testID="hud-journal" icon={HUD_BAG} label="가방" onPress={() => setSheet('journal')} />
@@ -605,7 +616,7 @@ export function VillageMapScreen() {
               <View style={styles.npcPortraitCircle}>
                 <Image source={portraitFor(dialogueNpc.id)} style={styles.npcPortraitImage} contentFit="cover" accessibilityLabel={`${dialogueNpc.name} 초상화`} />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={styles.dialogueNameplate}>
                 <AppText variant="caption" style={{ color: '#D8B384' }}>{dialogueNpc.title}</AppText>
                 <AppText variant="sectionTitle" style={{ color: '#FCF9F2' }}>{dialogueNpc.name}</AppText>
               </View>
@@ -614,7 +625,11 @@ export function VillageMapScreen() {
               </Pressable>
             </View>
             <ScrollView contentContainerStyle={{ gap: Spacing.sm }}>
-              <AppText variant="body" accessibilityLiveRegion="polite" style={styles.dialogueLine}>{`"${companionDialogueNpc && companionId ? WALK_LINES[companionId][companionLineIndex % WALK_LINES[companionId].length] : dialogueNpc.dialogue[(npcLine?.npcId === dialogueNpc.id ? npcLine.index : 0) % dialogueNpc.dialogue.length]}"`}</AppText>
+              <TypewriterText
+                reduceMotion={reduceMotion !== false}
+                style={styles.dialogueLine}
+                text={`"${companionDialogueNpc && companionId ? WALK_LINES[companionId][companionLineIndex % WALK_LINES[companionId].length] : dialogueNpc.dialogue[(npcLine?.npcId === dialogueNpc.id ? npcLine.index : 0) % dialogueNpc.dialogue.length]}"`}
+              />
               {companionDialogueNpc && companionId && WALK_LINES[companionId].length > 1 ? (
                 <SeniorButton label="다른 이야기 듣기" variant="secondary" onPress={() => setCompanionLineIndex((index) => index + 1)} />
               ) : !companionDialogueNpc && dialogueNpc.dialogue.length > 1 ? (
@@ -684,7 +699,7 @@ export function VillageMapScreen() {
               : worldAction ? worldAction.label.replace(/\s+/g, ' ') : '주변에 할 일이 없습니다'}
             disabled={!worldAction}
             onPress={worldAction?.run}
-            style={[hud.actionBtn, !worldAction && hud.actionBtnIdle]}>
+            style={({ pressed }) => [hud.actionBtn, !worldAction && hud.actionBtnIdle, pressed && hud.actionBtnPressed]}>
             <AppText variant="bodyStrong" style={hud.actionText}>{worldAction?.label ?? '둘러보기'}</AppText>
           </Pressable>
         </View>
@@ -738,11 +753,11 @@ export function VillageMapScreen() {
                 <>
                   <View style={[styles.morningRoutineCard, stackRoutine && { flexDirection: 'column' }]}>
                     <View style={stackRoutine ? undefined : { flex: 1 }}>
-                      <SeniorButton testID="btn-morning-gym" label={state.stats.dailyMorningGymDone ? '체조 완료 ✔' : '아침 체조하기 🧘'}
+                      <SeniorButton testID="btn-morning-gym" label={state.stats.dailyMorningGymDone ? '체조 완료 ✔' : '아침 체조하기'}
                         variant={state.stats.dailyMorningGymDone ? 'secondary' : 'primary'} onPress={() => { setSheet(null); handleMorningGym(); }} />
                     </View>
                     <View style={stackRoutine ? undefined : { flex: 1 }}>
-                      <SeniorButton testID="btn-take-meds" label={state.stats.dailyMedicationTaken ? '약 복용 완료 ✔' : '혈압약 복용 💊'}
+                      <SeniorButton testID="btn-take-meds" label={state.stats.dailyMedicationTaken ? '약 복용 완료 ✔' : '혈압약 복용하기'}
                         variant={state.stats.dailyMedicationTaken ? 'secondary' : 'accent'} onPress={() => { setSheet(null); handleTakeMedication(); }} />
                     </View>
                   </View>
@@ -777,45 +792,3 @@ function HudButton({ testID, icon, label, onPress, wide }: { testID: string; ico
     </Pressable>
   );
 }
-
-const hud = StyleSheet.create({
-  quickSettings: { padding: Spacing.md, gap: Spacing.sm, borderRadius: Radius.md, backgroundColor: '#F6EBD3', borderWidth: 1, borderColor: '#B89A7A' },
-  settingsTitle: { color: '#24382B' },
-  settingRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  settingLabel: { flex: 1, color: '#182620' },
-  worldRoot: { flex: 1, backgroundColor: '#356347' },
-  top: { position: 'absolute', left: 0, right: 0, top: 0, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: Spacing.md },
-  statusCard: { minWidth: 168, maxWidth: 220, flexShrink: 1, padding: Spacing.sm, gap: 4, borderRadius: Radius.md, backgroundColor: 'rgba(24, 38, 32, 0.82)', borderWidth: 2, borderColor: '#B89A7A' },
-  statusHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  badge: { width: 28, height: 28 },
-  rankText: { color: '#F0BF4F', fontFamily: FontWeights.strong },
-  barTrack: { height: 10, borderRadius: 5, backgroundColor: 'rgba(252, 249, 242, 0.2)', overflow: 'hidden' },
-  barFill: { height: '100%', backgroundColor: '#E2574C' },
-  statusText: { color: '#FCF9F2', fontVariant: ['tabular-nums'] },
-  buttonColumn: { gap: Spacing.sm },
-  hudButton: { width: 64, minHeight: 64, alignItems: 'center', justifyContent: 'center' },
-  wideHudButton: { width: 88 },
-  rewardScroll: { width: '100%', maxWidth: 420, maxHeight: '100%', flexGrow: 0, flexShrink: 1 },
-  choiceScroll: { width: '100%', maxWidth: 420, maxHeight: '100%', flexGrow: 0, flexShrink: 1, borderRadius: Radius.lg, backgroundColor: '#FCF9F2', borderWidth: 2, borderColor: '#8A5A2B' },
-  choiceContent: { padding: Spacing.md, gap: Spacing.sm },
-  choiceTitle: { color: '#182620' },
-  hudIcon: { width: 52, height: 52 },
-  hudLabel: { color: '#FCF9F2', fontFamily: FontWeights.strong, textShadowColor: '#182620', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
-  tutorialSlot: { position: 'absolute', left: Spacing.md, right: Spacing.md },
-  toastStack: { position: 'absolute', left: Spacing.md, right: 96, gap: 6, alignItems: 'flex-start' },
-  locationPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: Radius.pill, backgroundColor: 'rgba(24, 38, 32, 0.7)' },
-  locationText: { color: '#FCF9F2' },
-  noticeToast: { padding: Spacing.sm, borderRadius: Radius.md, backgroundColor: 'rgba(252, 249, 242, 0.95)', borderWidth: 2, borderColor: '#0E5142' },
-  noticeText: { color: '#0E5142' },
-  bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: Spacing.md, gap: Spacing.sm },
-  dialogue: { marginBottom: 0 },
-  closeBtn: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
-  controlsRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
-  actionBtn: { minWidth: 96, minHeight: 96, flexShrink: 1, marginLeft: Spacing.sm, paddingHorizontal: Spacing.md, borderRadius: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: '#C2410C', borderWidth: 3, borderColor: '#FCF9F2' },
-  actionBtnIdle: { backgroundColor: 'rgba(24, 38, 32, 0.55)' },
-  actionText: { color: '#FCF9F2', textAlign: 'center' },
-  sheetBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.45)' },
-  sheet: { borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, backgroundColor: '#FBF6EA', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.sm },
-  sheetClose: { minHeight: 48, minWidth: 64, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.md, backgroundColor: '#E8DFC9' },
-});

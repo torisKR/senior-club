@@ -2,12 +2,13 @@ import { Image } from 'expo-image';
 import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { PixelRadius } from '@/components/game/pixel-theme';
 import { AppText, Screen, SectionHeader, SeniorButton } from '@/components/ui';
 import { ArcadeQuickSettings } from '@/arcade/arcade-quick-settings';
 import { useArcade } from '@/arcade/arcade-store';
 import { FocusedBackgroundAudio } from '@/audio/focused-background-audio';
 import { playSfx } from '@/audio/sound-manager';
-import { FontWeights, Radius, Spacing } from '@/constants/theme';
+import { FontWeights, Spacing } from '@/constants/theme';
 import { PixelFx } from '@/fx/pixel-fx';
 import { useAppState } from '@/hooks/use-app-state';
 import { FURNITURE_SPRITES } from '@/rpg/rpg-sprites';
@@ -114,12 +115,12 @@ export function HouseScreen() {
         </View>
       </View>
 
-      <AppText variant="body">도토리 🌰 {state.stats.acorns} · 놓인 가구 {houseComfort(life)}개 (쉴 때 마음 온도 +{houseComfort(life)})</AppText>
+      <AppText variant="body">도토리 {state.stats.acorns}개 · 놓인 가구 {houseComfort(life)}개 (쉴 때 마음 온도 +{houseComfort(life)})</AppText>
       {notice ? <AppText variant="bodyStrong" accessibilityLiveRegion="polite" style={styles.notice}>{notice}</AppText> : null}
 
       <SeniorButton
         testID="btn-house-meds"
-        label={state.stats.dailyMedicationTaken ? '오늘 약 복용 완료 ✔' : '혈압약 챙겨 먹기 💊'}
+        label={state.stats.dailyMedicationTaken ? '오늘 약 복용 완료 ✔' : '혈압약 챙겨 먹기'}
         variant={state.stats.dailyMedicationTaken ? 'secondary' : 'accent'}
         disabled={state.stats.dailyMedicationTaken}
         onPress={() => {
@@ -155,7 +156,7 @@ export function HouseScreen() {
               <AppText variant="bodyStrong" style={{ textAlign: 'center' }}>{FURNITURE[id].name}</AppText>
               <SeniorButton
                 testID={`buy-${id}`}
-                label={owned ? '가지고 있음 ✔' : `🌰 ${FURNITURE[id].price}`}
+                label={owned ? '가지고 있음 ✔' : `도토리 ${FURNITURE[id].price}개로 사기`}
                 accessibilityLabel={owned ? `${FURNITURE[id].name}, 가지고 있음` : `${FURNITURE[id].name}, 도토리 ${FURNITURE[id].price}개${shortfall ? `, ${shortfall}개 부족` : ''}`}
                 variant={owned ? 'secondary' : 'primary'}
                 disabled={owned || shortfall > 0}
@@ -171,14 +172,14 @@ export function HouseScreen() {
 }
 
 const styles = StyleSheet.create({
-  room: { borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: '#D9B98A', borderWidth: 4, borderColor: '#6B4426' },
+  room: { borderRadius: PixelRadius, overflow: 'hidden', backgroundColor: '#D9B98A', borderWidth: 4, borderColor: '#6B4426' },
   wall: { height: 28, backgroundColor: '#F3E6CC', borderBottomWidth: 4, borderBottomColor: '#8A5A2B' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', padding: Spacing.sm, gap: Spacing.sm, justifyContent: 'center' },
   slot: {
     width: '30%',
     aspectRatio: 1,
     minHeight: 88,
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     borderWidth: 2,
     borderStyle: 'dashed',
     borderColor: 'rgba(107, 68, 38, 0.6)',
@@ -193,7 +194,7 @@ const styles = StyleSheet.create({
   placementEffect: { position: 'absolute', left: '50%', top: '50%', marginLeft: -22.4, marginTop: -19.2 },
   notice: { color: '#0E5142' },
   shop: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, justifyContent: 'space-between' },
-  shopItem: { width: '48%', gap: 4, padding: Spacing.sm, borderRadius: Radius.md, backgroundColor: '#FBF6EA', borderWidth: 1, borderColor: '#D8C7A6' },
+  shopItem: { width: '48%', gap: 4, padding: Spacing.sm, borderRadius: PixelRadius, backgroundColor: '#FBF6EA', borderWidth: 1, borderColor: '#D8C7A6' },
   wideShopItem: { width: '100%' },
   shopImage: { width: '100%', height: 96 },
   shortfall: { color: '#6E4228', textAlign: 'center' },

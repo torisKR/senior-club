@@ -2,8 +2,9 @@ import { Image } from 'expo-image';
 import React from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { PixelRadius } from '@/components/game/pixel-theme';
 import { AppText, Card, SectionHeader } from '@/components/ui';
-import { FontWeights, Radius, Spacing } from '@/constants/theme';
+import { FontWeights, Spacing } from '@/constants/theme';
 import { useAppState } from '@/hooks/use-app-state';
 import { itemSprite, POSTCARDS } from '@/rpg/rpg-sprites';
 import { useRpg } from '@/rpg/rpg-store';
@@ -73,7 +74,7 @@ export function AlbumPanel() {
 
 const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  cell: { width: '31%', minHeight: 116, padding: Spacing.sm, borderRadius: Radius.md, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D8C7A6', alignItems: 'center', gap: 2 },
+  cell: { width: '31%', minHeight: 116, padding: Spacing.sm, borderRadius: PixelRadius, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D8C7A6', alignItems: 'center', gap: 2 },
   wideCell: { width: '48%' },
   singleCell: { width: '100%' },
   cellUnknown: { backgroundColor: '#EFE8D8' },
@@ -83,6 +84,6 @@ const styles = StyleSheet.create({
   discoveryHint: { color: '#315B38' },
   meta: { color: '#526451', textAlign: 'center' },
   photoCard: { gap: 6 },
-  postcard: { width: '100%', aspectRatio: 4 / 3, borderRadius: Radius.md },
+  postcard: { width: '100%', aspectRatio: 4 / 3, borderRadius: PixelRadius },
   postcardEmpty: { backgroundColor: '#E8DFC9', alignItems: 'center', justifyContent: 'center' },
 });

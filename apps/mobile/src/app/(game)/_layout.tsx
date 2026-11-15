@@ -1,8 +1,9 @@
 import { Stack } from 'expo-router';
 
 import { ArcadeProvider } from '@/arcade/arcade-store';
-import { FontWeights } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { GameHeader } from '@/components/game/game-header';
+import { GameSkinProvider } from '@/components/game/game-skin';
+import { PixelPalette } from '@/components/game/pixel-theme';
 import { RpgProvider } from '@/rpg/rpg-store';
 import { RpgStorageGate } from '@/rpg/rpg-storage-gate';
 
@@ -16,27 +17,24 @@ const PLACE_TITLES = {
 } as const;
 
 export default function GameLayout() {
-  const theme = useTheme();
   return (
-    <RpgProvider>
-      <RpgStorageGate>
-        <ArcadeProvider>
-          <Stack
-            screenOptions={{
-              headerBackButtonDisplayMode: 'minimal',
-              headerShadowVisible: false,
-              headerStyle: { backgroundColor: theme.surface },
-              headerTintColor: theme.primary,
-              headerTitleStyle: { color: theme.text, fontSize: 20, fontFamily: FontWeights.strong },
-              contentStyle: { backgroundColor: theme.background },
-            }}>
-            <Stack.Screen name="home" options={{ headerShown: false }} />
-            {Object.entries(PLACE_TITLES).map(([name, title]) => (
-              <Stack.Screen key={name} name={name} options={{ title }} />
-            ))}
-          </Stack>
-        </ArcadeProvider>
-      </RpgStorageGate>
-    </RpgProvider>
+    <GameSkinProvider value>
+      <RpgProvider>
+        <RpgStorageGate>
+          <ArcadeProvider>
+            <Stack
+              screenOptions={{
+                header: (props) => <GameHeader {...props} />,
+                contentStyle: { backgroundColor: PixelPalette.hanjiShade },
+              }}>
+              <Stack.Screen name="home" options={{ headerShown: false }} />
+              {Object.entries(PLACE_TITLES).map(([name, title]) => (
+                <Stack.Screen key={name} name={name} options={{ title }} />
+              ))}
+            </Stack>
+          </ArcadeProvider>
+        </RpgStorageGate>
+      </RpgProvider>
+    </GameSkinProvider>
   );
 }

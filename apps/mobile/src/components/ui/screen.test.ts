@@ -13,6 +13,7 @@ vi.mock('react-native', () => ({
 vi.mock('expo-router', () => ({ useSegments: () => state.segments }));
 vi.mock('@/hooks/use-theme', () => ({ useTheme: () => ({ background: '#eef2e9' }) }));
 vi.mock('@/hooks/use-effective-safe-area-insets', () => ({ useEffectiveSafeAreaInsets: () => ({ top: state.top, bottom: state.bottom }) }));
+vi.mock('@/components/game/game-skin', () => ({ useGameSkin: () => false }));
 
 describe('native screen insets', () => {
   beforeEach(() => Object.assign(state, { top: 24, bottom: 48, segments: ['event', '[id]'] }));

@@ -2,6 +2,8 @@ import type { PropsWithChildren } from 'react';
 import type { PressableProps, StyleProp, ViewStyle } from 'react-native';
 import { Pressable, View } from 'react-native';
 
+import { useGameSkin } from '@/components/game/game-skin';
+import { PixelCorners, pixelFrameStyle } from '@/components/game/pixel-panel';
 import { Layout, Radius, Shadows } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -24,17 +26,19 @@ export function Card({
   testID,
 }: CardProps) {
   const theme = useTheme();
+  const isGameSkin = useGameSkin();
+  const appStyle: ViewStyle = {
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.divider,
+    borderRadius: Radius.lg,
+    borderCurve: 'continuous',
+    overflow: 'hidden',
+    boxShadow: Shadows.card,
+  };
   const sharedStyle: StyleProp<ViewStyle> = [
-    {
-      backgroundColor: theme.surface,
-      borderWidth: 1,
-      borderColor: theme.divider,
-      borderRadius: Radius.lg,
-      borderCurve: 'continuous',
-      padding: padded ? Layout.cardPadding : 0,
-      overflow: 'hidden',
-      boxShadow: Shadows.card,
-    },
+    isGameSkin ? pixelFrameStyle : appStyle,
+    { padding: padded ? Layout.cardPadding : 0 },
     style,
   ];
 
@@ -42,6 +46,7 @@ export function Card({
     return (
       <View testID={testID} style={sharedStyle}>
         {children}
+        {isGameSkin ? <PixelCorners /> : null}
       </View>
     );
   }

@@ -6,7 +6,28 @@ import { ControlDimensions, getButtonAppearance, type ButtonVariant } from '@/co
 import { useAppState } from '@/hooks/use-app-state';
 import { useTheme } from '@/hooks/use-theme';
 
+import { useGameSkin } from '@/components/game/game-skin';
+import { PixelBorder, PixelPalette, pixelButtonAppearance } from '@/components/game/pixel-theme';
+
 import { AppText } from './app-text';
+
+/** 픽셀 스킨: 바깥선은 진한 호두색, 아래 두꺼운 테두리가 눌림 깊이(베벨)입니다. */
+function toPixelAppearance(variant: ButtonVariant) {
+  const pixel = pixelButtonAppearance(variant);
+  return {
+    background: pixel.face, pressed: pixel.face, text: pixel.text,
+    border: PixelPalette.outline, pressedBorder: pixel.bevel, borderWidth: PixelBorder.frame,
+  };
+}
+
+function pixelButtonShape(pressed: boolean, bevel: string): ViewStyle {
+  return {
+    borderRadius: 2,
+    borderColor: PixelPalette.outline,
+    boxShadow: `inset 0 ${pressed ? -PixelBorder.pressedBevel : -PixelBorder.bevel}px 0 ${bevel}`,
+    transform: [{ translateY: pressed ? PixelBorder.bevel - PixelBorder.pressedBevel : 0 }],
+  };
+}
 
 export type SeniorButtonVariant = ButtonVariant;
 
@@ -35,7 +56,8 @@ export function SeniorButton({
   const theme = useTheme();
   const { largeTextEnabled } = useAppState();
 
-  const palette = getButtonAppearance(theme, variant);
+  const isGameSkin = useGameSkin();
+  const palette = isGameSkin ? toPixelAppearance(variant) : getButtonAppearance(theme, variant);
   const isDisabled = disabled || loading;
 
   return (
@@ -62,6 +84,7 @@ export function SeniorButton({
           gap: ControlDimensions.gap,
           opacity: isDisabled ? ControlDimensions.disabledOpacity : 1,
         },
+        isGameSkin && pixelButtonShape(pressed, palette.pressedBorder),
         style,
       ]}
       {...props}>

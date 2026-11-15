@@ -2,11 +2,12 @@ import { Image } from 'expo-image';
 import { useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
+import { PixelRadius } from '@/components/game/pixel-theme';
 import { useCosmeticBilling } from '@/billing/CosmeticBillingProvider';
 import { COSMETIC_PRODUCTS, type CosmeticProduct } from '@/billing/cosmetic-products';
 import { describeFailure } from '@/billing/purchase-copy';
 import { AppText, Card, SectionHeader, SeniorButton } from '@/components/ui';
-import { Radius, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 
 import { useArcade } from './arcade-store';
 
@@ -116,9 +117,9 @@ export function CosmeticShop() {
 
 const styles = StyleSheet.create({
   shop: { gap: Spacing.md, borderColor: '#BE9A67', borderWidth: 2, backgroundColor: '#FCF9F2' },
-  product: { gap: Spacing.sm, padding: Spacing.md, backgroundColor: '#FFFFFF', borderColor: '#D8B384', borderWidth: 1, borderRadius: Radius.md },
+  product: { gap: Spacing.sm, padding: Spacing.md, backgroundColor: '#FFFFFF', borderColor: '#D8B384', borderWidth: 1, borderRadius: PixelRadius },
   productIntro: { flexDirection: 'row', gap: Spacing.md, alignItems: 'center' },
-  preview: { width: 80, height: 80, borderWidth: 3, borderRadius: Radius.md, backgroundColor: '#F3EAD7', alignItems: 'center', justifyContent: 'center' },
+  preview: { width: 80, height: 80, borderWidth: 3, borderRadius: PixelRadius, backgroundColor: '#F3EAD7', alignItems: 'center', justifyContent: 'center' },
   previewImage: { width: 60, height: 60 },
   previewMark: { position: 'absolute', width: 12, height: 12, right: 5, bottom: 5, borderWidth: 2, borderColor: '#FCF9F2', transform: [{ rotate: '45deg' }] },
   copy: { flex: 1, gap: 4 },

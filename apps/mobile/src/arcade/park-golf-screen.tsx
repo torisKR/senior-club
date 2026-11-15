@@ -3,10 +3,11 @@ import { randomUUID } from 'expo-crypto';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { PixelRadius } from '@/components/game/pixel-theme';
 import { playSfx } from '@/audio/sound-manager';
 import { FocusedBackgroundAudio } from '@/audio/focused-background-audio';
 import { AppText, Card, Screen, SeniorButton } from '@/components/ui';
-import { FontWeights, Layout, Radius, Spacing } from '@/constants/theme';
+import { FontWeights, Layout, Spacing } from '@/constants/theme';
 import { PixelFx } from '@/fx/pixel-fx';
 import { useReduceMotion } from '@/fx/use-reduce-motion';
 import { useAppState } from '@/hooks/use-app-state';
@@ -14,6 +15,8 @@ import { useWorldActive } from '@/world/use-world-active';
 
 import { PARK_GOLF_BOUNDS, PARK_GOLF_HOLES, simulateParkGolfShot } from './arcade-logic';
 import { useArcade } from './arcade-store';
+import { parkGolfStars } from './round-stars';
+import { RoundStarsView } from './round-stars-view';
 import { ArcadeSaveNotice } from './arcade-save-notice';
 import { ArcadeQuickSettings } from './arcade-quick-settings';
 import { CompanionCoach } from '@/rpg/companion-coach';
@@ -378,8 +381,9 @@ export function ParkGolfArcadeScreen({ storyChapter, onLeaveStory }: { storyChap
       {/* 3. 홀인 축하 배너 또는 샷 상태 안내 */}
       {holedBanner ? (
         <Card style={styles.holedCard}>
+          <RoundStarsView stars={parkGolfStars({ strokes, par: hole.par })} title={strokes === 1 ? '홀인원!' : '홀컵 골인!'} />
           <AppText variant="sectionTitle" accessibilityLiveRegion="polite" style={{ color: '#0E5142' }}>
-            🏆 {holedBanner}
+            {holedBanner}
           </AppText>
           <SeniorButton
             testID="btn-parkgolf-replay-hole"
@@ -514,7 +518,7 @@ const styles = StyleSheet.create({
   },
   hudCard: {
     backgroundColor: '#0E5142',
-    borderRadius: Radius.lg,
+    borderRadius: PixelRadius,
     borderWidth: 2,
     borderColor: '#D8B384',
     padding: Spacing.md,
@@ -538,7 +542,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 48,
     minHeight: 48,
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     borderWidth: 1.5,
     borderColor: '#D8B384',
     backgroundColor: '#24382B',
@@ -577,7 +581,7 @@ const styles = StyleSheet.create({
   },
   slopeBanner: {
     backgroundColor: '#18312B',
-    borderRadius: Radius.sm,
+    borderRadius: PixelRadius,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
@@ -593,7 +597,7 @@ const styles = StyleSheet.create({
   boardFrame: {
     width: '100%',
     height: 330,
-    borderRadius: Radius.lg,
+    borderRadius: PixelRadius,
     overflow: 'hidden',
     borderWidth: 3,
     borderColor: '#6E4228',
@@ -697,7 +701,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 48,
     minHeight: 48,
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     borderWidth: 1.5,
     borderColor: '#6E4228',
     backgroundColor: '#FFFFFF',
@@ -721,7 +725,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 48,
     minHeight: 56,
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     borderWidth: 2,
     borderColor: '#D8B384',
     backgroundColor: '#FFFFFF',

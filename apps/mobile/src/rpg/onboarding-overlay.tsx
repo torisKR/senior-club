@@ -2,8 +2,9 @@ import { Image } from 'expo-image';
 import React, { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { PixelRadius } from '@/components/game/pixel-theme';
 import { AppText, SeniorButton } from '@/components/ui';
-import { FontWeights, Radius, Spacing } from '@/constants/theme';
+import { FontWeights, Spacing } from '@/constants/theme';
 import { useEffectiveSafeAreaInsets } from '@/hooks/use-effective-safe-area-insets';
 
 import { useRpg } from './rpg-store';
@@ -155,7 +156,7 @@ const styles = StyleSheet.create({
     maxWidth: 420,
     maxHeight: '100%',
     backgroundColor: '#182620',
-    borderRadius: Radius.lg,
+    borderRadius: PixelRadius,
     borderWidth: 2,
     borderColor: '#F0BF4F',
     overflow: 'hidden',
@@ -214,7 +215,7 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     gap: 4,
     backgroundColor: '#FFF6DC',
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     borderWidth: 1.5,
     borderColor: '#F0BF4F',
   },

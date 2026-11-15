@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import { Modal, PixelRatio, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { PixelRadius } from '@/components/game/pixel-theme';
 import { AppText } from '@/components/ui';
-import { FontWeights, Radius, Spacing } from '@/constants/theme';
+import { FontWeights, Spacing } from '@/constants/theme';
 
 import { MAP_REGIONS } from '../maps';
 import { PHOTO_SPOTS } from '../explore';
@@ -141,10 +142,10 @@ export function Minimap({ map, player, visible, onClose, companionId = null, red
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', padding: Spacing.lg },
   cardScroll: { maxHeight: '100%', flexGrow: 0 },
-  card: { backgroundColor: '#FBF6EA', borderRadius: Radius.xl, padding: Spacing.lg, gap: Spacing.md },
+  card: { backgroundColor: '#FBF6EA', borderRadius: PixelRadius, padding: Spacing.lg, gap: Spacing.md },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { color: '#182620' },
-  close: { minHeight: 48, minWidth: 64, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.md, backgroundColor: '#E8DFC9' },
+  close: { minHeight: 48, minWidth: 64, alignItems: 'center', justifyContent: 'center', borderRadius: PixelRadius, backgroundColor: '#E8DFC9' },
   dot: { position: 'absolute', borderRadius: 999 },
   npcDot: { width: 8, height: 8, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#182620' },
   buildingFootprint: { position: 'absolute', backgroundColor: '#70462B', borderColor: '#F1D5A7', borderWidth: 0.5 },

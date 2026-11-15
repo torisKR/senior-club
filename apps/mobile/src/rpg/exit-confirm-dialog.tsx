@@ -1,8 +1,9 @@
 import React from 'react';
 import { Modal, StyleSheet, View } from 'react-native';
 
+import { PixelRadius } from '@/components/game/pixel-theme';
 import { AppText, SeniorButton } from '@/components/ui';
-import { Radius, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 
 interface ExitConfirmDialogProps {
   visible: boolean;
@@ -58,7 +59,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 420,
     backgroundColor: '#FCF9F2',
-    borderRadius: Radius.lg,
+    borderRadius: PixelRadius,
     borderWidth: 2,
     borderColor: '#0E5142',
     padding: Spacing.lg,
