@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createFakeBilling } from './fake-billing';
 import type { TokenStore } from './billing-port';
-import { purchaseRemoveAds, restoreRemoveAds, syncEntitlement } from './remove-ads';
+import { purchaseRemoveAds, restoreRemoveAds, syncEntitlement, syncEntitlementStatus } from './remove-ads';
 
 const SEEDED = 'apjeidfnak.AO-J1Oy_SEEDED';
 
@@ -22,6 +22,15 @@ function createMemoryTokens(initial: string | null = null): TokenStore {
 }
 
 describe('syncEntitlement', () => {
+  it('distinguishes an unavailable store from a verified absence', async () => {
+    const fake = createFakeBilling();
+    const tokens = createMemoryTokens();
+    fake.setProbeUnavailable(true);
+    await expect(syncEntitlementStatus({ billing: fake.billing, tokens })).resolves.toEqual({ owned: false, verifiedAbsent: false });
+    fake.setProbeUnavailable(false);
+    await expect(syncEntitlementStatus({ billing: fake.billing, tokens })).resolves.toEqual({ owned: false, verifiedAbsent: true });
+  });
+
   it('waits for the billing connection before querying ownership', async () => {
     const fake = createFakeBilling();
     let resolveConnect!: () => void;
@@ -125,6 +134,18 @@ describe('purchaseRemoveAds', () => {
 });
 
 describe('restoreRemoveAds', () => {
+  it('does not report no purchase while Play is processing one', async () => {
+    const fake = createFakeBilling();
+    const billing = {
+      ...fake.billing,
+      ownedTokens: vi.fn().mockResolvedValue({ status: 'ok', tokens: [], pending: true }),
+    };
+
+    await expect(restoreRemoveAds({ billing, tokens: createMemoryTokens() })).resolves.toEqual({
+      status: 'failed', code: 'retryable', retryable: true,
+    });
+  });
+
   it('reports none when there is nothing to restore', async () => {
     const fake = createFakeBilling();
     const tokens = createMemoryTokens();

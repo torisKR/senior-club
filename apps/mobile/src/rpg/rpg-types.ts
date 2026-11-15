@@ -52,18 +52,32 @@ export type VillageTileType =
   | 'fence'
   | 'tree'
   | 'flower'
-  | 'lantern';
+  | 'lantern'
+  | 'dock'
+  | 'farm'
+  | 'bench'
+  | 'bridge'
+  | 'forest'
+  | 'flowerfield'
+  | 'bush'
+  | 'rock'
+  | 'well'
+  | 'table'
+  | 'firewood'
+  | 'signpost';
 
-export type VillageBuildingId = 'club_hall' | 'parkgolf' | 'alkkagi' | 'sacheonseong' | 'herbal';
+export type VillageBuildingId =
+  | 'club_hall' | 'parkgolf' | 'alkkagi' | 'sacheonseong' | 'herbal' | 'home' | 'pavilion'
+  | 'stall_gukbap' | 'stall_goods' | 'stall_fish' | 'bus_stop' | 'observatory';
 
 export interface VillageTile {
   x: number;
   y: number;
   type: VillageTileType;
   name?: string;
-  facilityRoute?: '/clubs' | '/events' | '/chat' | '/me';
+  facilityRoute?: '/clubs' | '/events' | '/chat' | '/me' | '/house';
   /** Building sprite id (only for 'building' tiles / door tiles). */
   spriteId?: VillageBuildingId;
   /** Tree art variant (only for 'tree' tiles). */
-  variant?: 'pine' | 'cherry';
+  variant?: 'pine' | 'cherry' | 'yellow' | 'purple';
 }

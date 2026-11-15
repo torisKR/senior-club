@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { STORY_CHAPTERS } from '../rpg/story-data';
-import { INITIAL_ARCADE_STATE } from './arcade-defaults';
+import { INITIAL_ARCADE_STATE, mergeArcadeState } from './arcade-defaults';
 import { resolveRankProgress } from './arcade-logic';
 
 describe('INITIAL_ARCADE_STATE', () => {
@@ -30,5 +30,24 @@ describe('INITIAL_ARCADE_STATE', () => {
     expect(firstAct.rankRequirement).toContain('18급');
     expect(INITIAL_ARCADE_STATE.cp).toBeGreaterThanOrEqual(firstAct.minCp ?? 0);
     expect(resolveRankProgress(INITIAL_ARCADE_STATE.cp).current.label).toBe('18급 신입 회원');
+  });
+});
+
+describe('기존 아케이드 설정 복원', () => {
+  it('keeps the previous combined sound and vibration choice for older saves', () => {
+    expect(mergeArcadeState({ soundEnabled: false, cp: 350, seals: 3 })).toMatchObject({
+      soundEnabled: false, hapticEnabled: false, cp: 350, seals: 3,
+    });
+    expect(mergeArcadeState({ soundEnabled: true }).hapticEnabled).toBe(true);
+    expect(mergeArcadeState({}).hapticEnabled).toBe(true);
+  });
+
+  it('restores independently saved sound and vibration choices', () => {
+    expect(mergeArcadeState({ soundEnabled: false, hapticEnabled: true })).toMatchObject({
+      soundEnabled: false, hapticEnabled: true,
+    });
+    expect(mergeArcadeState({ soundEnabled: true, hapticEnabled: false })).toMatchObject({
+      soundEnabled: true, hapticEnabled: false,
+    });
   });
 });

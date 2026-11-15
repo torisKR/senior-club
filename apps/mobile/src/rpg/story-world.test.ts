@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { canMoveTo, findNearbyNpc, VILLAGE_GRID_SIZE } from './rpg-logic';
+import { canMoveTo, findNearbyNpc, VILLAGE_HEIGHT, VILLAGE_WIDTH } from './rpg-logic';
 import { BOND_EPISODES, chooseBondEpisode } from './bond-episodes';
 import { createInitialBonds, getBond, NPC_IDS } from './bond-logic';
 import { STORY_ACTIONS } from './story-progress';
 
 function reachableNpcIds() {
-  const queue = [{ x: 3, y: 3 }];
-  const visited = new Set(['3,3']);
+  const queue = [{ x: 23, y: 19 }];
+  const visited = new Set(['23,19']);
   const npcs = new Set<string>();
   while (queue.length) {
     const pos = queue.shift()!;
@@ -16,7 +16,7 @@ function reachableNpcIds() {
       const x = pos.x + dx;
       const y = pos.y + dy;
       const key = `${x},${y}`;
-      if (x < 0 || y < 0 || x >= VILLAGE_GRID_SIZE || y >= VILLAGE_GRID_SIZE || visited.has(key) || !canMoveTo(x, y)) continue;
+      if (x < 0 || y < 0 || x >= VILLAGE_WIDTH || y >= VILLAGE_HEIGHT || visited.has(key) || !canMoveTo(x, y)) continue;
       visited.add(key);
       queue.push({ x, y });
     }

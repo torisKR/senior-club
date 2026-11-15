@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { AccessibilityInfo } from 'react-native';
+import { MotionPreferenceContext } from './motion-preference';
 
 /** null means the OS preference is still being loaded; callers should stay static. */
 export function useReduceMotion(): boolean | null {
   const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
+  const appReduceMotion = useContext(MotionPreferenceContext);
 
   useEffect(() => {
     let active = true;
@@ -29,5 +31,5 @@ export function useReduceMotion(): boolean | null {
     };
   }, []);
 
-  return reduceMotion;
+  return appReduceMotion ? true : reduceMotion;
 }

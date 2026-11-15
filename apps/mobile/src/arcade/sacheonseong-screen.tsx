@@ -1,22 +1,27 @@
 import { Image, type ImageProps } from 'expo-image';
 import { randomUUID } from 'expo-crypto';
-import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { AppText, Card, Screen, SeniorButton } from '@/components/ui';
 import { FontWeights, Layout, Radius, Spacing } from '@/constants/theme';
+import { useAppState } from '@/hooks/use-app-state';
 
 import { playSfx } from '@/audio/sound-manager';
+import { FocusedBackgroundAudio } from '@/audio/focused-background-audio';
 
 import {
   SACHEONSEONG_MOTIFS,
   createSacheonseongBoard,
+  createSacheonseongDeal,
   findFirstSacheonseongHint,
   findSacheonseongPath,
   shuffleSacheonseongBoard,
   type SacheonseongCell,
 } from './arcade-logic';
 import { useArcade } from './arcade-store';
+import { ArcadeSaveNotice } from './arcade-save-notice';
+import { ArcadeQuickSettings } from './arcade-quick-settings';
 import { CompanionCoach } from '@/rpg/companion-coach';
 import { GAME_COACH } from '@/rpg/companion-lines';
 import { useRpg } from '@/rpg/rpg-store';
@@ -25,7 +30,9 @@ import { isTileRound, loadRoundState } from './round-save';
 import { RoundSaveNotice, useRoundSave } from './round-save-notice';
 import { TILE_GAP, TILE_HEIGHT, TILE_PATH_GUTTER, TILE_WIDTH, sacheonseongPathSegments } from './sacheonseong-layout';
 import { PixelFx } from '@/fx/pixel-fx';
+import { useReduceMotion } from '@/fx/use-reduce-motion';
 import { getStoryTrial, StoryTrialNotice } from './story-trial';
+import { BGM_CLUB_LOUNGE } from '@/audio/bgm';
 
 const TILE_SET_IMAGE = require('../../assets/game/rpg/pixel/arcade/sacheonseong_tile_set.png');
 const MAT_BOARD_TEXTURE = require('../../assets/game/rpg/pixel/arcade/board_sacheonseong.png');
@@ -45,6 +52,10 @@ const TILE_IMAGES: Record<string, NonNullable<ImageProps['source']>> = {
 };
 
 export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyChapter?: string; onLeaveStory?: () => void } = {}) {
+  const { width, fontScale } = useWindowDimensions();
+  const { largeTextEnabled } = useAppState();
+  const reduceMotion = useReduceMotion();
+  const stackControls = width < 360 || fontScale >= 1.3 || largeTextEnabled;
   const { recordSacheonseongClear, triggerHaptic, state, appearance } = useArcade();
   const { completeQuestStep, recordGameWithNpc, recordStoryResult } = useRpg();
   const [storage] = useState(getRpgStorage);
@@ -54,8 +65,11 @@ export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyCh
   const savedRound = loadedRound.value;
   const [stageNum, setStageNum] = useState(savedRound?.stageNum ?? 1);
   const [board, setBoard] = useState<SacheonseongCell[][]>(() => savedRound?.board ?? createSacheonseongBoard(4, 6));
+  const matchPending = useRef(false);
+  React.useEffect(() => { matchPending.current = false; }, [board]);
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
   const [hintPair, setHintPair] = useState<[{ row: number; col: number }, { row: number; col: number }] | null>(null);
+  const boardScroll = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const [activeMatchPath, setActiveMatchPath] = useState<{ row: number; col: number }[] | null>(null);
   const [combo, setCombo] = useState(savedRound?.combo ?? 0);
   const [maxCombo, setMaxCombo] = useState(savedRound?.maxCombo ?? 0);
@@ -79,7 +93,7 @@ export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyCh
   const startNewStage = (nextStage = stageNum + 1) => {
     triggerHaptic('light');
     setStageNum(nextStage);
-    setBoard(createSacheonseongBoard(4, 6));
+    setBoard(nextStage > 1 ? createSacheonseongDeal(nextStage).board : createSacheonseongBoard(4, 6));
     setSelectedCell(null);
     setHintPair(null);
     setActiveMatchPath(null);
@@ -109,7 +123,8 @@ export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyCh
     if (found) {
       setHintPair(found);
       const motif = SACHEONSEONG_MOTIFS.find((m) => m.id === board[found[0].row][found[0].col].motifId);
-      setStatusMessage(`돋보기 힌트: [${motif?.name ?? '동일'} (${motif?.hanja ?? ''})] 두 패와 연결 경로를 표시했습니다.`);
+      boardScroll.current?.scrollTo({ x: Math.max(0, TILE_PATH_GUTTER + found[0].col * (TILE_WIDTH + TILE_GAP) - TILE_WIDTH), animated: reduceMotion === false });
+      setStatusMessage(`돋보기 힌트: ${motif?.name ?? '동일'} 패 ${found[0].row + 1}행 ${found[0].col + 1}열과 ${found[1].row + 1}행 ${found[1].col + 1}열을 찾아보세요. 패판을 좌우로 밀 수 있어요.`);
     } else {
       setHintPair(null);
       setStatusMessage('연결할 수 있는 짝이 없습니다. [패 다시 섞기]를 눌러 주세요.');
@@ -117,6 +132,7 @@ export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyCh
   };
 
   const handleTilePress = (row: number, col: number) => {
+    if (matchPending.current) return;
     const target = board[row]?.[col];
     if (!target?.motifId) return;
 
@@ -140,11 +156,15 @@ export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyCh
       setSelectedCell({ row, col });
       setHintPair(null);
       setCombo(0);
-      setStatusMessage('다른 패에 막혀 있거나 문양이 달라 연속 성공이 끊겼습니다. 새롭게 선택한 패부터 이어갑니다.');
+      const sameMotif = board[selectedCell.row]?.[selectedCell.col]?.motifId === target.motifId;
+      setStatusMessage(sameMotif
+        ? '같은 문양이지만 길이 막혀 있어요. 다른 짝을 찾거나 돋보기 힌트를 눌러 보세요.'
+        : '문양이 달라요. 방금 고른 패와 같은 문양을 찾아보세요.');
       return;
     }
 
     // Valid match!
+    matchPending.current = true;
     triggerHaptic('medium');
     playSfx('tileMatch', state.soundEnabled);
     setActiveMatchPath(path);
@@ -169,12 +189,14 @@ export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyCh
     const leftAfter = nextBoard.reduce((sum, r) => sum + r.filter((c) => c.motifId !== null).length, 0);
     if (leftAfter === 0) {
       playSfx('chime', state.soundEnabled);
-      const storyNote = story ? (nextMaxCombo >= 3 ? ' 이야기 목표를 마쳤습니다.' : ' 이야기 목표인 3연속에 이르지 못해 다시 도전할 수 있습니다.') : '';
+      const storyRecorded = story && storyAttemptId ? recordStoryResult({ type: 'sacheonseong', maxCombo: nextMaxCombo, chapterId: story.id, attemptId: storyAttemptId }) : false;
+      const storyNote = story ? (!storyRecorded ? ' 이야기 기록이 반영되지 않았어요. 마을에서 진행 상태를 확인해 주세요.' : nextMaxCombo >= 3 ? ' 이야기 목표를 마쳤습니다.' : ' 이야기 목표인 3연속에 이르지 못해 다시 도전할 수 있습니다.') : '';
       setStatusMessage(`🎉 제${stageNum}국 모든 전통 패 제거 완료! (+${170 + nextMaxCombo * 10} CP · 인장 +1)${storyNote}`);
       recordSacheonseongClear(nextMaxCombo);
       completeQuestStep('sacheonseong');
-      if (story && storyAttemptId) recordStoryResult({ type: 'sacheonseong', maxCombo: nextMaxCombo, chapterId: story.id, attemptId: storyAttemptId });
       recordGameWithNpc(GAME_COACH.sacheonseong);
+    } else if (!findFirstSacheonseongHint(nextBoard)) {
+      setStatusMessage('짝을 맞췄어요! 지금은 연결할 수 있는 패가 없어요. [패 다시 섞기]를 눌러 이어가세요.');
     } else {
       setStatusMessage(
         `착-딱! [${matchedMotif?.name ?? ''} (${matchedMotif?.hanja ?? ''})] 짝맞춤 성공! (${nextCombo}연속 콤보!)`,
@@ -186,9 +208,12 @@ export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyCh
 
   return (
     <Screen testID="sacheonseong-screen" contentContainerStyle={styles.container}>
+      <FocusedBackgroundAudio source={BGM_CLUB_LOUNGE} enabled={state.soundEnabled} />
+      <ArcadeSaveNotice />
+      <ArcadeQuickSettings />
       {/* 1. 상단 스테이지 & 남은 패 & 콤보 HUD */}
       <View style={styles.hudCard}>
-        <View style={styles.hudTopRow}>
+        <View style={[styles.hudTopRow, stackControls && styles.stackedHud]}>
           <View>
             <AppText variant="caption" style={{ color: '#D8B384' }}>
               전통 길상 문양 사천성
@@ -203,7 +228,7 @@ export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyCh
             </AppText>
           </View>
         </View>
-        <View style={styles.hudBottomRow}>
+        <View style={[styles.hudBottomRow, stackControls && styles.stackedHud]}>
           <AppText variant="title" style={styles.remainingText}>
             남은 패 {remainingCount}장
           </AppText>
@@ -211,6 +236,9 @@ export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyCh
             최고 {maxCombo}연타 · 문양+한자 이중 표기
           </AppText>
         </View>
+        <AppText variant="caption" style={{ color: '#E4EDDA' }}>
+          시간제한 없이 천천히 · 힌트와 패 섞기는 언제든 사용할 수 있어요.
+        </AppText>
       </View>
       <RoundSaveNotice status={roundSave.status} onRetry={roundSave.retry} />
       {story && storyAttemptId ? <StoryTrialNotice chapter={story} onLeave={onLeaveStory} canAbandon={remainingCount > 0} onAbandon={() => {
@@ -226,7 +254,7 @@ export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyCh
 
       {/* 2. 솔잎색 다포(茶布) 매트 보드 & 고대비 원목·상아 타일 그리드 */}
       <AppText variant="caption" style={styles.boardGuide}>패는 가로로 밀어 전체를 볼 수 있습니다. 표시된 선은 빈 칸이나 바깥쪽으로 이어집니다.</AppText>
-      <ScrollView horizontal showsHorizontalScrollIndicator accessibilityLabel="사천성 패판, 좌우로 스크롤 가능">
+      <ScrollView ref={boardScroll} horizontal showsHorizontalScrollIndicator accessibilityLabel="사천성 패판, 좌우로 스크롤 가능">
       <View style={styles.matBoard}>
         <Image
           source={MAT_BOARD_TEXTURE}
@@ -306,14 +334,14 @@ export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyCh
 
       {/* 3. 진행 안내 및 56dp 보조 도구 바 (돋보기 힌트 / 패 섞기) */}
       <Card style={styles.controlCard}>
-        <AppText variant="bodyStrong" style={{ color: '#182620' }}>
+        <AppText variant="bodyStrong" accessibilityLiveRegion="polite" style={{ color: '#182620' }}>
           {statusMessage}
         </AppText>
 
         {remainingCount === 0 ? (
           <View style={styles.stageClearCelebration}>
             <View style={styles.stageClearVfx}>
-              <PixelFx name="promotion" scale={0.42} loop />
+              <PixelFx name="promotion" scale={0.42} />
             </View>
             <SeniorButton
               testID="btn-sacheonseong-next"
@@ -324,8 +352,8 @@ export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyCh
           </View>
         ) : (
           <>
-            <View style={styles.toolLegendRow}>
-              <View style={styles.toolLegendItem}>
+            <View style={[styles.toolLegendRow, stackControls && styles.stackedRow]}>
+              <View style={[styles.toolLegendItem, stackControls && styles.stackedControl]}>
                 <Image
                   source={MAGNIFIER_ICON}
                   style={styles.toolLegendIcon}
@@ -337,7 +365,7 @@ export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyCh
                   돋보기 — 이어질 짝 위치를 비춰줍니다
                 </AppText>
               </View>
-              <View style={styles.toolLegendItem}>
+              <View style={[styles.toolLegendItem, stackControls && styles.stackedControl]}>
                 <Image
                   source={SHUFFLE_ICON}
                   style={styles.toolLegendIcon}
@@ -350,8 +378,8 @@ export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyCh
                 </AppText>
               </View>
             </View>
-            <View style={styles.toolRow}>
-              <View style={{ flex: 1 }}>
+            <View style={[styles.toolRow, stackControls && styles.stackedRow]}>
+              <View style={stackControls ? styles.stackedControl : { flex: 1 }}>
                 <SeniorButton
                   testID="btn-sacheonseong-hint"
                   label="🔍 돋보기 힌트"
@@ -359,7 +387,7 @@ export function SacheonseongTileScreen({ storyChapter, onLeaveStory }: { storyCh
                   onPress={handleShowHint}
                 />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={stackControls ? styles.stackedControl : { flex: 1 }}>
                 <SeniorButton
                   testID="btn-sacheonseong-shuffle"
                   label="🔄 패 다시 섞기"
@@ -403,6 +431,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  stackedHud: { flexDirection: 'column', alignItems: 'flex-start', gap: Spacing.sm },
+  stackedRow: { flexDirection: 'column' },
+  stackedControl: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', alignSelf: 'stretch' },
   comboBadge: {
     backgroundColor: '#F0BF4F',
     paddingHorizontal: 12,
@@ -558,7 +589,6 @@ const styles = StyleSheet.create({
   toolLegendText: {
     color: '#526451',
     flexShrink: 1,
-    lineHeight: 16,
   },
   stageClearCelebration: {
     alignItems: 'center',

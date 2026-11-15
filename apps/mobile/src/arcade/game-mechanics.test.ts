@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  PARK_GOLF_HOLES, createInitialAlkkagiStones, createSacheonseongBoard, findFirstSacheonseongHint,
+  PARK_GOLF_HOLES, createInitialAlkkagiStones, createSacheonseongBoard, createSacheonseongDeal, findFirstSacheonseongHint,
   findSacheonseongPath, hasAlkkagiProgress, shuffleSacheonseongBoard, simulateParkGolfShot,
 } from './arcade-logic';
 import { sacheonseongPathSegments } from './sacheonseong-layout';
@@ -78,5 +78,21 @@ describe('arcade game mechanics', () => {
     const hint = findFirstSacheonseongHint(shuffled);
     expect(hint).not.toBeNull();
     expect(findSacheonseongPath(shuffled, hint![0], hint![1])).not.toBeNull();
+  });
+
+  it('deals varied later stages with a legal complete removal sequence', () => {
+    const layouts = new Set<string>();
+    for (let stage = 2; stage <= 15; stage += 1) {
+      const { board, solution } = createSacheonseongDeal(stage);
+      layouts.add(board.flat().map((cell) => cell.motifId).join(','));
+      expect(solution).toHaveLength(12);
+      for (const [a, b] of solution) {
+        expect(findSacheonseongPath(board, a, b), `stage ${stage}`).not.toBeNull();
+        board[a.row][a.col].motifId = null;
+        board[b.row][b.col].motifId = null;
+      }
+      expect(board.flat().every((cell) => cell.motifId === null)).toBe(true);
+    }
+    expect(layouts.size).toBeGreaterThan(1);
   });
 });

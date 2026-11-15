@@ -20,7 +20,7 @@ export function StoryTrialNotice({ chapter, onLeave, onAbandon, canAbandon }: {
     <Card>
       <AppText variant="bodyStrong">이야기 도전 · {chapter.climaxTrial.opponentName}</AppText>
       <AppText variant="body">{chapter.climaxTrial.description}</AppText>
-      <AppText variant="caption">일반 대국은 따로 저장됩니다. 도전을 그만두면 이번 시도는 완료하지 못한 것으로 기록합니다.</AppText>
+      <AppText variant="caption">일반 대국과 이야기 도전은 따로 저장됩니다. ‘이번 시도 그만두기’를 선택하면 완료하지 못한 시도로 기록합니다.</AppText>
       {confirming ? (
         <ChangeConfirmation
           message="이번 이야기 도전을 그만두고 새 시도를 시작할까요? 완료하지 못한 시도로 기록됩니다."

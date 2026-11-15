@@ -1,5 +1,5 @@
-import type { AlkkagiStone, SacheonseongCell } from './arcade-logic';
-import { MemoryRpgStorage, type RpgKeyValueStorage } from '../rpg/rpg-storage';
+import { SACHEONSEONG_MOTIFS, type AlkkagiStone, type SacheonseongCell } from './arcade-logic';
+import { MemoryRpgStorage, type RpgGuardedKeyValueStorage, type RpgKeyValueStorage } from '../rpg/rpg-storage';
 
 export interface GolfRound {
   holeIndex: number;
@@ -66,23 +66,26 @@ export function isAlkkagiRound(value: unknown): value is AlkkagiRound {
 
 export function isTileRound(value: unknown): value is TileRound {
   if (!record(value) || !Array.isArray(value.board) || value.board.length !== 4) return false;
-  const motifs = ['crane', 'plum', 'maple', 'moon', 'celadon', 'turtle'];
+  const motifs = new Set(SACHEONSEONG_MOTIFS.map((motif) => motif.id));
   return value.board.every((row: unknown, r: number) => Array.isArray(row) && row.length === 6 && row.every((cell: unknown, c: number) =>
-    record(cell) && cell.row === r && cell.col === c && (cell.motifId === null || (typeof cell.motifId === 'string' && motifs.includes(cell.motifId)))))
+    record(cell) && cell.row === r && cell.col === c && (cell.motifId === null || (typeof cell.motifId === 'string' && motifs.has(cell.motifId)))))
     && integerIn(value.stageNum, 1, 10000) && integerIn(value.combo, 0, 12) && integerIn(value.maxCombo, 0, 12)
     && typeof value.statusMessage === 'string' && validAttemptId(value.storyAttemptId);
 }
 
-export type RoundLoad<T> = { status: 'valid'; value: T } | { status: 'missing' | 'protected'; value: null };
-export type RoundSaveStatus = 'ready' | 'saved' | 'volatile' | 'failed' | 'protected';
+export type RoundLoad<T> = { status: 'valid'; value: T; raw: string } | { status: 'missing' | 'protected'; value: null; raw: null };
+export type RoundSaveStatus = 'ready' | 'saved' | 'volatile' | 'failed' | 'protected' | 'conflict';
 
 export function loadRoundState<T>(storage: RpgKeyValueStorage, key: string, validate: (value: unknown) => value is T): RoundLoad<T> {
   try {
-    const raw = storage.getString(key);
-    if (raw === null) return { status: 'missing', value: null };
+    // SQLite의 getString은 읽기 실패도 null로 돌려줍니다. 기존 기록을 빈 판으로
+    // 오인해 덮어쓰지 않도록 엄격한 읽기를 지원하면 실패를 상위 catch로 전달합니다.
+    const strict = storage as Partial<RpgGuardedKeyValueStorage>;
+    const raw = typeof strict.readStringStrict === 'function' ? strict.readStringStrict(key) : storage.getString(key);
+    if (raw === null) return { status: 'missing', value: null, raw: null };
     const value: unknown = JSON.parse(raw);
-    return validate(value) ? { status: 'valid', value } : { status: 'protected', value: null };
-  } catch { return { status: 'protected', value: null }; }
+    return validate(value) ? { status: 'valid', value, raw } : { status: 'protected', value: null, raw: null };
+  } catch { return { status: 'protected', value: null, raw: null }; }
 }
 
 export function loadRound<T>(storage: RpgKeyValueStorage, key: string, validate: (value: unknown) => value is T): T | null {
@@ -96,4 +99,24 @@ export function saveRound<T>(storage: RpgKeyValueStorage, key: string, value: T)
     if (storage.getString(key) !== raw) return 'failed';
     return storage instanceof MemoryRpgStorage ? 'volatile' : 'saved';
   } catch { return 'failed'; }
+}
+
+/** SQLite는 비교와 쓰기를 한 트랜잭션에서 처리합니다. 다른 저장소는 가능한 범위에서 원본을 확인합니다. */
+export function saveRoundIfUnchanged(storage: RpgKeyValueStorage, key: string, expected: string | null, raw: string): RoundSaveStatus {
+  try {
+    const guarded = storage as Partial<RpgGuardedKeyValueStorage>;
+    if (guarded.supportsGuardedWrites && typeof guarded.guardedWrite === 'function') {
+      const result = guarded.guardedWrite(key, expected, raw);
+      if (result === 'written') return storage instanceof MemoryRpgStorage ? 'volatile' : 'saved';
+      if (result === 'conflict') return 'conflict';
+      if (result !== 'unavailable') return 'failed';
+    }
+    const read = () => typeof guarded.readStringStrict === 'function' ? guarded.readStringStrict(key) : storage.getString(key);
+    if (read() !== expected) return 'conflict';
+    storage.setString(key, raw);
+    if (read() !== raw) return 'failed';
+    return storage instanceof MemoryRpgStorage ? 'volatile' : 'saved';
+  } catch {
+    return 'failed';
+  }
 }

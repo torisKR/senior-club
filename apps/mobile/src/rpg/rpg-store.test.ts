@@ -5,12 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { calculateOfflineIdleRewards, DEFAULT_FACILITIES, DEFAULT_PARTNERS } from './idle-system';
 import { RpgProvider, useRpg } from './rpg-store';
+import { buyFurniture, placeFurniture, plantCrop, waterPlot } from '../world/life';
 
 const fixtures = vi.hoisted(() => ({
   saved: new Map<string, string>(),
   listener: null as ((state: string) => void) | null,
   appState: 'active',
   dropBackup: false,
+  failWrite: false,
 }));
 
 vi.mock('react-native', () => ({
@@ -30,6 +32,7 @@ vi.mock('./rpg-db', () => ({
     readStringStrict: (key: string) => fixtures.saved.get(key) ?? null,
     setString: (key: string, value: string) => { fixtures.saved.set(key, value); },
     guardedWrite: (key: string, expected: string | null, value: string, backup?: { key: string; value: string }) => {
+      if (fixtures.failWrite) return 'write_failed';
       if ((fixtures.saved.get(key) ?? null) !== expected) return 'conflict';
       if (backup) {
         if (fixtures.dropBackup) return 'backup_failed';
@@ -83,6 +86,113 @@ function seed(overrides: Record<string, unknown> = {}) {
   }));
 }
 
+describe('map transition movement', () => {
+  it('rejects a delayed movement event from the previous map and preserves the new arrival after reload', async () => {
+    await mount();
+    let staleMove = true;
+    await act(async () => {
+      expect(current.travelTo('seaside')).toBe(true);
+      staleMove = current.walkTo(5, 6, 'field');
+    });
+    expect(staleMove).toBe(false);
+    expect(current.state.mapId).toBe('seaside');
+    expect(current.state.playerPos).toEqual({ x: 4, y: 6 });
+    await act(async () => { expect(current.walkTo(5, 6, 'seaside')).toBe(true); current.savePosition(); });
+    await unmount();
+    await mount();
+    expect(current.state.mapId).toBe('seaside');
+    expect(current.state.playerPos).toEqual({ x: 5, y: 6 });
+  });
+});
+
+describe('생활 기록 저장', () => {
+  it('keeps furniture and acorns consistent after a failed placement and restart', async () => {
+    seed();
+    await mount();
+    const originalChapter = current.state.currentChapterId;
+    await act(async () => {
+      expect(current.applyLife(({ life, acorns }) => {
+        const bought = buyFurniture(life, 'radio', acorns);
+        return bought && { life: bought.life, acorns: -bought.cost };
+      })).toBe(true);
+    });
+    const balance = current.state.stats.acorns;
+    expect(balance).toBeLessThan(777);
+    fixtures.failWrite = true;
+    await act(async () => {
+      expect(current.applyLife(({ life }) => {
+        const placed = placeFurniture(life, 0, 'radio');
+        return placed && { life: placed };
+      })).toBe(false);
+    });
+    expect(current.state.life.houseSlots[0]).toBeNull();
+    expect(current.state.stats.acorns).toBe(balance);
+    fixtures.failWrite = false;
+    await act(async () => {
+      expect(current.applyLife(({ life }) => {
+        const placed = placeFurniture(life, 0, 'radio');
+        return placed && { life: placed };
+      })).toBe(true);
+    });
+    await unmount();
+    await mount();
+    expect(current.state.life.ownedFurniture).toContain('radio');
+    expect(current.state.life.houseSlots[0]).toBe('radio');
+    expect(current.state.stats.acorns).toBe(balance);
+    expect(current.state.currentChapterId).toBe(originalChapter);
+  });
+
+  it('restores valid progress when a damaged save contains inherited names as items', async () => {
+    seed({
+      life: {
+        garden: [{ cropId: 'constructor' }, { cropId: 'lettuce', plantedAtMs: START.getTime() }],
+        ownedFurniture: ['toString', 'radio'],
+        houseSlots: ['toString', 'radio'],
+      },
+    });
+    await mount();
+    expect(current.state.stats.acorns).toBe(777);
+    expect(current.state.life.garden.map((plot) => plot.cropId)).toEqual([null, 'lettuce', null, null]);
+    expect(current.state.life.ownedFurniture).toEqual(['radio']);
+    expect(current.state.life.houseSlots.slice(0, 2)).toEqual([null, 'radio']);
+    await act(async () => {
+      expect(current.applyLife(({ life }) => {
+        const planted = plantCrop(life, 0, 'pepper', Date.now());
+        return planted ? { life: planted } : null;
+      })).toBe(true);
+    });
+    await unmount();
+    await mount();
+    expect(current.state.life.garden.slice(0, 2).map((plot) => plot.cropId)).toEqual(['pepper', 'lettuce']);
+    expect(current.state.life.houseSlots[1]).toBe('radio');
+    expect(current.state.stats.acorns).toBe(777);
+  });
+
+  it('restores garden progress and preserves unrelated RPG progress after restarting', async () => {
+    await mount();
+    const before = current.state.stats.acorns;
+    await act(async () => {
+      expect(current.applyLife(({ life }) => {
+        const planted = plantCrop(life, 0, 'lettuce', Date.now());
+        return planted ? { life: planted } : null;
+      })).toBe(true);
+      expect(current.applyLife(({ life }) => {
+        const watered = waterPlot(life, 0, '2026-11-06', Date.now());
+        return watered ? { life: watered, acorns: 10 } : null;
+      })).toBe(true);
+    });
+    const plot = current.state.life.garden[0];
+    expect(plot.cropId).toBe('lettuce');
+    expect(plot.waterBonusMs).toBeGreaterThan(0);
+    const chapter = current.state.currentChapterId;
+    await unmount();
+    await mount();
+    expect(current.state.life.garden[0]).toEqual(plot);
+    expect(current.state.stats.acorns).toBe(before + 10);
+    expect(current.state.currentChapterId).toBe(chapter);
+  });
+});
+
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(START);
@@ -91,6 +201,7 @@ beforeEach(() => {
   fixtures.listener = null;
   fixtures.appState = 'active';
   fixtures.dropBackup = false;
+  fixtures.failWrite = false;
   container = document.createElement('div');
   document.body.append(container);
   root = null;

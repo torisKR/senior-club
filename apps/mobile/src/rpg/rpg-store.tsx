@@ -31,16 +31,28 @@ import {
   type OnboardingEvent,
   type OnboardingState,
 } from './onboarding';
-import { INITIAL_QUESTS, INITIAL_STATS, updateWellnessQuest, VILLAGE_GRID_SIZE } from './rpg-logic';
+import { canMoveTo, INITIAL_QUESTS, INITIAL_STATS, updateWellnessQuest } from './rpg-logic';
 import { getRpgStorage } from './rpg-db';
 import type { QuestItem, RpgCharacterStats, RpgQuest } from './rpg-types';
 import { STORY_CHAPTERS, type StoryChapter } from './story-data';
 import { completeStoryChapter, continueStoryAfterFailures, performStoryAction, recordStoryTrial, resolveLegacyStoryChoice, type StoryActionId, type StoryActionSource, type StoryGameResult, type StoryLegacyArchive, type StoryLegacyChoice } from './story-progress';
 import { migrateRpgStorySave, parseRpgSave, PREVIOUS_STORY_BACKUP_KEY, STORY_MIGRATION_BACKUP_KEY, STORY_SAVE_VERSION } from './story-migration';
 import type { RpgGuardedWriteResult, RpgGuardedKeyValueStorage, RpgSaveBackup } from './rpg-storage';
+import { createLife, normalizeLife, type LifeState } from '@/world/life';
+import { accrueOfflineReward, restorePendingReward, type OfflineReward } from './offline-reward';
+import { getMap, type MapId } from '@/world/maps';
+import { FIELD_VILLAGE_OFFSET } from '@/world/maps/field';
+import { restorePosition, WORLD_VERSION } from '@/world/maps/position';
+
+/** 생활 활동 한 번의 결과: 새 생활 상태와 도토리·활력·마음 온도 증감 */
+export interface LifeChange {
+  life: LifeState;
+  acorns?: number;
+  vitality?: number;
+  warmth?: number;
+}
 
 const STORAGE_KEY = 'senior_club_rpg_state_v1';
-type OfflineReward = NonNullable<ReturnType<typeof calculateOfflineIdleRewards>>;
 
 export interface RpgPersistedState {
   playerPos: { x: number; y: number };
@@ -75,6 +87,12 @@ export interface RpgPersistedState {
   companionId: NpcId | null;
   /** 마음 온도 0~100 */
   heartWarmth: number;
+  /** 텃밭·낚시·내 집·쉬기·일기 */
+  life: LifeState;
+  /** 지금 있는 지도 */
+  mapId: MapId;
+  /** 좌표계 버전 (WORLD_VERSION) */
+  worldVersion: number;
 }
 
 const DEFAULT_INVENTORY: QuestItem[] = [
@@ -84,7 +102,7 @@ const DEFAULT_INVENTORY: QuestItem[] = [
 ];
 
 const DEFAULT_STATE: RpgPersistedState = {
-  playerPos: { x: 3, y: 3 },
+  playerPos: { x: 3 + FIELD_VILLAGE_OFFSET.x, y: 3 + FIELD_VILLAGE_OFFSET.y },
   stats: INITIAL_STATS,
   quests: [...INITIAL_QUESTS],
   inventory: DEFAULT_INVENTORY,
@@ -112,6 +130,9 @@ const DEFAULT_STATE: RpgPersistedState = {
   bonds: createInitialBonds(),
   companionId: null,
   heartWarmth: 50,
+  life: createLife(),
+  mapId: 'field',
+  worldVersion: WORLD_VERSION,
 };
 
 type SaveProtection = 'ready' | 'checking' | 'read_failed' | Exclude<RpgGuardedWriteResult, 'written'>;
@@ -134,54 +155,38 @@ interface RpgContextValue {
   upgradeFacility: (facilityId: FacilityState['id']) => boolean;
   assignPartnerToFacility: (partnerId: string, facilityId: FacilityState['id']) => void;
   recruitPartner: (partnerId: string) => boolean;
-  advanceChapter: (cp: number) => void;
-  recordStoryResult: (result: StoryGameResult) => void;
+  advanceChapter: (cp: number) => boolean;
+  recordStoryResult: (result: StoryGameResult) => boolean;
   continueStoryAfterFailures: () => void;
-  performStoryAction: (actionId: StoryActionId) => void;
+  performStoryAction: (actionId: StoryActionId) => boolean;
   chooseBondEpisode: (npcId: NpcId, episodeId: string, choiceId: string) => void;
   movePlayer: (dx: number, dy: number) => boolean;
-  doMorningGym: () => void;
-  takeMedication: () => void;
+  stepPlayer: (dx: number, dy: number) => 'moved' | 'blocked' | 'save_failed';
+  /** 자유 이동 중 발밑 칸이 바뀔 때. 저장하지 않습니다(멈출 때 savePosition). */
+  walkTo: (x: number, y: number, sourceMapId: MapId) => boolean;
+  /** 지금 위치를 저장합니다. */
+  savePosition: () => void;
+  /** 버스로 다른 지도에 갑니다. */
+  travelTo: (mapId: MapId) => boolean;
+  doMorningGym: () => boolean;
+  takeMedication: () => boolean;
   completeQuestStep: (targetType: RpgQuest['targetType']) => void;
   claimQuestReward: (questId: string) => boolean;
   useInventoryItem: (itemId: string) => boolean;
   /** 프롤로그 닫기·이동·체조·입장·건너뛰기 */
   advanceOnboarding: (event: OnboardingEvent) => void;
   /** 동행 산책 시작/종료 */
-  startCompanion: (npcId: NpcId) => void;
-  stopCompanion: () => void;
+  startCompanion: (npcId: NpcId) => boolean;
+  stopCompanion: () => boolean;
   /** 오늘의 산책 보상 (하루 1회) */
   claimDailyWalk: () => boolean;
   /** 미니게임을 함께 한 뒤 유대 적립 */
   recordGameWithNpc: (npcId: NpcId) => void;
+  /** 생활 활동 적용. change 가 null 이면 아무 일도 없습니다. 저장까지 되면 true. */
+  applyLife: (change: (current: { life: LifeState; acorns: number }) => LifeChange | null) => boolean;
 }
 
 const RpgContext = createContext<RpgContextValue | null>(null);
-
-function restorePendingReward(value: unknown): OfflineReward | null {
-  if (!value || typeof value !== 'object') return null;
-  const reward = value as Partial<OfflineReward>;
-  const amounts = [reward.elapsedSec, reward.cappedElapsedSec, reward.maxHours, reward.earnedAcorns, reward.earnedExp];
-  if (!amounts.every((amount) => typeof amount === 'number' && Number.isFinite(amount) && amount >= 0)) return null;
-  return reward as OfflineReward;
-}
-
-function accrueOfflineReward(state: RpgPersistedState, since: number, now: number): RpgPersistedState {
-  const earned = calculateOfflineIdleRewards(since, now, state.facilities, state.partners);
-  if (!earned || (earned.earnedAcorns <= 0 && earned.earnedExp <= 0)) return state;
-  const pending = state.pendingOfflineReward;
-  // Each absence is capped independently; an earlier unclaimed reward remains owed.
-  return {
-    ...state,
-    pendingOfflineReward: pending ? {
-      elapsedSec: pending.elapsedSec + earned.elapsedSec,
-      cappedElapsedSec: pending.cappedElapsedSec + earned.cappedElapsedSec,
-      maxHours: earned.maxHours,
-      earnedAcorns: pending.earnedAcorns + earned.earnedAcorns,
-      earnedExp: pending.earnedExp + earned.earnedExp,
-    } : earned,
-  };
-}
 
 interface LoadedRpgSave {
   state: RpgPersistedState;
@@ -238,6 +243,8 @@ function loadRpgSave(): LoadedRpgSave {
       bonds: normalizeBonds(saved.bonds),
       companionId: typeof saved.companionId === 'string' && (NPC_IDS as readonly string[]).includes(saved.companionId) ? saved.companionId as NpcId : null,
       heartWarmth: typeof saved.heartWarmth === 'number' ? clampWarmth(saved.heartWarmth) : 50,
+      life: normalizeLife(saved.life),
+      ...restorePosition(saved, DEFAULT_STATE.playerPos),
     };
     const needsUpgrade = oldVersion < STORY_SAVE_VERSION;
     const next = withDailyReset(accrueOfflineReward(restored, lastTime, now), todayKey());
@@ -258,6 +265,7 @@ export function RpgProvider({ children }: { children: React.ReactNode }) {
   const [loaded] = useState(loadRpgSave);
   const [state, setState] = useState(loaded.state);
   const stateRef = useRef(loaded.state);
+  const positionDirty = useRef(false);
   const guard = useRef({ storage: loaded.storage, expectedRaw: loaded.expectedRaw, backup: loaded.backup, migrationRaw: loaded.migrationRaw, readFailed: loaded.protection === 'read_failed' });
   const [saveProtection, setSaveProtection] = useState<SaveProtection>(loaded.protection);
   const pendingOfflineReward = state.pendingOfflineReward;
@@ -282,13 +290,15 @@ export function RpgProvider({ children }: { children: React.ReactNode }) {
 
   const updateAndPersist = useCallback((updater: (prev: RpgPersistedState) => RpgPersistedState): boolean => {
     const prev = stateRef.current;
-    const updated = updater(prev);
+    const current = withDailyReset(prev, todayKey());
+    const updated = updater(current);
     if (updated === prev) return false;
     const next = { ...updated, lastSavedTimestampMs: Date.now() };
     if (!persistGuarded(JSON.stringify(next))) return false;
     stateRef.current = next;
+    positionDirty.current = false;
     setState(next);
-    return true;
+    return updated !== current;
   }, [persistGuarded]);
 
   const retrySaveProtection = useCallback(() => {
@@ -304,6 +314,7 @@ export function RpgProvider({ children }: { children: React.ReactNode }) {
         readFailed: recovered.protection === 'read_failed',
       };
       stateRef.current = recovered.state;
+      positionDirty.current = false;
       setState(recovered.state);
       if (recovered.migrationRaw !== null && recovered.protection === 'checking') {
         persistGuarded(recovered.migrationRaw);
@@ -313,20 +324,21 @@ export function RpgProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     if (current.migrationRaw !== null) { persistGuarded(current.migrationRaw); return; }
-    try {
-      setSaveProtection(current.storage.readStringStrict(STORAGE_KEY) === current.expectedRaw ? 'ready' : 'conflict');
-    } catch {
-      setSaveProtection('read_failed');
-    }
-  }, [persistGuarded]);
+    // 원본이 달라지지 않았는지 원자적으로 확인하고 실제 쓰기도 다시 시도합니다.
+    // 이동 중 메모리에 남아 있던 위치 역시 같은 저장에 포함됩니다.
+    updateAndPersist((prev) => ({ ...prev }));
+  }, [persistGuarded, updateAndPersist]);
 
   // The exact old bytes, backup read-back, source check and replacement share one SQLite transaction.
   useEffect(() => {
     if (guard.current.migrationRaw !== null) retrySaveProtection();
   }, [retrySaveProtection]);
 
-useEffect(() => {
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | null = null;
     const handleAppState = (status: string) => {
+      if (timer !== null) clearInterval(timer);
+      timer = null;
       const now = Date.now();
       if (status === 'background') {
         updateAndPersist((prev) => prev.offlineStartedAtMs === null
@@ -340,11 +352,18 @@ useEffect(() => {
           };
           return withDailyReset(resumed, todayKey());
         });
+        timer = setInterval(() => updateAndPersist((prev) => prev), 60_000);
       }
     };
     const subscription = AppState.addEventListener('change', handleAppState);
     if (AppState.currentState === 'background') handleAppState('background');
-    return () => subscription.remove();
+    else if (AppState.currentState == null || AppState.currentState === 'active') {
+      timer = setInterval(() => updateAndPersist((prev) => prev), 60_000);
+    }
+    return () => {
+      subscription.remove();
+      if (timer !== null) clearInterval(timer);
+    };
   }, [updateAndPersist]);
 
   const productionRates = useMemo(
@@ -451,7 +470,7 @@ useEffect(() => {
   );
 
   const advanceChapter = useCallback((cp: number) => {
-    updateAndPersist((prev) => {
+    return updateAndPersist((prev) => {
       const progress = completeStoryChapter(prev, cp);
       if (progress === prev) return prev;
       const alreadyRewarded = prev.storyRewardedChapterIds.includes(prev.currentChapterId);
@@ -469,7 +488,7 @@ useEffect(() => {
   }, [updateAndPersist]);
 
   const recordStoryResult = useCallback((result: StoryGameResult) => {
-    updateAndPersist((prev) => recordStoryTrial(prev, result));
+    return updateAndPersist((prev) => recordStoryTrial(prev, result));
   }, [updateAndPersist]);
 
   const resolveLegacyStory = useCallback((choice: 'keep' | 'replay') => {
@@ -481,7 +500,7 @@ useEffect(() => {
   }, [updateAndPersist]);
 
   const applyStoryAction = useCallback((actionId: StoryActionId) => {
-    updateAndPersist((prev) => performStoryAction(prev, actionId));
+    return updateAndPersist((prev) => performStoryAction(prev, actionId));
   }, [updateAndPersist]);
 
   const selectBondEpisode = useCallback((npcId: NpcId, episodeId: string, choiceId: string) => {
@@ -491,33 +510,51 @@ useEffect(() => {
     });
   }, [updateAndPersist]);
 
-  const movePlayer = useCallback(
+  const stepPlayer = useCallback(
     (dx: number, dy: number) => {
       let moved = false;
       const persisted = updateAndPersist((prev) => {
         const targetX = prev.playerPos.x + dx;
         const targetY = prev.playerPos.y + dy;
-        if (
-          targetX < 0 ||
-          targetX >= VILLAGE_GRID_SIZE ||
-          targetY < 0 ||
-          targetY >= VILLAGE_GRID_SIZE
-        ) {
-          return prev;
-        }
+        // 가장 최근 위치 기준으로 판정해야 조이스틱 연속 걸음이 벽·물을 통과하지 않습니다.
+        if (!canMoveTo(targetX, targetY, prev.mapId)) return prev;
         moved = true;
         return {
           ...prev,
           playerPos: { x: targetX, y: targetY },
         };
       });
-      return persisted && moved;
+      return persisted && moved ? 'moved' : moved ? 'save_failed' : 'blocked';
     },
     [updateAndPersist],
   );
 
+  const movePlayer = useCallback((dx: number, dy: number) => stepPlayer(dx, dy) === 'moved', [stepPlayer]);
+
+  const walkTo = useCallback((x: number, y: number, sourceMapId: MapId) => {
+    const prev = stateRef.current;
+    if (prev.mapId !== sourceMapId) return false;
+    if (prev.playerPos.x === x && prev.playerPos.y === y) return true;
+    if (!canMoveTo(x, y, prev.mapId)) return false;
+    // ponytail: 걷는 동안은 메모리만 바꾸고, 다음 저장(멈춤·다른 행동·백그라운드)에 함께 기록됩니다.
+    const next = { ...prev, playerPos: { x, y } };
+    stateRef.current = next;
+    positionDirty.current = true;
+    setState(next);
+    return true;
+  }, []);
+
+  const savePosition = useCallback(() => {
+    if (positionDirty.current) updateAndPersist((prev) => ({ ...prev }));
+  }, [updateAndPersist]);
+
+  const travelTo = useCallback((mapId: MapId) => updateAndPersist((prev) => {
+    if (prev.mapId === mapId) return prev;
+    return { ...prev, mapId, playerPos: getMap(mapId).arrival };
+  }), [updateAndPersist]);
+
   const doMorningGym = useCallback(() => {
-    updateAndPersist((prev) => {
+    return updateAndPersist((prev) => {
       if (prev.stats.dailyMorningGymDone) return prev;
       const nextStats: RpgCharacterStats = {
         ...prev.stats,
@@ -534,7 +571,7 @@ useEffect(() => {
   }, [updateAndPersist]);
 
   const takeMedication = useCallback(() => {
-    updateAndPersist((prev) => {
+    return updateAndPersist((prev) => {
       if (prev.stats.dailyMedicationTaken) return prev;
       const nextStats: RpgCharacterStats = {
         ...prev.stats,
@@ -553,8 +590,10 @@ useEffect(() => {
   const completeQuestStep = useCallback(
     (targetType: RpgQuest['targetType']) => {
       updateAndPersist((prev) => {
+        let changed = false;
         const nextQuests = prev.quests.map((q) => {
           if (q.targetType === targetType && !q.completed) {
+            changed = true;
             const count = q.currentCount + 1;
             return {
               ...q,
@@ -564,6 +603,7 @@ useEffect(() => {
           }
           return q;
         });
+        if (!changed) return prev;
         return {
           ...prev,
           quests: nextQuests,
@@ -602,13 +642,13 @@ useEffect(() => {
 
   const startCompanion = useCallback(
     (npcId: NpcId) => {
-      updateAndPersist((prev) => ({ ...prev, companionId: npcId }));
+      return updateAndPersist((prev) => prev.companionId === npcId ? prev : { ...prev, companionId: npcId });
     },
     [updateAndPersist],
   );
 
   const stopCompanion = useCallback(() => {
-    updateAndPersist((prev) => ({ ...prev, companionId: null }));
+    return updateAndPersist((prev) => prev.companionId === null ? prev : { ...prev, companionId: null });
   }, [updateAndPersist]);
 
   const claimDailyWalk = useCallback(() => {
@@ -656,7 +696,7 @@ useEffect(() => {
       let used = false;
       const persisted = updateAndPersist((prev) => {
         const item = prev.inventory.find((i) => i.id === itemId);
-        if (!item || item.count <= 0) return prev;
+        if (!item || item.count <= 0 || prev.stats.vitality >= prev.stats.maxVitality) return prev;
         used = true;
         const nextInv = prev.inventory.map((i) =>
           i.id === itemId ? { ...i, count: i.count - 1 } : i,
@@ -669,6 +709,29 @@ useEffect(() => {
         };
       });
       return persisted && used;
+    },
+    [updateAndPersist],
+  );
+
+  const applyLife = useCallback(
+    (change: (current: { life: LifeState; acorns: number }) => LifeChange | null) => {
+      let applied = false;
+      const persisted = updateAndPersist((prev) => {
+        const next = change({ life: prev.life, acorns: prev.stats.acorns });
+        if (!next) return prev;
+        applied = true;
+        return {
+          ...prev,
+          life: next.life,
+          stats: {
+            ...prev.stats,
+            acorns: Math.max(0, prev.stats.acorns + (next.acorns ?? 0)),
+            vitality: Math.min(prev.stats.maxVitality, prev.stats.vitality + (next.vitality ?? 0)),
+          },
+          heartWarmth: clampWarmth(prev.heartWarmth + (next.warmth ?? 0)),
+        };
+      });
+      return persisted && applied;
     },
     [updateAndPersist],
   );
@@ -695,6 +758,10 @@ useEffect(() => {
       performStoryAction: applyStoryAction,
       chooseBondEpisode: selectBondEpisode,
       movePlayer,
+      stepPlayer,
+      walkTo,
+      savePosition,
+      travelTo,
       doMorningGym,
       takeMedication,
       completeQuestStep,
@@ -705,6 +772,7 @@ useEffect(() => {
       stopCompanion,
       claimDailyWalk,
       recordGameWithNpc,
+      applyLife,
     }),
     [
       state,
@@ -724,6 +792,10 @@ useEffect(() => {
       applyStoryAction,
       selectBondEpisode,
       movePlayer,
+      stepPlayer,
+      walkTo,
+      savePosition,
+      travelTo,
       doMorningGym,
       takeMedication,
       completeQuestStep,
@@ -734,6 +806,7 @@ useEffect(() => {
       stopCompanion,
       claimDailyWalk,
       recordGameWithNpc,
+      applyLife,
     ],
   );
 

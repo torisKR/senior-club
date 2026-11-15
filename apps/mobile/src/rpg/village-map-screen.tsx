@@ -1,35 +1,56 @@
 import { Image } from 'expo-image';
 import { type Href, useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AccessibilityInfo, Alert, Modal, Pressable, ScrollView, StyleSheet, Switch, useWindowDimensions, View } from 'react-native';
 
 import { HomeBannerAd } from '@/ads/HomeBannerAd';
 import { useArcade } from '@/arcade/arcade-store';
+import { ArcadeSaveNotice } from '@/arcade/arcade-save-notice';
 import { FocusedBackgroundAudio } from '@/audio/focused-background-audio';
 import { playSfx } from '@/audio/sound-manager';
-import { AppText, Card, Screen, SectionHeader, SeniorButton } from '@/components/ui';
-import { FontWeights, Layout, Radius, Spacing } from '@/constants/theme';
+import { AppText, SeniorButton } from '@/components/ui';
+import { FontWeights, Radius, Spacing } from '@/constants/theme';
 import { PixelFx } from '@/fx/pixel-fx';
+import { useReduceMotion } from '@/fx/use-reduce-motion';
+import { useEffectiveSafeAreaInsets } from '@/hooks/use-effective-safe-area-insets';
+import { useAppState } from '@/hooks/use-app-state';
+import { IdlePanel } from '@/world/panels/idle-panel';
+import { AlbumPanel, DexPanel } from '@/world/panels/dex-panel';
+import { JournalPanel } from '@/world/panels/journal-panel';
+import { timeOfDayTint } from '@/world/time-of-day';
+import { useSharedValue } from 'react-native-reanimated';
+
+import { BusSheet } from '@/world/hud/bus-sheet';
+import { Minimap } from '@/world/hud/minimap';
+import { getMap, MAP_IDS, regionName, type MapId } from '@/world/maps';
+import { VirtualJoystick } from '@/world/virtual-joystick';
+import { WorldView } from '@/world/world-view';
+import { useWorldActivities } from '@/world/world-activities';
 
 import { ExitConfirmDialog } from './exit-confirm-dialog';
-import { NPC_DISPLAY, PROMOTION_LINES } from './companion-lines';
+import { NPC_DISPLAY, PROMOTION_LINES, WALK_LINES } from './companion-lines';
 import { BOND_ENDING_LINES, BOND_EPISODES } from './bond-episodes';
-import { bondProgress, closestNpc, getBond, NPC_IDS, type NpcId } from './bond-logic';
+import { canClaimDailyWalk, closestNpc, getBond, NPC_IDS, type NpcId } from './bond-logic';
+import { todayKey } from './daily-reset';
 import { OnboardingOverlay } from './onboarding-overlay';
-import { PixelVillageMap } from './pixel-village-map';
 import { useAndroidBackExit } from './use-android-back-exit';
-import { canMoveTo, findNearbyNpc, getVillageTile } from './rpg-logic';
+import { findNearbyNpc, getVillageTile } from './rpg-logic';
 import { isStoryActionAvailable, STORY_ACTIONS, storyStatus, storyTrialCompleted, trialResolved } from './story-progress';
 import { STORY_CONTINUATION_DIALOGUE } from './story-data';
 import { portraitFor } from './rpg-sprites';
 import { useRpg } from './rpg-store';
+import { villageStyles as styles } from './village-styles';
+import { BGM_CLUB_LOUNGE } from '@/audio/bgm';
 
 const MASTER_BADGE = require('../../assets/game/rpg/pixel/ui/badge_master.png');
-const BGM_CLUB_LOUNGE = require('../../assets/audio/bgm_club_lounge_morning_01.m4a');
-const MODE_ICON_PARKGOLF = require('../../assets/game/rpg/pixel/ui/mode_parkgolf.png');
-const MODE_ICON_ALKKAGI = require('../../assets/game/rpg/pixel/ui/mode_alkkagi.png');
-const MODE_ICON_SACHEONSEONG = require('../../assets/game/rpg/pixel/ui/mode_sacheonseong.png');
-const DAILY_SEAL_STAMP = require('../../assets/game/rpg/ui/ui_daily_seal_stamp_01.png');
+const HUD_BAG = require('../../assets/game/rpg/pixel/hud/bag.png');
+const HUD_STORY = require('../../assets/game/rpg/pixel/hud/story.png');
+const HUD_MENU = require('../../assets/game/rpg/pixel/hud/menu.png');
+/** 안내 문구가 화면에 머무는 시간 */
+const NOTICE_MS = 4000;
+/** 아침 체조를 하는 마을 광장 (3 x 3) */
+const PLAZA = { minX: 26, maxX: 28, minY: 22, maxY: 24 };
+const HUD_MAP = require('../../assets/game/rpg/pixel/world/signpost.png');
 
 function offlineDuration(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
@@ -40,27 +61,27 @@ function offlineDuration(seconds: number): string {
 
 export function VillageMapScreen() {
   const router = useRouter();
-  const { rankProgress, state: arcadeState, claimAttendanceStamp } = useArcade();
+  const reduceMotion = useReduceMotion();
+  const fadeTransition = reduceMotion === false ? 'fade' : 'none';
+  const slideTransition = reduceMotion === false ? 'slide' : 'none';
+  const { rankProgress, state: arcadeState, toggleSound, toggleHaptic, toggleReduceMotion, triggerHaptic } = useArcade();
   const {
     state,
     saveProtection,
     resolveLegacyStory,
-    productionRates,
     currentChapter,
     pendingOfflineReward,
     claimOfflineReward,
-    upgradeFacility,
-    assignPartnerToFacility,
-    recruitPartner,
     advanceChapter,
     continueStoryAfterFailures,
     performStoryAction,
     chooseBondEpisode,
-    movePlayer,
+    stepPlayer,
+    walkTo,
+    savePosition,
+    travelTo,
     doMorningGym,
     takeMedication,
-    claimQuestReward,
-    useInventoryItem: applyItem,
     advanceOnboarding,
     bonds,
     companionId,
@@ -70,8 +91,35 @@ export function VillageMapScreen() {
     claimDailyWalk,
   } = useRpg();
 
-  const [activeTab, setActiveTab] = useState<'map' | 'idle' | 'story' | 'journal'>('map');
+  const [sheet, setSheet] = useState<'journal' | 'menu' | null>(null);
+  const [dismissedNpcId, setDismissedNpcId] = useState<string | null>(null);
+  const [companionDialogueOpen, setCompanionDialogueOpen] = useState(false);
+  const [companionLineIndex, setCompanionLineIndex] = useState(0);
+  const [npcLine, setNpcLine] = useState<{ npcId: string; index: number } | null>(null);
+  const lastStepHapticAt = useRef(Number.NEGATIVE_INFINITY);
+  const insets = useEffectiveSafeAreaInsets();
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [actionChoiceAt, setActionChoiceAt] = useState<string | null>(null);
+  const [minimapOpen, setMinimapOpen] = useState(false);
+  const [busOpen, setBusOpen] = useState(false);
+  const [storyModalOpen, setStoryModalOpen] = useState(false);
+  const [episodeId, setEpisodeId] = useState<string | null>(null);
+  // 안드로이드 뒤로가기 → 종료 확인 (홈 탭에서만)
+  const backActionRef = useRef<(() => boolean) | null>(null);
+  const backExit = useAndroidBackExit(backActionRef);
+  const prologueOpen = saveProtection === 'ready' && state.storyLegacyChoice !== 'pending' && state.onboarding.step === 'prologue';
+  const activityCovered = prologueOpen || sheet !== null || minimapOpen || busOpen || storyModalOpen || episodeId !== null || backExit.confirming ||
+    (saveProtection === 'ready' && (Boolean(pendingOfflineReward) || state.storyLegacyChoice === 'pending'));
+  const activities = useWorldActivities(setActionNotice, activityCovered);
+  const walkClaimAvailable = companionId !== null && canClaimDailyWalk(getBond(bonds, companionId), todayKey(new Date(activities.nowMs)));
+  const actionLocation = `${state.mapId}:${state.playerPos.x}:${state.playerPos.y}`;
+  const actionChoiceOpen = actionChoiceAt === actionLocation;
+  // 안내 문구는 잠시 보여 주고 스스로 사라집니다.
+  useEffect(() => {
+    if (!actionNotice) return;
+    const timer = setTimeout(() => setActionNotice(null), NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [actionNotice]);
   const chapterStatus = storyStatus(state, arcadeState.cp);
   const trialDone = storyTrialCompleted(state);
   const trialSkipped = state.storySkippedTrialIds.includes(currentChapter.id);
@@ -79,83 +127,120 @@ export function VillageMapScreen() {
   const recordedLegacyChapter = state.storyLegacyChoice === 'keep' && currentChapter.id === 'chapter_4' && state.completedChapterIds.includes('chapter_4');
   const showOutro = chapterStatus.kind === 'finished' || (trialResolved(state) && chapterStatus.kind !== 'actions') || recordedLegacyChapter;
   const unknownLegacyResult = chapterStatus.kind === 'finished' && !trialDone && !trialSkipped;
-  const [storyModalOpen, setStoryModalOpen] = useState(false);
-  const [episodeId, setEpisodeId] = useState<string | null>(null);
   const activeEpisode = BOND_EPISODES.find((episode) => episode.id === episodeId);
   const episodeBond = activeEpisode ? getBond(bonds, activeEpisode.npcId) : null;
   const chosenEpisodeOption = activeEpisode?.choices.find((choice) => choice.id === episodeBond?.sceneChoices?.[activeEpisode.id]);
-  // 안드로이드 뒤로가기 → 종료 확인 (홈 탭에서만)
-  const backExit = useAndroidBackExit();
   const [promotionFx, setPromotionFx] = useState(false);
   const closestNpcId = useMemo(() => closestNpc(bonds), [bonds]);
   // 아침 체조·약 복용 성공 시 마을 위에 잠깐 피어오르는 회복 이펙트 (key로 재시작)
   const [healFxKey, setHealFxKey] = useState(0);
-  const { height: viewportHeight } = useWindowDimensions();
-
-  const dailyMissions = arcadeState.dailyMissions;
-  const missionRows = [
-    {
-      key: 'parkgolf',
-      icon: MODE_ICON_PARKGOLF,
-      title: '파크골프',
-      subtitle: '1홀 클리어',
-      done: dailyMissions.parkGolfDone,
-    },
-    {
-      key: 'alkkagi',
-      icon: MODE_ICON_ALKKAGI,
-      title: '알까기',
-      subtitle: '대국 1승',
-      done: dailyMissions.alkkagiDone,
-    },
-    {
-      key: 'sacheonseong',
-      icon: MODE_ICON_SACHEONSEONG,
-      title: '사천성',
-      subtitle: '1판 클리어',
-      done: dailyMissions.sacheonseongDone,
-    },
-  ];
+  const { width: viewportWidth, height: viewportHeight, fontScale } = useWindowDimensions();
+  const { largeTextEnabled, toggleLargeText } = useAppState();
+  const [statusHeight, setStatusHeight] = useState(0);
+  const hudDetailTop = insets.top + Math.max(132, Spacing.sm + statusHeight + Spacing.sm);
+  const wideHud = fontScale >= 1.4 || largeTextEnabled;
+  const compactLocation = viewportWidth < 360 && wideHud;
+  const stackRoutine = viewportWidth < 360 || fontScale >= 1.3 || largeTextEnabled;
 
   const currentTile = useMemo(
-    () => getVillageTile(state.playerPos.x, state.playerPos.y),
-    [state.playerPos.x, state.playerPos.y],
+    () => getVillageTile(state.playerPos.x, state.playerPos.y, state.mapId),
+    [state.playerPos.x, state.playerPos.y, state.mapId],
   );
 
   const nearbyNpc = useMemo(
-    () => findNearbyNpc(state.playerPos.x, state.playerPos.y),
-    [state.playerPos.x, state.playerPos.y],
+    () => findNearbyNpc(state.playerPos.x, state.playerPos.y, state.mapId, companionId),
+    [state.playerPos.x, state.playerPos.y, state.mapId, companionId],
   );
 
-  const handleMove = (dx: number, dy: number) => {
-    const nx = state.playerPos.x + dx;
-    const ny = state.playerPos.y + dy;
-    if (canMoveTo(nx, ny)) {
-      movePlayer(dx, dy);
-      advanceOnboarding('moved');
-      setActionNotice(null);
+  const handleStep = (dx: number, dy: number) => {
+    setActionChoiceAt(null);
+    setCompanionDialogueOpen(false);
+    activities.cancel();
+    const result = stepPlayer(dx, dy);
+    const direction = dx < 0 ? '왼쪽' : dx > 0 ? '오른쪽' : dy < 0 ? '위쪽' : '아래쪽';
+    if (result === 'blocked') {
+      const now = Date.now();
+      if (now - lastStepHapticAt.current >= 1200) {
+        lastStepHapticAt.current = now;
+        triggerHaptic('light');
+      }
+      const notice = `${direction}은 갈 수 없어요. 다른 방향으로 돌아가 보세요.`;
+      if (actionNotice === notice) AccessibilityInfo.announceForAccessibility(notice);
+      setActionNotice(notice);
+      return;
+    }
+    if (result === 'save_failed') {
+      const notice = '이동을 완료하지 못했어요. 잠시 뒤 다시 시도해 주세요.';
+      if (actionNotice === notice) AccessibilityInfo.announceForAccessibility(notice);
+      setActionNotice(notice);
+      return;
+    }
+    advanceOnboarding('moved');
+    setActionNotice(null);
+    AccessibilityInfo.announceForAccessibility(`${direction}으로 한 칸 이동했어요.`);
+  };
+
+  // 조이스틱 방향은 UI 스레드가 매 프레임 읽습니다.
+  const joyX = useSharedValue(0);
+  const joyY = useSharedValue(0);
+  const joystickMoving = useRef(false);
+  const map = getMap(state.mapId);
+  const handleVector = (x: number, y: number) => {
+    const moving = x !== 0 || y !== 0;
+    if (moving && !joystickMoving.current) {
+      setActionChoiceAt(null);
+      setCompanionDialogueOpen(false);
+      activities.cancel();
+    }
+    joystickMoving.current = moving;
+    joyX.set(x);
+    joyY.set(y);
+  };
+  const handleTileChange = useCallback((x: number, y: number, sourceMapId: MapId) => {
+    if (walkTo(x, y, sourceMapId)) advanceOnboarding('moved');
+  }, [advanceOnboarding, walkTo]);
+  const handleMovementEnd = useCallback((x: number, y: number, sourceMapId: MapId) => {
+    if (walkTo(x, y, sourceMapId)) savePosition();
+  }, [savePosition, walkTo]);
+  const handleTravel = (to: typeof state.mapId) => {
+    setBusOpen(false);
+    if (travelTo(to)) {
+      setCompanionDialogueOpen(false);
+      setActionNotice(`${getMap(to).name}에 도착했어요.`);
     } else {
-      setActionNotice('돌담이나 강가로는 이동할 수 없습니다.');
+      setActionNotice('이동을 저장하지 못했어요. 잠시 뒤 다시 버스를 타 주세요.');
     }
   };
 
+  const enterPlace = (route: string) => {
+    // 튜토리얼 3단계는 파크골프 입장으로만 완료됩니다.
+    if (route === '/clubs') advanceOnboarding('openedParkGolf');
+    router.push({ pathname: route, params: { storyChapter: '' } } as Href);
+  };
+
   const handleMorningGym = () => {
-    if (state.stats.dailyMorningGymDone) {
+    if (state.lastDailyResetDate === todayKey() && state.stats.dailyMorningGymDone) {
       advanceOnboarding('gymDone');
       setActionNotice('오늘 아침 체조는 이미 상쾌하게 마치셨습니다.');
     } else {
-      doMorningGym();
+      if (!doMorningGym()) {
+        setActionNotice('체조 기록을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.');
+        return;
+      }
       advanceOnboarding('gymDone');
       setHealFxKey((key) => key + 1);
-      setActionNotice('기운찬 아침 체조 완료! 활력 +20 HP · 연륜 +50 EXP 회복!');
+      setActionNotice('기운찬 아침 체조 완료! 활력을 채우고 연륜 +50 EXP를 얻었어요.');
     }
   };
 
   const handleTakeMedication = () => {
-    if (state.stats.dailyMedicationTaken) {
+    if (state.lastDailyResetDate === todayKey() && state.stats.dailyMedicationTaken) {
       setActionNotice('오늘 혈압약과 영양제를 이미 복용하셨습니다.');
     } else {
-      takeMedication();
+      if (!takeMedication()) {
+        setActionNotice('복약 기록을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.');
+        return;
+      }
       setHealFxKey((key) => key + 1);
       setActionNotice('약 복용 완료! 활력이 가득 차오르고 마을 덕망이 올랐습니다.');
     }
@@ -163,40 +248,111 @@ export function VillageMapScreen() {
 
   const handleClaimDailyWalk = () => {
     if (!companionId) return;
+    if (!canClaimDailyWalk(getBond(bonds, companionId), todayKey())) {
+      setActionNotice('오늘은 이미 함께 걸었어요. 내일 또 만나요.');
+      return;
+    }
     const claimed = claimDailyWalk();
-    playSfx('chime', arcadeState.soundEnabled);
+    if (claimed) playSfx('chime', arcadeState.soundEnabled);
     setActionNotice(
       claimed
-        ? `${NPC_DISPLAY[companionId].name}와의 산책 완료! 유대 +15 · 마음 온도 +5`
-        : '오늘은 이미 함께 걸었어요. 내일 또 만나요.',
+        ? `${NPC_DISPLAY[companionId].name}와의 산책 완료! 유대 +15 · 마음 온도를 채웠어요.`
+        : '산책 보상을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.',
     );
   };
 
-  const handleClaimAttendanceStamp = () => {
-    const claimed = claimAttendanceStamp();
-    if (claimed) {
-      playSfx('chime', arcadeState.soundEnabled);
-      setActionNotice('개근 도장을 찍었습니다! 명예 인장이 모였습니다.');
-    }
-  };
+  const companionDialogueNpc = companionDialogueOpen && companionId
+    ? MAP_IDS.flatMap((id) => getMap(id).npcs).find((npc) => npc.id === companionId) ?? null : null;
+  const dialogueNpc = companionDialogueNpc ?? (nearbyNpc && nearbyNpc.id !== dismissedNpcId ? nearbyNpc : null);
+  useEffect(() => {
+    backActionRef.current = () => {
+      if (activities.overlay) {
+        activities.cancel();
+        return true;
+      }
+      if (dialogueNpc) {
+        setCompanionDialogueOpen(false);
+        setNpcLine(null);
+        setDismissedNpcId(dialogueNpc.id);
+        return true;
+      }
+      return false;
+    };
+    return () => { backActionRef.current = null; };
+  }, [activities, dialogueNpc]);
+  const doorHere = map.buildings.find(
+    (building) => (building.facilityRoute || building.busStop) && building.door.x === state.playerPos.x && building.door.y === state.playerPos.y,
+  );
+  const onPlaza = state.mapId === 'field' && state.playerPos.x >= PLAZA.minX && state.playerPos.x <= PLAZA.maxX
+    && state.playerPos.y >= PLAZA.minY && state.playerPos.y <= PLAZA.maxY;
+  // 겹치는 장소에서는 입장·대화·생활 활동을 모두 고를 수 있습니다.
+  const placeAction: { label: string; run: () => void } | null = doorHere?.busStop
+    ? { label: '버스 타기', run: () => setBusOpen(true) }
+    : doorHere?.facilityRoute
+    ? { label: `${doorHere.name}\n들어가기`, run: () => enterPlace(doorHere.facilityRoute!) }
+    : null;
+  const talkAction = nearbyNpc && !dialogueNpc
+    ? { label: `${nearbyNpc.name}에게 말 걸기`, run: () => setDismissedNpcId(null) }
+    : null;
+  const availableActions = activities.overlay ? [] : [
+    ...(placeAction ? [placeAction] : []),
+    ...(talkAction ? [talkAction] : []),
+    ...activities.actions,
+    ...(onPlaza && !state.stats.dailyMorningGymDone ? [{ label: '아침 체조', run: handleMorningGym }] : []),
+  ];
+  const worldAction = availableActions.length > 1
+    ? { label: '활동 선택', run: () => setActionChoiceAt(actionLocation) }
+    : availableActions[0] ?? null;
+  const modalOpen = prologueOpen || sheet !== null || minimapOpen || busOpen || storyModalOpen || Boolean(activeEpisode) ||
+    (actionChoiceOpen && availableActions.length > 1) || backExit.confirming ||
+    (saveProtection === 'ready' && (Boolean(pendingOfflineReward) || state.storyLegacyChoice === 'pending'));
+
+  const panelOpen = Boolean(activities.overlay || dialogueNpc);
+  const localTime = new Date(activities.nowMs);
+  const noticeToast = (
+    <View pointerEvents="none" style={hud.noticeToast}>
+      <AppText accessibilityLiveRegion="polite" variant="bodyStrong" style={hud.noticeText}>{actionNotice}</AppText>
+    </View>
+  );
 
   return (
-    <Screen testID="village-map-screen" contentContainerStyle={styles.container}>
+    <View testID="village-map-screen" style={hud.worldRoot}>
+      {/* 화면 전체가 마을입니다 — 카메라가 주인공을 따라갑니다. */}
+      <View style={StyleSheet.absoluteFill}>
+        <WorldView map={map} joyX={joyX} joyY={joyY} onTileChange={handleTileChange} onMovementEnd={handleMovementEnd} pose={activities.pose} celebration={activities.celebration} celebrationProp={activities.celebrationProp} onCelebrationDone={activities.finishCelebration} nowMs={activities.nowMs} paused={modalOpen} focusY={panelOpen ? 0.27 : 0.5} />
+      </View>
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: timeOfDayTint(localTime.getHours() + localTime.getMinutes() / 60) }]} />
+      {healFxKey > 0 ? (
+        <PixelFx key={healFxKey} name="heal" scale={1.6} onDone={() => setHealFxKey(0)} style={styles.healFxLayer} />
+      ) : null}
       <FocusedBackgroundAudio source={BGM_CLUB_LOUNGE} enabled={arcadeState.soundEnabled} />
-      {/* 최초 1회 프롤로그 + 3단계 튜토리얼 배너 */}
-      {saveProtection === 'ready' && state.storyLegacyChoice !== 'pending' ? <OnboardingOverlay /> : null}
 
       {/* 안드로이드 하드웨어 뒤로가기 종료 확인 */}
       <ExitConfirmDialog
         visible={backExit.confirming}
         onCancel={backExit.cancel}
         onConfirm={backExit.confirm}
+        reduceMotion={reduceMotion}
       />
 
+      <Modal visible={actionChoiceOpen && availableActions.length > 1} transparent animationType={fadeTransition} onRequestClose={() => setActionChoiceAt(null)}>
+        <View style={[styles.modalBackdrop, { paddingTop: insets.top + Spacing.md, paddingBottom: insets.bottom + Spacing.md }]}>
+          <ScrollView style={hud.choiceScroll} contentContainerStyle={hud.choiceContent}>
+            <AppText variant="sectionTitle" style={hud.choiceTitle}>무엇을 할까요?</AppText>
+            {availableActions.map((item, index) => (
+              <SeniorButton key={`${item.label}-${index}`} testID={`world-choice-${index}`} label={item.label} variant="primary"
+                onPress={() => { setActionChoiceAt(null); item.run(); }} />
+            ))}
+            <SeniorButton testID="world-choice-close" label="닫기" variant="secondary" onPress={() => setActionChoiceAt(null)} />
+          </ScrollView>
+        </View>
+      </Modal>
+
       {/* 0. 오프라인 방치 보상 수령 모달 */}
-      {pendingOfflineReward && saveProtection === 'ready' && state.storyLegacyChoice !== 'pending' ? (
-        <Modal visible transparent animationType="fade">
-          <View style={styles.modalBackdrop}>
+      {pendingOfflineReward && saveProtection === 'ready' && state.storyLegacyChoice !== 'pending' && !prologueOpen ? (
+        <Modal visible transparent animationType={fadeTransition}>
+          <View style={[styles.modalBackdrop, { paddingTop: insets.top + Spacing.md, paddingBottom: insets.bottom + Spacing.md }]}>
+            <ScrollView style={hud.rewardScroll}>
             <View style={styles.offlineRewardCard}>
               <AppText style={{ fontSize: 40, textAlign: 'center' }}>🎁</AppText>
               <AppText variant="sectionTitle" style={styles.offlineTitle}>
@@ -220,12 +376,13 @@ export function VillageMapScreen() {
                 onPress={() => claimOfflineReward(false)}
               />
             </View>
+            </ScrollView>
           </View>
         </Modal>
       ) : null}
 
       {/* 유대 에피소드는 선택과 그 결과를 저장해 다시 열어볼 수 있습니다. */}
-      <Modal visible={Boolean(activeEpisode)} transparent animationType="slide" onRequestClose={() => setEpisodeId(null)}>
+      <Modal visible={Boolean(activeEpisode)} transparent animationType={slideTransition} onRequestClose={() => setEpisodeId(null)}>
         <View style={styles.modalBackdrop}>
           <ScrollView style={styles.storyCutsceneCard} contentContainerStyle={styles.storyCutsceneContent}>
             {activeEpisode && episodeBond ? <>
@@ -255,7 +412,8 @@ export function VillageMapScreen() {
       </Modal>
 
       {/* 여섯 막의 이야기와 CP 등급은 각각 표시합니다. */}
-      <Modal visible={storyModalOpen} transparent animationType="slide" onRequestClose={() => setStoryModalOpen(false)}>
+      <Modal visible={storyModalOpen} transparent animationType={slideTransition} onRequestClose={() => setStoryModalOpen(false)}>
+        {storyModalOpen ? (
         <View style={styles.modalBackdrop}>
           <ScrollView style={styles.storyCutsceneCard} contentContainerStyle={styles.storyCutsceneContent}>
             <View style={styles.storyHeaderBadge}>
@@ -336,9 +494,12 @@ export function VillageMapScreen() {
                 variant="secondary"
                 disabled={chapterStatus.kind !== 'ready'}
                 onPress={() => {
+                  if (!advanceChapter(arcadeState.cp)) {
+                    Alert.alert('이야기 진행 안내', '진행을 저장하지 못했거나 조건이 바뀌었어요. 다시 확인해 주세요.');
+                    return;
+                  }
                   playSfx('chime', arcadeState.soundEnabled);
                   setPromotionFx(true);
-                  advanceChapter(arcadeState.cp);
                   setStoryModalOpen(false);
                 }}
               />
@@ -346,10 +507,11 @@ export function VillageMapScreen() {
             </View>
           </ScrollView>
         </View>
+        ) : null}
       </Modal>
 
       {/* 이전 4막이 어느 이야기인지 알 수 없으므로 직접 이어갈 경로를 고릅니다. */}
-      <Modal visible={saveProtection === 'ready' && state.storyLegacyChoice === 'pending'} transparent animationType="fade" onRequestClose={() => undefined}>
+      <Modal visible={saveProtection === 'ready' && state.storyLegacyChoice === 'pending'} transparent animationType={fadeTransition} onRequestClose={() => undefined}>
         <View style={styles.modalBackdrop}>
           <ScrollView style={styles.storyCutsceneCard} contentContainerStyle={styles.storyCutsceneContent}>
             <AppText variant="sectionTitle" style={{ color: '#FCF9F2' }}>이전 이야기 이어가기</AppText>
@@ -388,1191 +550,272 @@ export function VillageMapScreen() {
         </View>
       ) : null}
 
-      {/* 1. 시니어 RPG 상태 헤더 (활력 HP, 연륜 EXP, 마을 도토리, 급수) */}
-      <View style={styles.statusPlaque}>
-        <View style={styles.plaqueHeaderRow}>
-          <Image source={MASTER_BADGE} style={styles.badgeSmall} contentFit="contain" />
-          <View style={{ flex: 1 }}>
-            <View style={styles.tagRow}>
-              <View style={styles.villageTag}>
-                <AppText variant="caption" style={styles.villageTagText}>청솔 시니어 마을</AppText>
-              </View>
-              <AppText variant="caption" style={{ color: '#F0BF4F', fontFamily: FontWeights.strong }}>
-                {rankProgress.current.label}
-              </AppText>
-            </View>
-            <AppText variant="title" style={{ color: '#FCF9F2' }}>
-              주인공 어르신의 하루
-            </AppText>
+      {/* ── 상단 HUD: 상태 패널 + 원형 버튼 ── */}
+      <View pointerEvents="box-none" style={[hud.top, { paddingTop: insets.top + Spacing.sm }]}>
+        <View style={hud.statusCard} onLayout={(event) => setStatusHeight(event.nativeEvent.layout.height)} accessible accessibilityLabel={`${rankProgress.current.label}, 활력 ${state.stats.vitality}, 도토리 ${state.stats.acorns}개, 마음 온도 ${heartWarmth}도`}>
+          <View style={hud.statusHeader}>
+            <Image source={MASTER_BADGE} style={hud.badge} contentFit="contain" />
+            <AppText variant="caption" style={hud.rankText}>{rankProgress.current.label}</AppText>
           </View>
-        </View>
-
-        <View style={styles.statsBarGrid}>
-          <View style={styles.statBarBox}>
-            <View style={styles.barLabelRow}>
-              <AppText variant="caption" style={{ color: '#E4EDDA' }}>활력 (HP)</AppText>
-              <AppText variant="caption" style={{ color: '#F0BF4F', fontVariant: ['tabular-nums'] }}>
-                {state.stats.vitality} / {state.stats.maxVitality}
-              </AppText>
-            </View>
-            <View style={styles.barTrack}>
-              <View
-                style={[
-                  styles.barFillVitality,
-                  { width: `${Math.round((state.stats.vitality / state.stats.maxVitality) * 100)}%` },
-                ]}
-              />
-            </View>
+          <View style={hud.barTrack}>
+            <View style={[hud.barFill, { width: `${Math.round((state.stats.vitality / state.stats.maxVitality) * 100)}%` }]} />
           </View>
-
-          <View style={styles.statBarBox}>
-            <View style={styles.barLabelRow}>
-              <AppText variant="caption" style={{ color: '#E4EDDA' }}>연륜 (EXP)</AppText>
-              <AppText variant="caption" style={{ color: '#F0BF4F', fontVariant: ['tabular-nums'] }}>
-                {state.stats.wisdomExp} EXP
-              </AppText>
-            </View>
-            <View style={styles.barTrack}>
-              <View
-                style={[
-                  styles.barFillWisdom,
-                  { width: `${Math.min(100, Math.round((state.stats.wisdomExp / 1000) * 100))}%` },
-                ]}
-              />
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.currencyRow}>
-          <AppText variant="caption" style={styles.currencyText}>
-            마을 도토리: 🌰 {state.stats.acorns}개 · 방치 생산: +{productionRates.acornsPerSec}개/초 · 덕망: 🎖 {state.stats.reputation}점
+          <AppText variant="caption" style={hud.statusText}>
+            활력 {state.stats.vitality} · 🌰 {state.stats.acorns} · 마음 {heartWarmth}°
           </AppText>
+        </View>
+        <View style={hud.buttonColumn}>
+          <HudButton wide={wideHud} testID="hud-journal" icon={HUD_BAG} label="가방" onPress={() => setSheet('journal')} />
+          <HudButton wide={wideHud} testID="btn-open-story-cutscene" icon={HUD_STORY} label="이야기" onPress={() => setStoryModalOpen(true)} />
+          <HudButton wide={wideHud} testID="hud-menu" icon={HUD_MENU} label="메뉴" onPress={() => setSheet('menu')} />
+          <HudButton wide={wideHud} testID="hud-map" icon={HUD_MAP} label="지도" onPress={() => setMinimapOpen(true)} />
         </View>
       </View>
 
-      {/* 4단계 인생 드라마 컷신 배너 */}
-      <Pressable
-        testID="btn-open-story-cutscene"
-        accessibilityRole="button"
-        onPress={() => setStoryModalOpen(true)}
-        style={styles.storyProgressionBanner}>
-        <View style={{ flex: 1 }}>
-          <AppText variant="caption" style={{ color: '#F0BF4F', fontFamily: FontWeights.strong }}>
-            인생 6막 승단 서사: {currentChapter.title}
-          </AppText>
-          <AppText variant="body" style={{ color: '#FCF9F2', fontSize: 15 }}>
-            시험: {currentChapter.climaxTrial.description}
+      {/* 현재 위치 · 안내 토스트 · 동행 표시 */}
+      <View pointerEvents="none" style={[hud.toastStack, { top: hudDetailTop, right: wideHud ? 112 : 96 }]}>
+        <View style={hud.locationPill}>
+          <AppText variant="caption" style={hud.locationText}>
+            {regionName(state.mapId, state.playerPos.x, state.playerPos.y)}{compactLocation ? '' : ` · ${currentTile.name ?? '길'}`}
           </AppText>
         </View>
-        <View style={styles.storyEnterPill}>
-          <AppText variant="caption" style={{ color: '#FCF9F2', fontFamily: FontWeights.strong }}>
-            이야기 보기 ▶
-          </AppText>
-        </View>
-      </Pressable>
-
-      {/* 1-1. 동행 산책 카드 — NPC와 함께 걷는 루틴 */}
-      {companionId ? (
-        <Card style={styles.companionCard}>
-          <View style={styles.companionRow}>
-            <Image
-              source={portraitFor(companionId)}
-              style={styles.companionPortrait}
-              contentFit="cover"
-              accessibilityLabel={`${NPC_DISPLAY[companionId].name} 초상화`}
-            />
-            <View style={{ flex: 1, gap: 2 }}>
-              <AppText variant="bodyStrong" style={{ color: '#182620' }}>
-                {NPC_DISPLAY[companionId].name}와 산책 중 🚶
-              </AppText>
-              <AppText variant="caption" style={{ color: '#526451' }}>
-                유대 {bondProgress(getBond(bonds, companionId).points).label} · 마음 온도 {heartWarmth}°
-              </AppText>
-              <View style={styles.companionTrack}>
-                <View
-                  style={[
-                    styles.companionFill,
-                    { width: `${Math.round(bondProgress(getBond(bonds, companionId).points).ratio * 100)}%` },
-                  ]}
-                />
-              </View>
-            </View>
+        {companionId ? (
+          <View style={hud.locationPill}>
+            <AppText variant="caption" style={hud.locationText}>{NPC_DISPLAY[companionId].name}와 산책 중</AppText>
           </View>
-          <View style={styles.companionActions}>
-            <SeniorButton
-              testID="btn-claim-daily-walk"
-              label={
-                getBond(bonds, companionId).lastWalkDay === new Date(
-                  new Date().getFullYear(),
-                  new Date().getMonth(),
-                  new Date().getDate(),
-                )
-                  .toISOString()
-                  .slice(0, 10)
-                  ? '오늘 산책 완료 ✔'
-                  : '오늘의 산책 마치기 (유대 +15)'
-              }
-              variant="primary"
-              onPress={handleClaimDailyWalk}
-            />
-            <SeniorButton
-              testID="btn-stop-companion"
-              label="산책 마치기 · 헤어지기"
-              variant="secondary"
-              onPress={() => {
-                stopCompanion();
-                setActionNotice('산책을 마치고 아침 인사를 나눴습니다.');
-              }}
-            />
-          </View>
-        </Card>
-      ) : null}
-
-      {/* 2. 상쾌한 아침 건강 2종 루틴 (시니어 생활 경험) */}
-      <View style={styles.morningRoutineCard}>
-        <View style={{ flex: 1 }}>
-          <SeniorButton
-            testID="btn-morning-gym"
-            label={state.stats.dailyMorningGymDone ? '체조 완료 ✔' : '아침 체조하기 🧘'}
-            variant={state.stats.dailyMorningGymDone ? 'secondary' : 'primary'}
-            onPress={handleMorningGym}
-          />
-        </View>
-        <View style={{ flex: 1 }}>
-          <SeniorButton
-            testID="btn-take-meds"
-            label={state.stats.dailyMedicationTaken ? '약 복용 완료 ✔' : '혈압약 복용 💊'}
-            variant={state.stats.dailyMedicationTaken ? 'secondary' : 'accent'}
-            onPress={handleTakeMedication}
-          />
-        </View>
+        ) : null}
+        {actionNotice && !panelOpen ? noticeToast : null}
       </View>
 
-      {actionNotice ? (
-        <View style={styles.noticeBox}>
-          <AppText variant="bodyStrong" style={{ color: '#0E5142' }}>{actionNotice}</AppText>
+      {/* 최초 1회 프롤로그 + 3단계 튜토리얼 배너 (상단 HUD 아래에 띄웁니다) */}
+      {saveProtection === 'ready' && state.storyLegacyChoice !== 'pending' ? (
+        <View pointerEvents="box-none" style={[hud.tutorialSlot, { top: hudDetailTop }]}>
+          <OnboardingOverlay reduceMotion={reduceMotion} />
         </View>
       ) : null}
 
-      {/* 3. 모드 탭 전환 (청솔마을 맵 vs 퀘스트 일지/가방) */}
-      <View style={styles.tabToggleRow}>
-        <Pressable
-          testID="tab-toggle-map"
-          accessibilityRole="button"
-          onPress={() => setActiveTab('map')}
-          style={[styles.toggleBtn, activeTab === 'map' && styles.toggleBtnActive]}>
-          <AppText
-            variant="caption"
-            style={{ color: activeTab === 'map' ? '#182620' : '#FCF9F2', fontFamily: FontWeights.strong }}>
-            🏡 마을 걷기
-          </AppText>
-        </Pressable>
-        <Pressable
-          testID="tab-toggle-idle"
-          accessibilityRole="button"
-          onPress={() => setActiveTab('idle')}
-          style={[styles.toggleBtn, activeTab === 'idle' && styles.toggleBtnActive]}>
-          <AppText
-            variant="caption"
-            style={{ color: activeTab === 'idle' ? '#182620' : '#FCF9F2', fontFamily: FontWeights.strong }}>
-            🌾 방치 시설
-          </AppText>
-        </Pressable>
-        <Pressable
-          testID="tab-toggle-story"
-          accessibilityRole="button"
-          onPress={() => setActiveTab('story')}
-          style={[styles.toggleBtn, activeTab === 'story' && styles.toggleBtnActive]}>
-          <AppText
-            variant="caption"
-            style={{ color: activeTab === 'story' ? '#182620' : '#FCF9F2', fontFamily: FontWeights.strong }}>
-            📖 인생 6막
-          </AppText>
-        </Pressable>
-        <Pressable
-          testID="tab-toggle-journal"
-          accessibilityRole="button"
-          onPress={() => setActiveTab('journal')}
-          style={[styles.toggleBtn, activeTab === 'journal' && styles.toggleBtnActive]}>
-          <AppText
-            variant="caption"
-            style={{ color: activeTab === 'journal' ? '#182620' : '#FCF9F2', fontFamily: FontWeights.strong }}>
-            📜 일지/가방
-          </AppText>
-        </Pressable>
-      </View>
-
-      {activeTab === 'map' ? (
-        <>
-          {/* 4. 15 x 15 픽셀 타일 청솔마을 뷰포트 (카메라가 주인공을 따라갑니다) */}
-          <View style={styles.mapViewportFrame}>
-            <PixelVillageMap />
-
-            {/* 체조·약 복용 회복 연출 — pixelfx `holy/heal` */}
-            {healFxKey > 0 ? (
-              <PixelFx
-                key={healFxKey}
-                name="heal"
-                scale={1.6}
-                onDone={() => setHealFxKey(0)}
-                style={styles.healFxLayer}
-              />
-            ) : null}
-
-            {/* 현재 발 딛은 위치 안내 캡션 */}
-            <View style={styles.locationBanner} pointerEvents="none">
-              <AppText variant="caption" style={styles.locationBannerText}>
-                현재 위치: {currentTile.name ?? '마을 길'} ({state.playerPos.x}, {state.playerPos.y})
-              </AppText>
+      {/* ── 하단: RPG 대화창 + 조이스틱 + 행동 버튼 ── */}
+      <View pointerEvents="box-none" style={[hud.bottom, { paddingBottom: insets.bottom + Spacing.md }]}>
+        {/* 창이 열려 있으면 안내는 창 바로 위에 — 위로 올린 주인공을 가리지 않게 */}
+        {actionNotice && panelOpen ? noticeToast : null}
+        {activities.overlay}
+        {dialogueNpc && !activities.overlay ? (
+          <View style={[styles.dialogueCard, hud.dialogue, { maxHeight: viewportHeight * 0.42 }]}>
+            <View style={styles.dialogueHeader}>
+              <View style={styles.npcPortraitCircle}>
+                <Image source={portraitFor(dialogueNpc.id)} style={styles.npcPortraitImage} contentFit="cover" accessibilityLabel={`${dialogueNpc.name} 초상화`} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <AppText variant="caption" style={{ color: '#D8B384' }}>{dialogueNpc.title}</AppText>
+                <AppText variant="sectionTitle" style={{ color: '#FCF9F2' }}>{dialogueNpc.name}</AppText>
+              </View>
+              <Pressable testID="btn-close-dialogue" accessibilityRole="button" accessibilityLabel="대화창 닫기" onPress={() => { setCompanionDialogueOpen(false); setNpcLine(null); setDismissedNpcId(dialogueNpc.id); }} style={hud.closeBtn}>
+                <AppText variant="bodyStrong" style={{ color: '#FCF9F2' }}>✕</AppText>
+              </Pressable>
             </View>
-          </View>
-
-          {/* 5. 고전 원목 대화창 & 시설 입장 액션 */}
-          {nearbyNpc ? (
-            <Card style={styles.dialogueCard}>
-              <View style={styles.dialogueHeader}>
-                <View style={styles.npcPortraitCircle}>
-                  <Image
-                    source={portraitFor(nearbyNpc.id)}
-                    style={styles.npcPortraitImage}
-                    contentFit="cover"
-                    accessibilityLabel={`${nearbyNpc.name} 초상화`}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <AppText variant="caption" style={{ color: '#D8B384' }}>{nearbyNpc.title}</AppText>
-                  <AppText variant="sectionTitle" style={{ color: '#FCF9F2' }}>{nearbyNpc.name}</AppText>
-                </View>
-              </View>
-              <View style={styles.dialogueBody}>
-                {nearbyNpc.dialogue.map((line, i) => (
-                  <AppText key={i} variant="body" style={styles.dialogueLine}>
-                    {`"${line}"`}
-                  </AppText>
-                ))}
-                {nearbyNpc.id === 'tea_manager' && state.currentChapterId === 'chapter_4' && !state.storyActionFlags.reopen_tea_room ? (
-                  <AppText variant="body" style={styles.dialogueLine}>다실은 손님맞이를 쉬고 있어요. 준비를 마치면 함께 문을 열어요.</AppText>
-                ) : nearbyNpc.id === 'tea_manager' && state.storyActionFlags.reopen_tea_room ? (
-                  <AppText variant="body" style={styles.dialogueLine}>다실이 다시 손님을 맞고 있습니다.</AppText>
-                ) : null}
-                {nearbyNpc.id === 'tea_manager' && state.currentChapterId === 'chapter_4' && state.storyActionFlags.collect_supplies && !state.storyActionFlags.deliver_supplies ? (
-                  <AppText variant="body" style={styles.dialogueLine}>강 원장의 차와 약재 꾸러미를 가지고 있습니다.</AppText>
-                ) : null}
-              </View>
-              <View style={styles.dialogueActions}>
-                {STORY_ACTIONS.filter((action) => action.npcId === nearbyNpc.id && isStoryActionAvailable(state, action.id)).map((action) => (
-                  <SeniorButton
-                    key={action.id}
-                    testID={`story-action-${action.id}`}
-                    label={action.label}
-                    variant="accent"
-                    onPress={() => {
-                      performStoryAction(action.id);
-                      setActionNotice(action.notice);
-                    }}
-                  />
-                ))}
-                {BOND_EPISODES.filter((episode) => episode.npcId === nearbyNpc.id).map((episode) => (
-                  <SeniorButton
-                    key={episode.id}
-                    testID={`bond-episode-${episode.id}`}
-                    label={`${episode.title} · 유대 ${episode.threshold}${getBond(bonds, episode.npcId).scenesSeen.includes(episode.id) ? ' ✔' : ''}`}
-                    disabled={getBond(bonds, episode.npcId).points < episode.threshold}
-                    variant="secondary"
-                    onPress={() => setEpisodeId(episode.id)}
-                  />
-                ))}
+            <ScrollView contentContainerStyle={{ gap: Spacing.sm }}>
+              <AppText variant="body" accessibilityLiveRegion="polite" style={styles.dialogueLine}>{`"${companionDialogueNpc && companionId ? WALK_LINES[companionId][companionLineIndex % WALK_LINES[companionId].length] : dialogueNpc.dialogue[(npcLine?.npcId === dialogueNpc.id ? npcLine.index : 0) % dialogueNpc.dialogue.length]}"`}</AppText>
+              {companionDialogueNpc && companionId && WALK_LINES[companionId].length > 1 ? (
+                <SeniorButton label="다른 이야기 듣기" variant="secondary" onPress={() => setCompanionLineIndex((index) => index + 1)} />
+              ) : !companionDialogueNpc && dialogueNpc.dialogue.length > 1 ? (
+                <SeniorButton label="다른 이야기 듣기" variant="secondary" onPress={() => setNpcLine((current) => ({ npcId: dialogueNpc.id, index: current?.npcId === dialogueNpc.id ? current.index + 1 : 1 }))} />
+              ) : null}
+              {!companionDialogueNpc && dialogueNpc.id === 'tea_manager' && state.currentChapterId === 'chapter_4' && !state.storyActionFlags.reopen_tea_room ? (
+                <AppText variant="body" style={styles.dialogueLine}>다실은 손님맞이를 쉬고 있어요. 준비를 마치면 함께 문을 열어요.</AppText>
+              ) : !companionDialogueNpc && dialogueNpc.id === 'tea_manager' && state.storyActionFlags.reopen_tea_room ? (
+                <AppText variant="body" style={styles.dialogueLine}>다실이 다시 손님을 맞고 있습니다.</AppText>
+              ) : null}
+              {!companionDialogueNpc && dialogueNpc.id === 'tea_manager' && state.currentChapterId === 'chapter_4' && state.storyActionFlags.collect_supplies && !state.storyActionFlags.deliver_supplies ? (
+                <AppText variant="body" style={styles.dialogueLine}>강 원장의 차와 약재 꾸러미를 가지고 있습니다.</AppText>
+              ) : null}
+              {STORY_ACTIONS.filter((action) => !companionDialogueNpc && action.npcId === dialogueNpc.id && isStoryActionAvailable(state, action.id)).map((action) => (
+                <SeniorButton key={action.id} testID={`story-action-${action.id}`} label={action.label} variant="accent"
+                  onPress={() => { setActionNotice(performStoryAction(action.id) ? action.notice : '행동을 저장하지 못했거나 조건이 바뀌었어요. 다시 확인해 주세요.'); }} />
+              ))}
+              {dialogueNpc.facilityRoute && !companionDialogueNpc ? (
                 <SeniorButton
-                  testID="btn-walk-together"
-                  label={
-                    companionId === nearbyNpc.id ? '산책 중입니다 ✔' : '같이 걸을까요?'
+                  testID="btn-enter-facility"
+                  label={dialogueNpc.id === 'tea_manager' && state.currentChapterId === 'chapter_4' && !state.storyActionFlags.reopen_tea_room
+                    ? '사천성 연습하기 ▶' : dialogueNpc.facilityLabel ?? '시설 입장하기 ▶'}
+                  variant="accent"
+                  onPress={() => enterPlace(dialogueNpc.facilityRoute!)}
+                />
+              ) : null}
+              <SeniorButton
+                testID="btn-walk-together"
+                label={companionId === dialogueNpc.id ? '산책 마치기 · 헤어지기' : '같이 걸을까요?'}
+                variant="secondary"
+                onPress={() => {
+                  if (companionId === dialogueNpc.id) {
+                    setActionNotice(stopCompanion() ? '산책을 마치고 인사를 나눴습니다.' : '산책 기록을 저장하지 못했어요. 다시 시도해 주세요.');
+                    setCompanionDialogueOpen(false);
+                    return;
                   }
-                  variant="secondary"
-                  onPress={() => {
-                    if (companionId === nearbyNpc.id) return;
-                    startCompanion(nearbyNpc.id as NpcId);
+                  if (startCompanion(dialogueNpc.id as NpcId)) {
+                    setCompanionDialogueOpen(false);
                     playSfx('chime', arcadeState.soundEnabled);
-                    setActionNotice(
-                      `${nearbyNpc.name}과 함께 마을을 걷기 시작했습니다.`,
-                    );
-                  }}
-                />
-                {nearbyNpc.facilityRoute ? (
-                  <SeniorButton
-                    testID="btn-enter-facility"
-                    label={nearbyNpc.id === 'tea_manager' && state.currentChapterId === 'chapter_4' && !state.storyActionFlags.reopen_tea_room
-                      ? '사천성 연습하기 ▶' : nearbyNpc.facilityLabel ?? '시설 입장하기 ▶'}
-                    variant="accent"
-                    onPress={() => {
-                      // 튜토리얼 3단계는 파크골프 입장으로만 완료됩니다.
-                      if (nearbyNpc.facilityRoute === '/clubs') advanceOnboarding('openedParkGolf');
-                      router.push({ pathname: nearbyNpc.facilityRoute, params: { storyChapter: '' } } as Href);
-                    }}
-                  />
-                ) : null}
-              </View>
-            </Card>
-          ) : (
-            <Card style={styles.strollCard}>
-              <AppText variant="bodyStrong" style={{ color: '#182620' }}>
-                마을 산책 중입니다
-              </AppText>
-              <AppText variant="caption" style={{ color: '#526451' }}>
-                아래 십자키(D-pad)를 눌러 마을 길을 따라 걸어가 보세요. 마을회관은 북쪽, 파크골프장·매화다실은
-                서쪽, 송학기원·청솔 한약방은 동쪽에 있습니다.
-              </AppText>
-            </Card>
-          )}
-
-          {/* 6. 시니어 친화 큼직한 레트로 4방향 십자키 컨트롤 (56dp 타깃) */}
-          <View style={styles.dpadContainer}>
-            <Pressable
-              testID="dpad-up"
-              accessibilityRole="button"
-              accessibilityLabel="위로 걷기"
-              onPress={() => handleMove(0, -1)}
-              style={styles.dpadBtn}>
-              <AppText variant="title" style={styles.dpadArrowText}>▲</AppText>
-            </Pressable>
-            <View style={styles.dpadMiddleRow}>
-              <Pressable
-                testID="dpad-left"
-                accessibilityRole="button"
-                accessibilityLabel="왼쪽으로 걷기"
-                onPress={() => handleMove(-1, 0)}
-                style={styles.dpadBtn}>
-                <AppText variant="title" style={styles.dpadArrowText}>◀</AppText>
-              </Pressable>
-              <View style={styles.dpadCenterHub}>
-                <AppText variant="caption" style={{ color: '#D8B384', fontSize: 11 }}>이동</AppText>
-              </View>
-              <Pressable
-                testID="dpad-right"
-                accessibilityRole="button"
-                accessibilityLabel="오른쪽으로 걷기"
-                onPress={() => handleMove(1, 0)}
-                style={styles.dpadBtn}>
-                <AppText variant="title" style={styles.dpadArrowText}>▶</AppText>
-              </Pressable>
-            </View>
-            <Pressable
-              testID="dpad-down"
-              accessibilityRole="button"
-              accessibilityLabel="아래로 걷기"
-              onPress={() => handleMove(0, 1)}
-              style={styles.dpadBtn}>
-              <AppText variant="title" style={styles.dpadArrowText}>▼</AppText>
-            </Pressable>
-          </View>
-        </>
-      ) : activeTab === 'idle' ? (
-        /* 방치형 시설 및 동료 탭 */
-        <View style={{ gap: Spacing.md }}>
-          <SectionHeader title="마을 방치 수련 시설" description="시설 레벨을 올리고 동료를 배치해 자동 수급량을 늘리세요" />
-          {state.facilities.map((fac) => {
-            const assignedPartner = state.partners.find((p) => p.assignedFacilityId === fac.id);
-            const canUpgrade = state.stats.acorns >= fac.upgradeCost;
-            return (
-              <Card key={fac.id} style={styles.facilityCard}>
-                <View style={styles.facilityTopRow}>
-                  <View style={{ flex: 1 }}>
-                    <AppText variant="bodyStrong" style={{ color: '#182620' }}>
-                      {fac.name} (Lv.{fac.level})
-                    </AppText>
-                    <AppText variant="caption" style={{ color: '#526451' }}>
-                      기본 생산: +{fac.baseAcornsPerSec} 도토리/초 · +{fac.baseExpPerSec} EXP/초
-                    </AppText>
-                  </View>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => upgradeFacility(fac.id)}
-                    style={[styles.upgradeBtn, !canUpgrade && { opacity: 0.55 }]}>
-                    <AppText variant="caption" style={{ color: '#FCF9F2', fontFamily: FontWeights.strong }}>
-                      레벨업 (🌰 {fac.upgradeCost}개)
-                    </AppText>
-                  </Pressable>
-                </View>
-                <View style={styles.partnerAssignRow}>
-                  <AppText variant="caption" style={{ color: '#0E5142', fontFamily: FontWeights.emphasis }}>
-                    담당 파트너: {assignedPartner ? `${assignedPartner.avatar} ${assignedPartner.name} (${assignedPartner.roleTitle})` : '미배치 (효과 없음)'}
-                  </AppText>
-                </View>
-              </Card>
-            );
-          })}
-
-          <SectionHeader title="영입 가능한 이웃 동료" description="마을 어르신을 영입하고 시설에 배치하세요" />
-          <View style={{ gap: Spacing.sm }}>
-            {state.partners.map((partner) => {
-              const canRecruit = !partner.recruited && state.stats.acorns >= partner.recruitCost;
-              return (
-                <Card key={partner.id} style={styles.partnerCard}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
-                    <AppText style={{ fontSize: 32 }}>{partner.avatar}</AppText>
-                    <View style={{ flex: 1 }}>
-                      <AppText variant="bodyStrong" style={{ color: '#182620' }}>
-                        {partner.name} · {partner.roleTitle}
-                      </AppText>
-                      <AppText variant="caption" style={{ color: '#526451' }}>
-                        {partner.description}
-                      </AppText>
-                    </View>
-                    {partner.recruited ? (
-                      <View style={{ flexDirection: 'row', gap: 4 }}>
-                        {(['parkgolf', 'alkkagi', 'sacheonseong'] as const).map((fid) => (
-                          <Pressable
-                            key={fid}
-                            onPress={() => assignPartnerToFacility(partner.id, fid)}
-                            style={[
-                              styles.assignMiniBtn,
-                              partner.assignedFacilityId === fid && styles.assignMiniBtnActive,
-                            ]}>
-                            <AppText variant="caption" style={{ fontSize: 11, color: partner.assignedFacilityId === fid ? '#FCF9F2' : '#182620' }}>
-                              {fid === 'parkgolf' ? '골프' : fid === 'alkkagi' ? '기원' : '다실'}
-                            </AppText>
-                          </Pressable>
-                        ))}
-                      </View>
-                    ) : (
-                      <Pressable
-                        accessibilityRole="button"
-                        onPress={() => recruitPartner(partner.id)}
-                        style={[styles.upgradeBtn, !canRecruit && { opacity: 0.55 }]}>
-                        <AppText variant="caption" style={{ color: '#FCF9F2', fontFamily: FontWeights.strong }}>
-                          영입 (🌰 {partner.recruitCost}개)
-                        </AppText>
-                      </Pressable>
-                    )}
-                  </View>
-                </Card>
-              );
-            })}
-          </View>
-        </View>
-      ) : activeTab === 'story' ? (
-        /* 4단계 인생 스토리 열람 탭 */
-        <View style={{ gap: Spacing.md }}>
-          <SectionHeader title="인생 6막 승단 스토리" description="어르신의 발자취와 다음 시험을 확인하세요" />
-          <Card style={styles.storyCardLarge}>
-            <AppText variant="caption" style={{ color: '#D8B384', fontFamily: FontWeights.strong }}>
-              현재 진행: {currentChapter.title}
-            </AppText>
-            <AppText variant="sectionTitle" style={{ color: '#FCF9F2' }}>
-              필요 급수: {currentChapter.rankRequirement}
-            </AppText>
-            <View style={styles.storyDialogueBox}>
-              <AppText variant="body" style={styles.storyLineText}>
-                {chapterStatus.kind === 'finished' ? '여섯 막 이야기를 마쳤습니다.' : recordedLegacyChapter ? '이전 완료 기록을 이어갑니다.' : '시련과 마을에서 함께할 일을 확인해 주세요.'}
-              </AppText>
-            </View>
-            <SeniorButton
-              label="이야기와 진행 상황 보기 ▶"
-              variant="accent"
-              onPress={() => setStoryModalOpen(true)}
-            />
-          </Card>
-        </View>
-      ) : (
-        /* 퀘스트 저널 및 가방 탭 */
-        <View style={{ gap: Spacing.md }}>
-          <Card style={styles.dailyCard}>
-            <SectionHeader
-              title="오늘의 일과"
-              description="매일 자정에 새로워집니다 · 파크골프·알까기·사천성 각 1회"
-            />
-            {missionRows.map((mission) => (
-              <View key={mission.key} style={styles.missionRow}>
-                <Image
-                  source={mission.icon}
-                  style={styles.missionIcon}
-                  contentFit="contain"
-                  accessible={false}
-                  accessibilityElementsHidden
-                  importantForAccessibility="no-hide-descendants"
-                />
-                <View style={{ flex: 1 }}>
-                  <AppText variant="bodyStrong" style={{ color: '#182620' }}>
-                    {mission.title}
-                  </AppText>
-                  <AppText variant="caption" style={{ color: '#526451' }}>
-                    {mission.subtitle}
-                  </AppText>
-                </View>
-                <AppText
-                  variant="caption"
-                  style={{
-                    color: mission.done ? '#236B4D' : '#855B00',
-                    fontFamily: FontWeights.strong,
-                  }}>
-                  {mission.done ? '완료 ✔' : '남음'}
-                </AppText>
-              </View>
-            ))}
-
-            <View style={styles.dailyDivider} />
-
-            <View style={styles.attendanceRow}>
-              <Image
-                source={DAILY_SEAL_STAMP}
-                style={styles.attendanceSeal}
-                contentFit="contain"
-                accessible={false}
-                accessibilityElementsHidden
-                importantForAccessibility="no-hide-descendants"
+                    setActionNotice(`${dialogueNpc.name}과 함께 마을을 걷기 시작했습니다.`);
+                  } else setActionNotice('산책을 시작하지 못했어요. 잠시 뒤 다시 시도해 주세요.');
+                }}
               />
-              <View style={{ flex: 1, gap: 2 }}>
-                <AppText variant="bodyStrong" style={{ color: '#182620' }}>
-                  아침 개근 도장
-                </AppText>
-                <AppText variant="caption" style={{ color: '#526451' }}>
-                  하루 한 번 개근 도장을 찍고 인장을 받으세요
-                </AppText>
-              </View>
-            </View>
-            <SeniorButton
-              testID="btn-claim-attendance-stamp"
-              label={
-                dailyMissions.attendanceStampClaimed
-                  ? '오늘 개근 도장을 찍었습니다 ✔'
-                  : '개근 도장 찍기'
-              }
-              variant={dailyMissions.attendanceStampClaimed ? 'secondary' : 'accent'}
-              disabled={dailyMissions.attendanceStampClaimed}
-              onPress={handleClaimAttendanceStamp}
-            />
-          </Card>
+              {companionId === dialogueNpc.id ? (
+                <SeniorButton testID="btn-claim-daily-walk" label={walkClaimAvailable ? '오늘의 산책 마치기 (유대 +15)' : '오늘 산책 기록 완료 ✔'} variant={walkClaimAvailable ? 'primary' : 'secondary'} disabled={!walkClaimAvailable} onPress={handleClaimDailyWalk} />
+              ) : null}
+              {BOND_EPISODES.filter((episode) => episode.npcId === dialogueNpc.id).map((episode) => (
+                <SeniorButton
+                  key={episode.id}
+                  testID={`bond-episode-${episode.id}`}
+                  label={`${episode.title} · 유대 ${episode.threshold}${getBond(bonds, episode.npcId).scenesSeen.includes(episode.id) ? ' ✔' : ''}`}
+                  disabled={getBond(bonds, episode.npcId).points < episode.threshold}
+                  variant="secondary"
+                  onPress={() => setEpisodeId(episode.id)}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
+        <View pointerEvents="box-none" style={hud.controlsRow}>
+          <VirtualJoystick onVector={handleVector} onRelease={savePosition} onStep={handleStep} disabled={modalOpen || !activities.active} reduceMotion={reduceMotion} />
+          <Pressable
+            testID="btn-world-action"
+            accessibilityRole="button"
+            accessibilityLabel={availableActions.length > 1
+              ? `활동 ${availableActions.length}가지 선택: ${availableActions.map((item) => item.label.replace(/\s+/g, ' ')).join(', ')}`
+              : worldAction ? worldAction.label.replace(/\s+/g, ' ') : '주변에 할 일이 없습니다'}
+            disabled={!worldAction}
+            onPress={worldAction?.run}
+            style={[hud.actionBtn, !worldAction && hud.actionBtnIdle]}>
+            <AppText variant="bodyStrong" style={hud.actionText}>{worldAction?.label ?? '둘러보기'}</AppText>
+          </Pressable>
+        </View>
+      </View>
 
-          <SectionHeader title="마을 의뢰 퀘스트" description="어르신들의 고민을 해결하고 보상을 받으세요" />
-          {state.quests.map((q) => (
-            <Card key={q.id} style={styles.questCard}>
-              <View style={styles.questHeaderRow}>
-                <View style={{ flex: 1 }}>
-                  <AppText variant="bodyStrong" style={{ color: '#182620' }}>{q.title}</AppText>
-                  <AppText variant="caption" style={{ color: '#526451' }}>
-                    의뢰인: {q.clientName} ({q.clientRole}) · 장소: {q.locationName}
-                  </AppText>
-                </View>
-                <View style={[styles.questBadge, q.completed && styles.questBadgeDone]}>
-                  <AppText variant="caption" style={{ color: q.completed ? '#0E5142' : '#855B00', fontFamily: FontWeights.strong }}>
-                    {q.claimed ? '보상 완료' : q.completed ? '달성 완료' : `${q.currentCount}/${q.requiredCount}`}
-                  </AppText>
-                </View>
-              </View>
-              <AppText variant="body" style={{ color: '#24382B', fontSize: 16 }}>{q.description}</AppText>
-              <View style={styles.questFooterRow}>
-                <AppText variant="caption" style={{ color: '#C2410C' }}>
-                  보상: +{q.rewardExp} EXP · 🌰 {q.rewardAcorns}개
-                </AppText>
-                {q.completed && !q.claimed ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => claimQuestReward(q.id)}
-                    style={styles.claimBtn}>
-                    <AppText variant="bodyStrong" style={{ color: '#FCF9F2', fontSize: 14 }}>보상 받기</AppText>
-                  </Pressable>
-                ) : null}
-              </View>
-            </Card>
-          ))}
+      <Minimap map={map} player={state.playerPos} visible={minimapOpen} companionId={companionId} reduceMotion={reduceMotion} onClose={() => setMinimapOpen(false)} />
+      <BusSheet from={state.mapId} visible={busOpen} reduceMotion={reduceMotion} hasCompanion={Boolean(companionId)} onClose={() => setBusOpen(false)} onTravel={handleTravel} />
 
-          <SectionHeader title="함께한 기록" description="마을 사람들과의 유대가 곧 성장입니다" />
-          <Card style={styles.bondCard}>
-            <View style={styles.bondHeaderRow}>
-              <AppText variant="bodyStrong" style={{ color: '#182620' }}>오늘의 마음 온도</AppText>
-              <AppText variant="title" style={{ color: '#C2410C' }}>{heartWarmth}°</AppText>
+      {/* 가방·메뉴 바텀시트 */}
+      <Modal visible={sheet !== null} transparent animationType={slideTransition} onRequestClose={() => setSheet(null)}>
+        <View style={hud.sheetBackdrop}>
+          <View style={[hud.sheet, { maxHeight: viewportHeight * 0.86, paddingBottom: insets.bottom + Spacing.md }]}>
+            <View style={hud.sheetHeader}>
+              <AppText variant="sectionTitle" style={{ color: '#182620' }}>{sheet === 'menu' ? '마을 메뉴' : '나들이 가방 · 일지'}</AppText>
+              <Pressable testID="btn-close-sheet" accessibilityRole="button" accessibilityLabel="닫기" onPress={() => setSheet(null)} style={hud.sheetClose}>
+                <AppText variant="bodyStrong" style={{ color: '#182620' }}>닫기</AppText>
+              </Pressable>
             </View>
-            <View style={styles.companionTrack}>
-              <View style={[styles.companionFillWarm, { width: `${heartWarmth}%` }]} />
-            </View>
-            <AppText variant="caption" style={{ color: '#526451' }}>
-              산책·함께 한 판·회고로 오르고, 하루가 지나면 조금씩 식습니다.
-            </AppText>
-          </Card>
-          {state.bonds.map((bond) => {
-            const progress = bondProgress(bond.points);
-            const info = NPC_DISPLAY[bond.npcId];
-            return (
-              <Card key={bond.npcId} style={styles.bondCard}>
-                <View style={styles.bondHeaderRow}>
-                  <View style={styles.npcPortraitCircle}>
-                    <Image
-                      source={portraitFor(bond.npcId)}
-                      style={styles.companionPortraitSmall}
-                      contentFit="cover"
-                      accessibilityLabel={`${info.name} 초상화`}
-                    />
+            <ScrollView contentContainerStyle={{ gap: Spacing.md, paddingBottom: Spacing.lg }}>
+              {sheet === 'menu' ? (
+                <>
+                  <SeniorButton testID="btn-open-master-hall" label="명인전당 가기 ▶" variant="accent" onPress={() => { setSheet(null); router.push('/me' as Href); }} />
+                  {companionId ? (
+                    <View style={hud.quickSettings}>
+                      <AppText variant="sectionTitle" style={hud.settingsTitle}>{NPC_DISPLAY[companionId].name}와 산책 중</AppText>
+                      <AppText variant="caption" style={hud.settingsTitle}>마을 어디에서든 오늘의 산책을 기록하거나 동행을 마칠 수 있어요.</AppText>
+                      <SeniorButton testID="btn-menu-talk-companion" label="동행과 이야기하기" variant="secondary"
+                        onPress={() => { activities.cancel(); setSheet(null); setDismissedNpcId(null); setCompanionLineIndex(0); setCompanionDialogueOpen(true); }} />
+                      <SeniorButton testID="btn-menu-claim-walk" label={walkClaimAvailable ? '오늘의 산책 기록하기' : '오늘 산책 기록 완료 ✔'} variant={walkClaimAvailable ? 'primary' : 'secondary'} disabled={!walkClaimAvailable}
+                        onPress={() => { setSheet(null); handleClaimDailyWalk(); }} />
+                      <SeniorButton testID="btn-menu-end-walk" label="인사하고 동행 마치기" variant="secondary"
+                        onPress={() => {
+                          setSheet(null);
+                          setCompanionDialogueOpen(false);
+                          setActionNotice(stopCompanion() ? '산책을 마치고 인사를 나눴습니다.' : '산책 기록을 저장하지 못했어요. 다시 시도해 주세요.');
+                        }} />
+                    </View>
+                  ) : null}
+                  <View style={hud.quickSettings}>
+                    <AppText variant="sectionTitle" style={hud.settingsTitle}>편안한 화면 설정</AppText>
+                    <ArcadeSaveNotice />
+                    <QuickSetting label="큰 글씨" value={largeTextEnabled} onChange={toggleLargeText} />
+                    <QuickSetting label="효과음과 배경 음악" value={arcadeState.soundEnabled} onChange={toggleSound} />
+                    <QuickSetting label="진동" value={arcadeState.hapticEnabled} onChange={toggleHaptic} />
+                    <QuickSetting label="화면 움직임 줄이기" value={arcadeState.reduceMotion} onChange={toggleReduceMotion} />
+                    <AppText variant="caption" style={hud.settingsTitle}>기기의 움직임 줄이기 설정도 함께 적용됩니다.</AppText>
                   </View>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <AppText variant="bodyStrong" style={{ color: '#182620' }}>
-                      {info.name} ({info.title})
-                    </AppText>
-                    <AppText variant="caption" style={{ color: '#526451' }}>
-                      유대 {progress.level}단계 · {progress.label}
-                    </AppText>
+                  <IdlePanel />
+                </>
+              ) : sheet === 'journal' ? (
+                <>
+                  <View style={[styles.morningRoutineCard, stackRoutine && { flexDirection: 'column' }]}>
+                    <View style={stackRoutine ? undefined : { flex: 1 }}>
+                      <SeniorButton testID="btn-morning-gym" label={state.stats.dailyMorningGymDone ? '체조 완료 ✔' : '아침 체조하기 🧘'}
+                        variant={state.stats.dailyMorningGymDone ? 'secondary' : 'primary'} onPress={() => { setSheet(null); handleMorningGym(); }} />
+                    </View>
+                    <View style={stackRoutine ? undefined : { flex: 1 }}>
+                      <SeniorButton testID="btn-take-meds" label={state.stats.dailyMedicationTaken ? '약 복용 완료 ✔' : '혈압약 복용 💊'}
+                        variant={state.stats.dailyMedicationTaken ? 'secondary' : 'accent'} onPress={() => { setSheet(null); handleTakeMedication(); }} />
+                    </View>
                   </View>
-                  <AppText variant="caption" style={{ color: '#F0BF4F', fontFamily: FontWeights.strong }}>
-                    {bond.points}
-                  </AppText>
-                </View>
-                <View style={styles.companionTrack}>
-                  <View
-                    style={[styles.companionFill, { width: `${Math.round(progress.ratio * 100)}%` }]}
-                  />
-                </View>
-                <AppText variant="caption" style={{ color: '#855B00' }}>
-                  {bond.lastWalkDay
-                    ? `마지막 산책: ${bond.lastWalkDay}`
-                    : '아직 함께 걷지 않았습니다 · 대화 카드에서 [같이 걷을까요?]'}
-                </AppText>
-              </Card>
-            );
-          })}
-
-          <SectionHeader title="어르신의 나들이 가방" description="소지품을 터치해 건강을 회복하세요" />
-          <View style={styles.inventoryGrid}>
-            {state.inventory.map((item) => (
-              <Card key={item.id} style={styles.invCard}>
-                <AppText style={{ fontSize: 32 }}>{item.icon}</AppText>
-                <AppText variant="bodyStrong" style={{ color: '#182620' }}>{item.name}</AppText>
-                <AppText variant="caption" style={{ color: '#526451', textAlign: 'center' }}>
-                  {item.description}
-                </AppText>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => applyItem(item.id)}
-                  style={styles.invUseBtn}>
-                  <AppText variant="caption" style={{ color: '#FCF9F2', fontFamily: FontWeights.emphasis }}>
-                    사용 ({item.count}개 남음)
-                  </AppText>
-                </Pressable>
-              </Card>
-            ))}
+                  <DexPanel />
+                  <AlbumPanel />
+                  <JournalPanel onNotice={setActionNotice} nowMs={activities.nowMs} />
+                  <HomeBannerAd />
+                </>
+              ) : null}
+            </ScrollView>
           </View>
         </View>
-      )}
-
-      <HomeBannerAd />
-    </Screen>
+      </Modal>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: Layout.screenPadding,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.xxxl,
-    gap: Spacing.md,
-  },
-  statusPlaque: {
-    backgroundColor: '#24382B',
-    borderRadius: Radius.lg,
-    borderWidth: 2,
-    borderColor: '#D8B384',
-    padding: Spacing.md,
-    gap: Spacing.sm,
-  },
-  plaqueHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  badgeSmall: {
-    width: 60,
-    height: 60,
-  },
-  tagRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  villageTag: {
-    backgroundColor: '#0E5142',
-    borderRadius: Radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderWidth: 1,
-    borderColor: '#D8B384',
-  },
-  villageTagText: {
-    color: '#FCF9F2',
-    fontFamily: FontWeights.emphasis,
-  },
-  statsBarGrid: {
-    gap: 6,
-  },
-  statBarBox: {
-    gap: 2,
-  },
-  barLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  barTrack: {
-    height: 10,
-    borderRadius: Radius.pill,
-    backgroundColor: '#142219',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#6E4228',
-  },
-  barFillVitality: {
-    height: '100%',
-    backgroundColor: '#277357',
-    borderRadius: Radius.pill,
-  },
-  barFillWisdom: {
-    height: '100%',
-    backgroundColor: '#F0BF4F',
-    borderRadius: Radius.pill,
-  },
-  currencyRow: {
-    paddingTop: 2,
-  },
-  currencyText: {
-    color: '#D8B384',
-    fontFamily: FontWeights.emphasis,
-  },
-  morningRoutineCard: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  noticeBox: {
-    backgroundColor: '#E3F3EA',
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: '#277357',
-  },
-  tabToggleRow: {
-    flexDirection: 'row',
-    gap: Spacing.xs,
-  },
-  toggleBtn: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: Radius.md,
-    borderWidth: 1.5,
-    borderColor: '#6E4228',
-    backgroundColor: '#24382B',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  toggleBtnActive: {
-    backgroundColor: '#F0BF4F',
-    borderColor: '#FCF9F2',
-  },
-  mapViewportFrame: {
-    width: '100%',
-    height: 440,
-    borderRadius: Radius.lg,
-    overflow: 'hidden',
-    borderWidth: 3,
-    borderColor: '#6E4228',
-    position: 'relative',
-    backgroundColor: '#356347',
-  },
-  locationBanner: {
-    position: 'absolute',
-    bottom: 8,
-    left: 8,
-    right: 8,
-    backgroundColor: 'rgba(24, 38, 32, 0.88)',
-    borderRadius: Radius.sm,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-  },
-  locationBannerText: {
-    color: '#FCF9F2',
-    fontFamily: FontWeights.emphasis,
-  },
-  dialogueCard: {
-    backgroundColor: '#24382B',
-    borderWidth: 2,
-    borderColor: '#D8B384',
-    gap: Spacing.sm,
-  },
-  dialogueHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  npcPortraitCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#0E5142',
-    borderWidth: 1.5,
-    borderColor: '#F0BF4F',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  npcPortraitImage: {
-    width: '100%',
-    height: '100%',
-  },
-  dialogueBody: {
-    backgroundColor: '#182620',
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: '#6E4228',
-    gap: 4,
-  },
-  dialogueLine: {
-    color: '#FCF9F2',
-    lineHeight: 24,
-  },
-  strollCard: {
-    backgroundColor: '#FCF9F2',
-    borderWidth: 2,
-    borderColor: '#D8B384',
-    gap: 4,
-  },
-  dpadContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginVertical: 4,
-  },
-  dpadMiddleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  dpadBtn: {
-    width: 68,
-    height: 60,
-    borderRadius: Radius.md,
-    backgroundColor: '#24382B',
-    borderWidth: 2,
-    borderColor: '#D8B384',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-  },
-  dpadCenterHub: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#182620',
-    borderWidth: 1.5,
-    borderColor: '#6E4228',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dpadArrowText: {
-    color: '#F0BF4F',
-  },
-  questCard: {
-    backgroundColor: '#FCF9F2',
-    borderWidth: 2,
-    borderColor: '#D8B384',
-    gap: Spacing.xs,
-  },
-  questHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-  },
-  questBadge: {
-    backgroundColor: '#FFF1C7',
-    borderRadius: Radius.sm,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderWidth: 1,
-    borderColor: '#855B00',
-  },
-  questBadgeDone: {
-    backgroundColor: '#E3F3EA',
-    borderColor: '#277357',
-  },
-  questFooterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  claimBtn: {
-    backgroundColor: '#C2410C',
-    borderRadius: Radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  inventoryGrid: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  invCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#D8B384',
-    alignItems: 'center',
-    gap: 4,
-    padding: Spacing.md,
-  },
-  invUseBtn: {
-    backgroundColor: '#0E5142',
-    borderRadius: Radius.sm,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginTop: 4,
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.lg,
-  },
-  offlineRewardCard: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: '#FCF9F2',
-    borderRadius: Radius.lg,
-    borderWidth: 3,
-    borderColor: '#F0BF4F',
-    padding: Spacing.lg,
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  offlineTitle: {
-    color: '#182620',
-    textAlign: 'center',
-  },
-  offlineDesc: {
-    color: '#24382B',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  rewardBox: {
-    width: '100%',
-    backgroundColor: '#E4EDDA',
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: '#779367',
-  },
-  storyCutsceneCard: {
-    width: '100%',
-    maxWidth: 440,
-    flexGrow: 0,
-    flexShrink: 1,
-    backgroundColor: '#24382B',
-    borderRadius: Radius.lg,
-    borderWidth: 3,
-    borderColor: '#D8B384',
-    maxHeight: '90%',
-  },
-  storyCutsceneContent: {
-    padding: Spacing.lg,
-    gap: Spacing.md,
-  },
-  storyHeaderBadge: {
-    backgroundColor: '#0E5142',
-    borderRadius: Radius.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: '#F0BF4F',
-    alignSelf: 'flex-start',
-  },
-  climaxNotice: {
-    backgroundColor: '#FFF1C7',
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    gap: 2,
-    borderWidth: 1,
-    borderColor: '#F0BF4F',
-  },
-  promotionNpcLine: {
-    marginTop: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.md,
-    backgroundColor: 'rgba(24, 38, 32, 0.88)',
-    borderWidth: 1.5,
-    borderColor: '#F0BF4F',
-    maxWidth: 320,
-    gap: 2,
-  },
-  companionCard: {
-    backgroundColor: '#FFF6DC',
-    borderRadius: Radius.md,
-    borderWidth: 1.5,
-    borderColor: '#F0BF4F',
-    gap: Spacing.sm,
-  },
-  companionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  companionPortrait: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 2,
-    borderColor: '#D8B384',
-  },
-  companionPortraitSmall: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-  },
-  companionTrack: {
-    height: 8,
-    borderRadius: Radius.pill,
-    backgroundColor: '#EFE3C8',
-    overflow: 'hidden',
-  },
-  companionFill: {
-    height: '100%',
-    backgroundColor: '#F0BF4F',
-  },
-  companionFillWarm: {
-    height: '100%',
-    backgroundColor: '#C2410C',
-  },
-  companionActions: {
-    gap: Spacing.xs,
-  },
-  dialogueActions: {
-    gap: Spacing.xs,
-  },
-  bondCard: {
-    gap: Spacing.sm,
-  },
-  bondHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  storyProgressionBanner: {
-    backgroundColor: '#0E5142',
-    borderRadius: Radius.md,
-    borderWidth: 2,
-    borderColor: '#F0BF4F',
-    padding: Spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  storyEnterPill: {
-    backgroundColor: '#C2410C',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: Radius.pill,
-  },
-  facilityCard: {
-    backgroundColor: '#FCF9F2',
-    borderColor: '#D8B384',
-    borderWidth: 2,
-    gap: Spacing.xs,
-  },
-  facilityTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  upgradeBtn: {
-    backgroundColor: '#C2410C',
-    borderRadius: Radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  partnerAssignRow: {
-    backgroundColor: '#E4EDDA',
-    borderRadius: Radius.sm,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginTop: 2,
-  },
-  partnerCard: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#6E4228',
-    borderWidth: 1.5,
-  },
-  assignMiniBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#6E4228',
-    backgroundColor: '#FCF9F2',
-  },
-  assignMiniBtnActive: {
-    backgroundColor: '#0E5142',
-    borderColor: '#0E5142',
-  },
-  storyCardLarge: {
-    backgroundColor: '#24382B',
-    borderColor: '#D8B384',
-    borderWidth: 2,
-    gap: Spacing.md,
-  },
-  storyDialogueBox: {
-    backgroundColor: '#182620',
-    borderRadius: Radius.md,
-    borderWidth: 1.5,
-    borderColor: '#6E4228',
-    padding: Spacing.md,
-    gap: 6,
-  },
-  storyLineText: {
-    color: '#FCF9F2',
-    lineHeight: 24,
-  },
-  dailyCard: {
-    backgroundColor: '#FCF9F2',
-    borderWidth: 2,
-    borderColor: '#D8B384',
-    gap: Spacing.sm,
-  },
-  missionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  missionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.sm,
-    backgroundColor: '#E4EDDA',
-  },
-  dailyDivider: {
-    borderTopWidth: 1,
-    borderTopColor: '#E3EAE6',
-    marginVertical: 2,
-  },
-  attendanceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  attendanceSeal: {
-    width: 84,
-    height: 84,
-  },
-  promotionFxLayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  healFxLayer: {
-    position: 'absolute',
-    left: '50%',
-    top: '22%',
-    marginLeft: -64,
-    zIndex: 30,
-  },
+function QuickSetting({ label, value, onChange }: { label: string; value: boolean; onChange: () => void }) {
+  return (
+    <View style={hud.settingRow}>
+      <AppText variant="bodyStrong" style={hud.settingLabel}>{label}</AppText>
+      <Switch accessibilityLabel={label} hitSlop={10} value={value} onValueChange={onChange} />
+    </View>
+  );
+}
+
+function HudButton({ testID, icon, label, onPress, wide }: { testID: string; icon: number; label: string; onPress: () => void; wide: boolean }) {
+  return (
+    <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={[hud.hudButton, wide && hud.wideHudButton]}>
+      <Image source={icon} style={hud.hudIcon} contentFit="contain" />
+      <AppText variant="caption" style={hud.hudLabel}>{label}</AppText>
+    </Pressable>
+  );
+}
+
+const hud = StyleSheet.create({
+  quickSettings: { padding: Spacing.md, gap: Spacing.sm, borderRadius: Radius.md, backgroundColor: '#F6EBD3', borderWidth: 1, borderColor: '#B89A7A' },
+  settingsTitle: { color: '#24382B' },
+  settingRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  settingLabel: { flex: 1, color: '#182620' },
+  worldRoot: { flex: 1, backgroundColor: '#356347' },
+  top: { position: 'absolute', left: 0, right: 0, top: 0, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: Spacing.md },
+  statusCard: { minWidth: 168, maxWidth: 220, flexShrink: 1, padding: Spacing.sm, gap: 4, borderRadius: Radius.md, backgroundColor: 'rgba(24, 38, 32, 0.82)', borderWidth: 2, borderColor: '#B89A7A' },
+  statusHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  badge: { width: 28, height: 28 },
+  rankText: { color: '#F0BF4F', fontFamily: FontWeights.strong },
+  barTrack: { height: 10, borderRadius: 5, backgroundColor: 'rgba(252, 249, 242, 0.2)', overflow: 'hidden' },
+  barFill: { height: '100%', backgroundColor: '#E2574C' },
+  statusText: { color: '#FCF9F2', fontVariant: ['tabular-nums'] },
+  buttonColumn: { gap: Spacing.sm },
+  hudButton: { width: 64, minHeight: 64, alignItems: 'center', justifyContent: 'center' },
+  wideHudButton: { width: 88 },
+  rewardScroll: { width: '100%', maxWidth: 420, maxHeight: '100%', flexGrow: 0, flexShrink: 1 },
+  choiceScroll: { width: '100%', maxWidth: 420, maxHeight: '100%', flexGrow: 0, flexShrink: 1, borderRadius: Radius.lg, backgroundColor: '#FCF9F2', borderWidth: 2, borderColor: '#8A5A2B' },
+  choiceContent: { padding: Spacing.md, gap: Spacing.sm },
+  choiceTitle: { color: '#182620' },
+  hudIcon: { width: 52, height: 52 },
+  hudLabel: { color: '#FCF9F2', fontFamily: FontWeights.strong, textShadowColor: '#182620', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
+  tutorialSlot: { position: 'absolute', left: Spacing.md, right: Spacing.md },
+  toastStack: { position: 'absolute', left: Spacing.md, right: 96, gap: 6, alignItems: 'flex-start' },
+  locationPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: Radius.pill, backgroundColor: 'rgba(24, 38, 32, 0.7)' },
+  locationText: { color: '#FCF9F2' },
+  noticeToast: { padding: Spacing.sm, borderRadius: Radius.md, backgroundColor: 'rgba(252, 249, 242, 0.95)', borderWidth: 2, borderColor: '#0E5142' },
+  noticeText: { color: '#0E5142' },
+  bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: Spacing.md, gap: Spacing.sm },
+  dialogue: { marginBottom: 0 },
+  closeBtn: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+  controlsRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  actionBtn: { minWidth: 96, minHeight: 96, flexShrink: 1, marginLeft: Spacing.sm, paddingHorizontal: Spacing.md, borderRadius: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: '#C2410C', borderWidth: 3, borderColor: '#FCF9F2' },
+  actionBtnIdle: { backgroundColor: 'rgba(24, 38, 32, 0.55)' },
+  actionText: { color: '#FCF9F2', textAlign: 'center' },
+  sheetBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.45)' },
+  sheet: { borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, backgroundColor: '#FBF6EA', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.sm },
+  sheetClose: { minHeight: 48, minWidth: 64, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.md, backgroundColor: '#E8DFC9' },
 });

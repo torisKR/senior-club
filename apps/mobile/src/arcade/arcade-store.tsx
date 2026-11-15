@@ -1,13 +1,16 @@
 import * as Haptics from 'expo-haptics';
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
 import { storage } from '@/utils/storage';
 import { useCosmeticBilling } from '@/billing/CosmeticBillingProvider';
 import { COSMETIC_PRODUCTS } from '@/billing/cosmetic-products';
+import { MotionPreferenceContext } from '@/fx/motion-preference';
+import { stopAllSfx } from '@/audio/sound-manager';
 
 import {
   INITIAL_ARCADE_STATE,
+  mergeArcadeState,
   type ArcadePersistedState,
   type EquippedSkinsState,
 } from './arcade-defaults';
@@ -23,6 +26,10 @@ const DEFAULT_STATE: ArcadePersistedState = INITIAL_ARCADE_STATE;
 
 interface ArcadeContextValue {
   state: ArcadePersistedState;
+  saveReadProtected: boolean;
+  saveConflict: boolean;
+  saveWriteFailed: boolean;
+  retrySave: () => boolean;
   appearance: EquippedSkinsState;
   rankProgress: ReturnType<typeof resolveRankProgress>;
   recordParkGolfClear: (strokesDeltaFromPar: number) => void;
@@ -31,6 +38,8 @@ interface ArcadeContextValue {
   claimAttendanceStamp: () => boolean;
   equipSkin: <K extends keyof EquippedSkinsState>(category: K, skin: EquippedSkinsState[K]) => void;
   toggleSound: () => void;
+  toggleHaptic: () => void;
+  toggleReduceMotion: () => void;
   triggerHaptic: (kind?: 'light' | 'medium' | 'success') => void;
 }
 
@@ -38,17 +47,12 @@ const ArcadeContext = createContext<ArcadeContextValue | null>(null);
 
 export function ArcadeProvider({ children }: { children: React.ReactNode }) {
   const { items } = useCosmeticBilling();
-  const [state, setState] = useState<ArcadePersistedState>(() => {
+  const [loaded] = useState((): { state: ArcadePersistedState; protected: boolean; writeFailed: boolean; expectedRaw: string | null } => {
     try {
-      const saved = storage.get<Partial<ArcadePersistedState>>(STORAGE_KEY, {});
-      if (saved && typeof saved === 'object') {
-        const merged: ArcadePersistedState = {
-          ...DEFAULT_STATE,
-          ...saved,
-          dailyMissions: { ...DEFAULT_STATE.dailyMissions, ...(saved.dailyMissions ?? {}) },
-          lastDailyResetDate: saved.lastDailyResetDate ?? null,
-          equippedSkins: { ...DEFAULT_STATE.equippedSkins, ...(saved.equippedSkins ?? {}) },
-        };
+      const raw = storage.getRaw(STORAGE_KEY);
+      const saved: unknown = raw === null ? {} : JSON.parse(raw);
+      if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+        const merged = mergeArcadeState(saved);
         const today = todayKey();
         if (isCalendarDayChanged(merged.lastDailyResetDate, today)) {
           const corrected: ArcadePersistedState = {
@@ -56,55 +60,85 @@ export function ArcadeProvider({ children }: { children: React.ReactNode }) {
             dailyMissions: resetDailyMissions(merged.dailyMissions, today, merged.lastDailyResetDate),
             lastDailyResetDate: today,
           };
-          try {
-            storage.set(STORAGE_KEY, corrected);
-          } catch {
-            // Ignore storage write errors on constrained devices
-          }
-          return corrected;
+          // 다음 실제 변경을 저장할 때 날짜 초기화도 함께 저장합니다.
+          return { state: corrected, protected: false, writeFailed: false, expectedRaw: raw };
         }
-        return merged;
+        return { state: merged, protected: false, writeFailed: false, expectedRaw: raw };
       }
     } catch {
-      // Fallback to default state
+      // Keep the existing record untouched if it cannot be read.
     }
-    return DEFAULT_STATE;
+    return { state: DEFAULT_STATE, protected: true, writeFailed: false, expectedRaw: null };
   });
+  const [state, setState] = useState<ArcadePersistedState>(loaded.state);
+  const stateRef = useRef(loaded.state);
+  const expectedRaw = useRef(loaded.expectedRaw);
+  const conflictRef = useRef(false);
+  const [saveConflict, setSaveConflict] = useState(false);
+  const [saveWriteFailed, setSaveWriteFailed] = useState(loaded.writeFailed);
+
+  const persist = useCallback((next: ArcadePersistedState): boolean => {
+    if (loaded.protected || conflictRef.current) return false;
+    try {
+      if (storage.getRaw(STORAGE_KEY) !== expectedRaw.current) {
+        conflictRef.current = true;
+        setSaveConflict(true);
+        return false;
+      }
+      storage.set(STORAGE_KEY, next);
+      expectedRaw.current = JSON.stringify(next);
+      setSaveWriteFailed(false);
+      return true;
+    } catch {
+      setSaveWriteFailed(true);
+      return false;
+    }
+  }, [loaded.protected]);
+
+  const retrySave = useCallback(() => persist(stateRef.current), [persist]);
 
   const updateAndPersist = useCallback(
     (updater: (prev: ArcadePersistedState) => ArcadePersistedState) => {
-      setState((prev) => {
-        const next = updater(prev);
-        try {
-          storage.set(STORAGE_KEY, next);
-        } catch {
-          // Ignore storage write errors on constrained devices
-        }
-        return next;
-      });
+      const stored = stateRef.current;
+      const today = todayKey();
+      const current = isCalendarDayChanged(stored.lastDailyResetDate, today)
+        ? { ...stored, dailyMissions: resetDailyMissions(stored.dailyMissions, today, stored.lastDailyResetDate), lastDailyResetDate: today }
+        : stored;
+      const next = updater(current);
+      if (next === stored) return;
+      stateRef.current = next;
+      setState(next);
+      persist(next);
     },
-    [],
+    [persist],
   );
 
   useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const refreshDay = () => updateAndPersist((prev) => prev);
+    const updateTimer = (nextState: string) => {
+      if (timer !== null) clearInterval(timer);
+      timer = null;
+      if (nextState !== 'active') {
+        stopAllSfx();
+        return;
+      }
+      refreshDay();
+      timer = setInterval(refreshDay, 60_000);
+    };
     const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState !== 'active') return;
-      updateAndPersist((prev) => {
-        const today = todayKey();
-        if (!isCalendarDayChanged(prev.lastDailyResetDate, today)) return prev;
-        return {
-          ...prev,
-          dailyMissions: resetDailyMissions(prev.dailyMissions, today, prev.lastDailyResetDate),
-          lastDailyResetDate: today,
-        };
-      });
+      updateTimer(nextState);
     });
-    return () => subscription.remove();
+    updateTimer(AppState.currentState ?? 'active');
+    return () => {
+      subscription.remove();
+      if (timer !== null) clearInterval(timer);
+    };
   }, [updateAndPersist]);
 
   const triggerHaptic = useCallback(
     (kind: 'light' | 'medium' | 'success' = 'light') => {
-      if (!state.soundEnabled) return;
+      if (!stateRef.current.hapticEnabled) return;
       if (kind === 'success') {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       } else if (kind === 'medium') {
@@ -113,7 +147,7 @@ export function ArcadeProvider({ children }: { children: React.ReactNode }) {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
       }
     },
-    [state.soundEnabled],
+    [],
   );
 
   const recordParkGolfClear = useCallback(
@@ -206,10 +240,19 @@ export function ArcadeProvider({ children }: { children: React.ReactNode }) {
   );
 
   const toggleSound = useCallback(() => {
+    if (stateRef.current.soundEnabled) stopAllSfx();
     updateAndPersist((prev) => ({
       ...prev,
       soundEnabled: !prev.soundEnabled,
     }));
+  }, [updateAndPersist]);
+
+  const toggleHaptic = useCallback(() => {
+    updateAndPersist((prev) => ({ ...prev, hapticEnabled: !prev.hapticEnabled }));
+  }, [updateAndPersist]);
+
+  const toggleReduceMotion = useCallback(() => {
+    updateAndPersist((prev) => ({ ...prev, reduceMotion: !prev.reduceMotion }));
   }, [updateAndPersist]);
 
   const rankProgress = useMemo(() => resolveRankProgress(state.cp), [state.cp]);
@@ -220,6 +263,10 @@ export function ArcadeProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(
     () => ({
       state,
+      saveReadProtected: loaded.protected,
+      saveConflict,
+      saveWriteFailed,
+      retrySave,
       appearance,
       rankProgress,
       recordParkGolfClear,
@@ -228,10 +275,16 @@ export function ArcadeProvider({ children }: { children: React.ReactNode }) {
       claimAttendanceStamp,
       equipSkin,
       toggleSound,
+      toggleHaptic,
+      toggleReduceMotion,
       triggerHaptic,
     }),
     [
       state,
+      loaded.protected,
+      saveConflict,
+      saveWriteFailed,
+      retrySave,
       appearance,
       rankProgress,
       recordParkGolfClear,
@@ -240,11 +293,15 @@ export function ArcadeProvider({ children }: { children: React.ReactNode }) {
       claimAttendanceStamp,
       equipSkin,
       toggleSound,
+      toggleHaptic,
+      toggleReduceMotion,
       triggerHaptic,
     ],
   );
 
-  return <ArcadeContext.Provider value={value}>{children}</ArcadeContext.Provider>;
+  return <ArcadeContext.Provider value={value}>
+    <MotionPreferenceContext.Provider value={state.reduceMotion}>{children}</MotionPreferenceContext.Provider>
+  </ArcadeContext.Provider>;
 }
 
 export function useArcade() {

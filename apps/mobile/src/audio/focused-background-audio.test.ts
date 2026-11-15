@@ -16,7 +16,10 @@ vi.mock('expo-router', async () => {
   const React = await import('react');
   return { useFocusEffect: (callback: () => void | (() => void)) => React.useEffect(callback, [callback]) };
 });
-vi.mock('react-native', () => ({ Platform: { OS: 'web' } }));
+vi.mock('react-native', () => ({
+  Platform: { OS: 'web' },
+  AppState: { currentState: 'active', addEventListener: () => ({ remove: () => {} }) },
+}));
 
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -46,9 +49,9 @@ describe('focused background audio', () => {
     expect(audio.player.play).toHaveBeenCalledTimes(1);
 
     await act(async () => root.render(createElement(FocusedBackgroundAudio, { source: 123, enabled: false })));
-    expect(audio.player.pause).toHaveBeenCalledTimes(1);
+    expect(audio.player.pause).toHaveBeenCalledTimes(2);
     expect(audio.player.play).toHaveBeenCalledTimes(1);
     await act(async () => root.unmount());
-    expect(audio.player.pause).toHaveBeenCalledTimes(2);
+    expect(audio.player.pause).toHaveBeenCalledTimes(3);
   });
 });

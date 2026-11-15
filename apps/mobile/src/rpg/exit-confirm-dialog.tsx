@@ -8,15 +8,16 @@ interface ExitConfirmDialogProps {
   visible: boolean;
   onCancel: () => void;
   onConfirm: () => void;
+  reduceMotion?: boolean | null;
 }
 
 /**
  * 안드로이드 뒤로가기 종료 확인.
  * 큰 버튼 두 개(계속하기/종료하기)로 시니어가 실수로 앱을 닫지 않게 합니다.
  */
-export function ExitConfirmDialog({ visible, onCancel, onConfirm }: ExitConfirmDialogProps) {
+export function ExitConfirmDialog({ visible, onCancel, onConfirm, reduceMotion = null }: ExitConfirmDialogProps) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+    <Modal visible={visible} transparent animationType={reduceMotion === false ? 'fade' : 'none'} onRequestClose={onCancel}>
       <View style={styles.backdrop}>
         <View style={styles.card} accessibilityViewIsModal>
           <AppText variant="title" style={styles.title}>

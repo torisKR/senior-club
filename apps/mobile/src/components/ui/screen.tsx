@@ -28,12 +28,13 @@ export function Screen({
   testID,
 }: ScreenProps) {
   const theme = useTheme();
-  const insets = useEffectiveSafeAreaInsets();
+  const safeInsets = useEffectiveSafeAreaInsets();
   const segments = useSegments();
-  const insideTabs = segments.some((segment) => segment === '(tabs)');
+  // 마을 밖 장소(시설·내 집)는 스택 헤더가 상태 표시줄 영역을 이미 차지합니다.
+  const headerOwnsTop = segments[0] === '(game)' && segments[1] !== undefined && segments[1] !== 'home';
+  const insets = headerOwnsTop ? { ...safeInsets, top: 0 } : safeInsets;
   const horizontalPadding = padded ? Layout.screenPadding : 0;
-  // A tab scene ends above the tab bar, which already owns the system bottom inset.
-  const bottomPadding = includeBottomInset && !insideTabs ? Math.max(Spacing.xxxl, insets.bottom + Spacing.lg) : Spacing.xxxl;
+  const bottomPadding = includeBottomInset ? Math.max(Spacing.xxxl, insets.bottom + Spacing.lg) : Spacing.xxxl;
   const requestedTop = StyleSheet.flatten(contentContainerStyle)?.paddingTop;
   const topGap = typeof requestedTop === 'number' ? requestedTop : Spacing.lg;
   const innerStyle: StyleProp<ViewStyle> = [

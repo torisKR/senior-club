@@ -7,12 +7,14 @@ import {
   INITIAL_QUESTS,
   INITIAL_STATS,
   VILLAGE_BUILDINGS,
-  VILLAGE_GRID_SIZE,
+  VILLAGE_HEIGHT,
+  VILLAGE_WIDTH,
   VILLAGE_NPCS,
   isVillageDoorTile,
+  VILLAGE_LAYOUT,
 } from './rpg-logic';
 
-const START_POS = { x: 3, y: 3 };
+const START_POS = { x: 23, y: 19 };
 
 describe('Senior Club Village RPG core logic', () => {
   it('configures initial stats and quests correctly', () => {
@@ -26,71 +28,73 @@ describe('Senior Club Village RPG core logic', () => {
     ]);
   });
 
-  it('uses the 15x15 village grid', () => {
-    expect(VILLAGE_GRID_SIZE).toBe(15);
-    expect(canMoveTo(14, 14)).toBe(false); // 연못
-    expect(canMoveTo(13, 0)).toBe(true); // 풀밭
-    expect(canMoveTo(0, 13)).toBe(true); // 풀밭
+  it('uses the 64x56 field with the original village block at (20, 16)', () => {
+    expect([VILLAGE_WIDTH, VILLAGE_HEIGHT]).toEqual([64, 56]);
+    expect(VILLAGE_LAYOUT).toHaveLength(56);
+    for (const row of VILLAGE_LAYOUT) expect(row).toHaveLength(64);
+    expect(canMoveTo(34, 30)).toBe(false); // 연못
+    expect(canMoveTo(33, 16)).toBe(true); // 풀밭
+    expect(canMoveTo(20, 29)).toBe(true); // 풀밭
   });
 
   it('blocks out-of-bounds movement', () => {
-    expect(canMoveTo(-1, 0)).toBe(false);
-    expect(canMoveTo(0, -1)).toBe(false);
-    expect(canMoveTo(VILLAGE_GRID_SIZE, 0)).toBe(false);
-    expect(canMoveTo(0, VILLAGE_GRID_SIZE)).toBe(false);
+    expect(canMoveTo(-1, 23)).toBe(false);
+    expect(canMoveTo(27, -1)).toBe(false);
+    expect(canMoveTo(VILLAGE_WIDTH, 30)).toBe(false);
+    expect(canMoveTo(30, VILLAGE_HEIGHT)).toBe(false);
     expect(canMoveTo(1.5, 2)).toBe(false);
   });
 
   it('keeps the main roads and the central plaza walkable', () => {
-    expect(getVillageTile(0, 7).type).toBe('path');
-    expect(getVillageTile(7, 0).type).toBe('path');
-    expect(getVillageTile(7, 7).type).toBe('path');
-    expect(canMoveTo(7, 7)).toBe(true);
-    expect(canMoveTo(0, 7)).toBe(true);
-    expect(canMoveTo(7, 13)).toBe(true);
+    expect(getVillageTile(20, 23).type).toBe('path');
+    expect(getVillageTile(27, 16).type).toBe('path');
+    expect(getVillageTile(27, 23).type).toBe('path');
+    expect(canMoveTo(27, 23)).toBe(true);
+    expect(canMoveTo(20, 23)).toBe(true);
+    expect(canMoveTo(27, 29)).toBe(true);
   });
 
   it('blocks water, fences, trees, flowers and lanterns', () => {
-    expect(getVillageTile(12, 14).type).toBe('water');
-    expect(canMoveTo(12, 14)).toBe(false);
+    expect(getVillageTile(32, 30).type).toBe('water');
+    expect(canMoveTo(32, 30)).toBe(false);
 
-    expect(getVillageTile(5, 0).type).toBe('fence');
-    expect(canMoveTo(5, 0)).toBe(false);
+    expect(getVillageTile(29, 16).type).toBe('fence');
+    expect(canMoveTo(29, 16)).toBe(false);
 
-    expect(getVillageTile(4, 2)).toMatchObject({ type: 'tree', variant: 'pine' });
-    expect(canMoveTo(4, 2)).toBe(false);
+    expect(getVillageTile(24, 18)).toMatchObject({ type: 'tree', variant: 'pine' });
+    expect(canMoveTo(24, 18)).toBe(false);
 
-    expect(getVillageTile(6, 12)).toMatchObject({ type: 'tree', variant: 'cherry' });
-    expect(canMoveTo(6, 12)).toBe(false);
+    expect(getVillageTile(26, 28)).toMatchObject({ type: 'tree', variant: 'cherry' });
+    expect(canMoveTo(26, 28)).toBe(false);
 
-    expect(getVillageTile(5, 6).type).toBe('flower');
-    expect(canMoveTo(5, 6)).toBe(false);
+    expect(getVillageTile(25, 22).type).toBe('flower');
+    expect(canMoveTo(25, 22)).toBe(false);
 
-    expect(getVillageTile(6, 6).type).toBe('lantern');
-    expect(canMoveTo(6, 6)).toBe(false);
+    expect(getVillageTile(26, 22).type).toBe('lantern');
+    expect(canMoveTo(26, 22)).toBe(false);
   });
 
   it('exposes facility entrances on the door tiles', () => {
-    const parkgolfDoor = getVillageTile(2, 6);
+    const parkgolfDoor = getVillageTile(22, 22);
     expect(parkgolfDoor.type).toBe('building');
     expect(parkgolfDoor.name).toBe('파크골프장');
     expect(parkgolfDoor.facilityRoute).toBe('/clubs');
     expect(parkgolfDoor.spriteId).toBe('parkgolf');
-    expect(isVillageDoorTile(2, 6)).toBe(true);
-    expect(canMoveTo(2, 6)).toBe(true);
+    expect(isVillageDoorTile(22, 22)).toBe(true);
+    expect(canMoveTo(22, 22)).toBe(true);
 
-    expect(getVillageTile(12, 6)).toMatchObject({
+    expect(getVillageTile(32, 22)).toMatchObject({
       type: 'building',
       name: '송학기원',
       facilityRoute: '/events',
     });
-    expect(getVillageTile(2, 11)).toMatchObject({
+    expect(getVillageTile(22, 27)).toMatchObject({
       type: 'building',
       name: '매화다실',
       facilityRoute: '/chat',
     });
-    expect(getVillageTile(7, 3)).toMatchObject({ type: 'building', name: '마을회관' });
-    expect(getVillageTile(12, 11)).toMatchObject({ type: 'building', name: '청솔 한약방' });
+    expect(getVillageTile(27, 19)).toMatchObject({ type: 'building', name: '마을회관' });
+    expect(getVillageTile(32, 27)).toMatchObject({ type: 'building', name: '청솔 한약방' });
   });
 
   it('blocks the building bodies themselves', () => {
@@ -119,19 +123,19 @@ describe('Senior Club Village RPG core logic', () => {
       expect(findNearbyNpc(npc.x, npc.y)?.id).toBe(npc.id);
     }
 
-    expect(VILLAGE_NPCS.find((npc) => npc.id === 'chief')).toMatchObject({ x: 7, y: 4 });
-    expect(VILLAGE_NPCS.find((npc) => npc.id === 'golf_captain')).toMatchObject({ x: 2, y: 7 });
-    expect(VILLAGE_NPCS.find((npc) => npc.id === 'baduk_master')).toMatchObject({ x: 12, y: 7 });
-    expect(VILLAGE_NPCS.find((npc) => npc.id === 'tea_manager')).toMatchObject({ x: 2, y: 12 });
-    expect(VILLAGE_NPCS.find((npc) => npc.id === 'herbalist')).toMatchObject({ x: 12, y: 12 });
+    expect(VILLAGE_NPCS.find((npc) => npc.id === 'chief')).toMatchObject({ x: 27, y: 20 });
+    expect(VILLAGE_NPCS.find((npc) => npc.id === 'golf_captain')).toMatchObject({ x: 22, y: 23 });
+    expect(VILLAGE_NPCS.find((npc) => npc.id === 'baduk_master')).toMatchObject({ x: 32, y: 23 });
+    expect(VILLAGE_NPCS.find((npc) => npc.id === 'tea_manager')).toMatchObject({ x: 22, y: 28 });
+    expect(VILLAGE_NPCS.find((npc) => npc.id === 'herbalist')).toMatchObject({ x: 32, y: 28 });
   });
 
   it('detects nearby NPCs by adjacency', () => {
     // 마을회관 문 앞(7,3)에서 이장님과 대화
-    expect(findNearbyNpc(7, 3)?.id).toBe('chief');
-    expect(findNearbyNpc(2, 6)?.id).toBe('golf_captain');
+    expect(findNearbyNpc(27, 19)?.id).toBe('chief');
+    expect(findNearbyNpc(22, 22)?.id).toBe('golf_captain');
     // 대화 범위(1타일)를 벗어나면 null
-    expect(findNearbyNpc(0, 0)).toBeNull();
+    expect(findNearbyNpc(20, 16)).toBeNull();
   });
 
   it('keeps every facility door reachable on foot from the spawn tile', () => {
@@ -161,5 +165,32 @@ describe('Senior Club Village RPG core logic', () => {
     for (const npc of VILLAGE_NPCS) {
       expect(visited.has(`${npc.x},${npc.y}`)).toBe(true);
     }
+  });
+});
+
+describe('healing village zones', () => {
+  it('marks every building footprint and door on the layout so the drawing stays honest', () => {
+    for (const building of VILLAGE_BUILDINGS) {
+      for (let x = building.x; x < building.x + building.width; x += 1) {
+        for (let y = building.y; y < building.y + building.height; y += 1) expect(VILLAGE_LAYOUT[y][x]).toBe('B');
+      }
+      expect(VILLAGE_LAYOUT[building.door.y][building.door.x]).toBe('B');
+      expect(canMoveTo(building.door.x, building.door.y)).toBe(true);
+    }
+  });
+
+  it('opens my home door onto the house route', () => {
+    const home = VILLAGE_BUILDINGS.find((building) => building.id === 'home');
+    expect(home).toMatchObject({ door: { x: 38, y: 19 }, facilityRoute: '/house' });
+  });
+
+  it('lets the player stand on the dock but not on fields, benches or the lake', () => {
+    expect(getVillageTile(31, 33).type).toBe('dock');
+    expect(canMoveTo(31, 33)).toBe(true);
+    expect(getVillageTile(40, 20).type).toBe('farm');
+    expect(canMoveTo(40, 20)).toBe(false);
+    expect(getVillageTile(26, 32).type).toBe('bench');
+    expect(canMoveTo(26, 32)).toBe(false);
+    expect(canMoveTo(32, 34)).toBe(false);
   });
 });
