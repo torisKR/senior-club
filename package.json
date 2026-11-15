@@ -22,7 +22,7 @@
     "test": "pnpm --dir apps/mobile test"
   },
   "devDependencies": {
-    "@types/node": "24.10.1",
+    "@types/node": "26.6.6",
     "eslint": "9.39.1",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
