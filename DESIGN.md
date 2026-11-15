@@ -55,7 +55,7 @@
 - **Max content width:** 720px for reading screens, 980px for event grids
 - **Border radius:** sm 10px, md 14px, lg 18px, xl 24px, pill 999px
 - **Touch targets:** primary 56px, compact 48px
-- **Insets:** 20px horizontal screen padding, Android gesture inset included in bottom tabs
+- **Insets:** 20px horizontal screen padding, Android gesture inset included in the bottom game HUD (joystick, action button)
 
 ## Motion
 
@@ -85,3 +85,5 @@
 | 2026-09-09 | Pretendard와 기존 숲색 팔레트 유지 | 이미 구현된 한글 가독성과 브랜드 연속성을 보존 |
 | 2026-09-09 | 정보 색상을 #1E6F94로 조정 | 작은 보조 글씨도 충분한 대비를 갖도록 함 |
 | 2026-09-09 | 카드 행동 힌트와 명시적 안내 추가 | 카드가 눌린다는 사실과 신청 흐름을 처음 사용자에게 설명 |
+| 2026-11-12 | 바텀 탭 제거, 마을을 풀스크린 월드로 전환 | 사용자 요청. 화면 전체가 걷는 마을이고 좌하단 조이스틱(136dp)·우하단 행동 버튼(96dp)·상단 HUD(64dp)로 조작합니다. 시설은 문 앞에서 들어가고 스택 헤더 ←로 돌아옵니다 |
+| 2026-11-12 | 텃밭·연못 낚시·내 집 꾸미기·벤치 쉬기 추가 | 경쟁 없는 힐링 루틴. 낚시 입력 창 1.5초, 가구는 드래그 대신 큰 칸 선택으로 큰 글씨·큰 손가락에 맞춤 |

@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>청솔마을 힐링 월드 적용 기록</title>
+<meta name="description" content="시니어클럽 풀스크린 걷기 마을 전환: 조작 방식, 실기기 녹화·화면, sprite-gen 에셋 적용 정리">
+<style>
+  @font-face { font-family: Pretendard; font-weight: 400; src: url("../apps/mobile/assets/fonts/Pretendard-Regular.otf") format("opentype"); }
+  @font-face { font-family: Pretendard; font-weight: 600; src: url("../apps/mobile/assets/fonts/Pretendard-SemiBold.otf") format("opentype"); }
+  @font-face { font-family: Pretendard; font-weight: 800; src: url("../apps/mobile/assets/fonts/Pretendard-ExtraBold.otf") format("opentype"); }
+
+  :root {
+    --bg: #FBFCFB; --surface: #FFFFFF; --element: #F1F5F3; --border: #A6B8B2;
+    --text: #18312B; --muted: #51645F; --primary: #0E5142; --accent: #C2410C;
+    --info: #1E6F94; --info-bg: #E5F4FA; --warn: #855B00; --warn-bg: #FFF1C7;
+    --ok: #236B4D; --ok-bg: #E3F3EA; --wood: #8A5A2B; --paper: #FCF9F2;
+    --radius: 14px; --shadow: 0 1px 2px rgba(24,49,43,.08), 0 6px 20px rgba(24,49,43,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0B211C; --surface: #123128; --element: #18392F; --border: #3C5D53;
+      --text: #F5FAF8; --muted: #B7C9C3; --primary: #8ED4BE; --accent: #FB8A57;
+      --info: #8CCBEA; --info-bg: #12384A; --warn: #F0C65A; --warn-bg: #3A2F0C;
+      --ok: #8ED4BE; --ok-bg: #143A2E; --paper: #18392F; --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0B211C; --surface: #123128; --element: #18392F; --border: #3C5D53;
+    --text: #F5FAF8; --muted: #B7C9C3; --primary: #8ED4BE; --accent: #FB8A57;
+    --info: #8CCBEA; --info-bg: #12384A; --warn: #F0C65A; --warn-bg: #3A2F0C;
+    --ok: #8ED4BE; --ok-bg: #143A2E; --paper: #18392F; --shadow: none;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 400 18px/1.6 Pretendard, system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif; }
+  a { color: var(--info); }
+  code { font: 500 .85em/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--element); padding: .1em .35em; border-radius: 6px; word-break: break-all; }
+  img.pixel { image-rendering: pixelated; }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  header.hero { background: linear-gradient(180deg, #0E5142 0%, #0B3E33 100%); color: #FCF9F2; padding: 40px 0 32px; }
+  header.hero .eyebrow { color: #F0BF4F; font-weight: 600; letter-spacing: .02em; font-size: 15px; }
+  header.hero h1 { margin: 6px 0 10px; font-weight: 800; font-size: clamp(28px, 5vw, 40px); line-height: 1.2; }
+  header.hero p { margin: 0; max-width: 46em; color: #DCE9E3; }
+  header.hero code { background: rgba(252,249,242,.14); color: #FCF9F2; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 24px; }
+  .stat { background: rgba(252,249,242,.08); border: 1px solid rgba(252,249,242,.18); border-radius: var(--radius); padding: 12px 14px; }
+  .stat b { display: block; font-size: 26px; font-weight: 800; color: #FCF9F2; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 14px; color: #CFE0D8; }
+
+  nav.toc { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--border); }
+  nav.toc .wrap { display: flex; gap: 6px; overflow-x: auto; padding-top: 8px; padding-bottom: 8px; scrollbar-width: none; }
+  nav.toc a { flex: none; text-decoration: none; color: var(--text); font-weight: 600; font-size: 15px; padding: 8px 12px; border-radius: 999px; background: var(--element); min-height: 40px; display: inline-flex; align-items: center; }
+  nav.toc a:hover { background: var(--border); }
+
+  section { padding: 40px 0 8px; scroll-margin-top: 60px; }
+  h2 { font-size: 28px; font-weight: 800; margin: 0 0 6px; line-height: 1.3; }
+  h3 { font-size: 21px; font-weight: 800; margin: 0 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 20px; max-width: 48em; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+
+  .anatomy { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 28px; align-items: start; }
+  .phone { position: relative; border-radius: 28px; overflow: hidden; border: 6px solid #182620; background: #182620; box-shadow: var(--shadow); }
+  .phone img, .phone video { display: block; width: 100%; height: auto; }
+  .pin { position: absolute; transform: translate(-50%, -50%); width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 800; font-size: 15px; display: grid; place-items: center; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+  ol.legend { margin: 0; padding: 0; list-style: none; counter-reset: n; display: grid; gap: 12px; }
+  ol.legend li { counter-increment: n; display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; }
+  ol.legend li::before { content: counter(n); width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 800; display: grid; place-items: center; font-size: 15px; }
+  ol.legend b { display: block; }
+  ol.legend span { color: var(--muted); font-size: 16px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 16px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); font-size: 14px; }
+  .table-scroll { overflow-x: auto; }
+  .tag { display: inline-block; font-size: 13px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--ok-bg); color: var(--ok); white-space: nowrap; margin: 1px 0; }
+  .tag.warn { background: var(--warn-bg); color: var(--warn); }
+  .tag.info { background: var(--info-bg); color: var(--info); white-space: normal; }
+
+  .scene { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 24px; margin-bottom: 32px; }
+  .scene .phone { border-radius: 24px; }
+  .steps { margin: 8px 0 14px; padding-left: 1.2em; }
+  .steps li { margin: 4px 0; }
+  .strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  figure { margin: 0; }
+  .strip figure img, .gallery figure img { width: 100%; height: auto; display: block; border-radius: 12px; border: 1px solid var(--border); background: #182620; }
+  figcaption { font-size: 14px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 16px; }
+
+  .asset-group { margin-bottom: 28px; }
+  .asset-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; margin-bottom: 12px; }
+  .asset-head p { margin: 0; color: var(--muted); font-size: 16px; }
+  .assets { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .asset { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .asset .thumb { aspect-ratio: 1; display: grid; place-items: center; border-radius: 8px; background-color: #6E9A63;
+    background-image: linear-gradient(45deg, rgba(255,255,255,.08) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.08) 75%), linear-gradient(45deg, rgba(255,255,255,.08) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.08) 75%);
+    background-size: 16px 16px; background-position: 0 0, 8px 8px; }
+  .asset .thumb img { max-width: 88%; max-height: 88%; }
+  .asset.wide { grid-column: span 2; }
+  .asset.wide .thumb { aspect-ratio: 3 / 2; }
+  .asset b { font-size: 15px; }
+  .asset code { font-size: 12px; }
+
+  .pipeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .pipeline figure img { width: 100%; border-radius: 12px; border: 1px solid var(--border); }
+  .flow { display: grid; gap: 10px; counter-reset: s; margin: 0 0 20px; padding: 0; list-style: none; }
+  .flow li { counter-increment: s; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--primary); border-radius: 10px; padding: 12px 14px; }
+  .flow li::before { content: "단계 " counter(s); display: block; font-size: 13px; font-weight: 600; color: var(--primary); }
+  .callout { border-radius: 12px; padding: 14px 16px; background: var(--warn-bg); color: var(--text); border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent); }
+  .callout b { color: var(--warn); }
+
+  footer { padding: 32px 0 48px; color: var(--muted); font-size: 15px; }
+
+  @media (max-width: 760px) {
+    body { font-size: 17px; }
+    .anatomy, .scene { grid-template-columns: minmax(0, 1fr); }
+    .anatomy .phone, .scene .phone { max-width: 320px; margin: 0 auto; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">시니어클럽 · feat/healing-village · 2026-11-12</div>
+    <h1>청솔마을 힐링 월드 적용 기록</h1>
+    <p>바텀 탭 앱을, 걸어다니며 생활하는 풀스크린 마을 게임으로 바꿨습니다. 이 문서는 조작 방법, 실기기에서 보이는 각 장면, <code>/sprite-gen</code>으로 만든 에셋을 어디에 붙였는지 정리합니다. 녹화와 화면은 모두 Galaxy 실기기(1080×2408)의 디버그 빌드에서 adb로 찍었습니다.</p>
+    <p><strong>기록 시점 안내:</strong> 이 문서의 화면·동영상·테스트 수치는 2026-11-12 당시의 작업 기록입니다. 이후 코드가 변경되었으며, 사용자의 QA 생략 요청 이후 변경분은 실기기에서 확인하지 않았습니다. 이후의 제한된 측정과 남은 검증은 <a href="healing-village/device-qa/README.md">실기기 검증 기록</a>을 참고해 주세요.</p>
+    <div class="stats">
+      <div class="stat"><b>24×24</b><span>마을 타일 (기존 15×15 유지 + 확장)</span></div>
+      <div class="stat"><b>4</b><span>새 생활 활동</span></div>
+      <div class="stat"><b>36</b><span>sprite-gen 에셋</span></div>
+      <div class="stat"><b>6</b><span>실기기 녹화</span></div>
+      <div class="stat"><b>340</b><span>단위 테스트 통과</span></div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc" aria-label="목차">
+  <div class="wrap">
+    <a href="#openworld">오픈월드 1단계</a>
+    <a href="#explore">2단계 탐험</a>
+    <a href="#hud">화면 구성</a>
+    <a href="#controls">조작 방법</a>
+    <a href="#scenes">장면별 녹화</a>
+    <a href="#screens">앱 화면</a>
+    <a href="#assets">에셋 적용</a>
+    <a href="#pipeline">에셋 제작 과정</a>
+    <a href="#code">코드 위치</a>
+    <a href="#limits">남은 과제</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <section id="openworld">
+    <h2>오픈월드 1단계: 자유 이동 · 넓은 들녘 · 지도 이동 · 미니맵</h2>
+    <p class="lead">한 칸씩 끊어 걷던 마을을, 조이스틱을 기울인 만큼 8방향으로 부드럽게 걷는 64×56 들녘으로 넓혔습니다. 기존 마을은 가운데에 그대로 있고, 북쪽 숲 산책로와 약수터, 동쪽 강과 돌다리 3곳, 남쪽 꽃동산 언덕과 전망대, 서쪽 장터 노점 3곳과 버스 정류장이 둘러쌉니다. 정류장에서 버스를 타면 다른 지도(바닷가 마을 — 4단계에서 채울 뼈대)로 갑니다.</p>
+    <div class="scene">
+      <div class="phone"><video src="healing-village/phase1/free_walk.mp4" poster="healing-village/phase1/free_walk.jpg" controls muted playsinline loop preload="none" aria-label="자유 이동 녹화"></video></div>
+      <div>
+        <h3>무엇이 달라졌나</h3>
+        <ol class="steps">
+          <li><b>자유 이동:</b> 걷기 계산을 UI 스레드(Reanimated <code>useFrameCallback</code>)에서 매 프레임 합니다. 축을 나눠 충돌을 막아 벽에 비스듬히 부딪히면 벽을 따라 미끄러집니다. 조이스틱을 조금만 기울이면 천천히, 끝까지 당기면 초당 3.2칸.</li>
+          <li><b>걷는 동안 저장하지 않음:</b> 손을 떼거나 앱을 내릴 때만 저장해 1차의 걸음 누락 원인을 없앴습니다. 옛 저장 위치는 들녘 좌표로 자동으로 옮겨집니다.</li>
+          <li><b>청크 그리기:</b> 8×8칸 묶음 중 카메라 주변만 그리고, 묶음마다 가장 많은 바닥은 반복 이미지 한 장으로 깝니다. 지도 전체 이미지 수 4,052장 → 1,468장.</li>
+          <li><b>지역 표시·미니맵·버스:</b> 위치 표시에 지역 이름이 붙고, 오른쪽 위 ‘지도’ 버튼으로 전체 지도를 봅니다. 정류장 문 앞에서는 행동 버튼이 ‘버스 타기’가 됩니다.</li>
+        </ol>
+        <div class="card table-scroll" style="margin-top:12px">
+          <table>
+            <thead><tr><th>걷기 성능 (대각선 8초, 실기기)</th><th>그린 프레임</th><th>중간값</th><th>느린 10%</th><th>끊긴 프레임</th></tr></thead>
+            <tbody>
+              <tr><td>디버그 빌드</td><td>164</td><td>32ms</td><td>250ms</td><td>76%</td></tr>
+              <tr><td>릴리스 빌드</td><td>730</td><td>19ms</td><td>36ms</td><td>28%</td></tr>
+              <tr><td><b>릴리스 + 바닥 묶음</b></td><td><b>943</b></td><td><b>16ms</b></td><td><b>21ms</b></td><td><b>4.5%</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="strip">
+      <figure><img src="healing-village/phase1/minimap.jpg" alt="청솔 들녘 미니맵" loading="lazy"><figcaption>미니맵: 지역·나·이웃·정류장</figcaption></figure>
+      <figure><img src="healing-village/phase1/release_walk.jpg" alt="릴리스 빌드에서 걷기" loading="lazy"><figcaption>릴리스 빌드 들녘</figcaption></figure>
+      <figure><img src="healing-village/phase1/bus_sheet.jpg" alt="버스 행선지" loading="lazy"><figcaption>정류장: 버스 행선지</figcaption></figure>
+      <figure><img src="healing-village/phase1/seaside.jpg" alt="바닷가 마을 도착" loading="lazy"><figcaption>바닷가 마을 도착(뼈대)</figcaption></figure>
+      <figure><img src="healing-village/phase1/bus_back.jpg" alt="들녘으로 복귀" loading="lazy"><figcaption>버스로 들녘 복귀</figcaption></figure>
+    </div>
+    <div class="assets" style="margin-top:16px">
+      <div class="asset wide"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/buildings/stall_gukbap.png" alt=""></div><b>장터 국밥집</b><code>buildings/stall_gukbap.png</code></div>
+      <div class="asset wide"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/buildings/bus_stop.png" alt=""></div><b>버스 정류장</b><code>buildings/bus_stop.png</code></div>
+      <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/buildings/observatory.png" alt=""></div><b>꽃동산 전망대</b><code>buildings/observatory.png</code></div>
+      <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/world/forest_floor.png" alt=""></div><b>숲 바닥</b><code>world/forest_floor.png</code></div>
+      <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/world/stone_bridge.png" alt=""></div><b>돌다리</b><code>world/stone_bridge.png</code></div>
+      <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/world/flowers_purple.png" alt=""></div><b>꽃밭(보라)</b><code>world/flowers_purple.png</code></div>
+      <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/world/spring_well.png" alt=""></div><b>약수터</b><code>world/spring_well.png</code></div>
+    </div>
+  </section>
+
+  <section id="explore">
+    <h2>2단계: 채집 · 도감 · 사진 명소</h2>
+    <p class="lead">걷는 것 자체가 즐거움이 되도록 지역마다 주울 것과 찍을 곳을 두었습니다. 채집물은 날짜로 정한 자리에 하루 24개가 놓이고(숲 9 · 강변 6 · 꽃동산 9), 주운 자리는 다음 날 다른 곳에 다시 생깁니다. 옆에 서면 행동 버튼이 ‘○○ 줍기’로, 명소에 서면 ‘사진 찍기’로 바뀝니다.</p>
+    <div class="strip">
+      <figure><img src="healing-village/phase2/forest.jpg" alt="숲 산책로" loading="lazy"><figcaption>숲 산책로 · 바위와 덤불</figcaption></figure>
+      <figure><img src="healing-village/phase2/forage_spot.jpg" alt="솔방울 줍기" loading="lazy"><figcaption>옆에 서면 ‘솔방울 줍기’</figcaption></figure>
+      <figure><img src="healing-village/phase2/forage_picked.jpg" alt="주운 뒤" loading="lazy"><figcaption>도토리 +4 · 도감에 새로 등록</figcaption></figure>
+      <figure><img src="healing-village/phase2/photo.jpg" alt="마을 광장 사진" loading="lazy"><figcaption>명소에서 ‘사진 찍기’ → 엽서</figcaption></figure>
+      <figure><img src="healing-village/phase2/dex.jpg" alt="도감" loading="lazy"><figcaption>가방 · 청솔 도감 (17칸)</figcaption></figure>
+      <figure><img src="healing-village/phase2/album.jpg" alt="앨범" loading="lazy"><figcaption>가방 · 사진 앨범 (6곳)</figcaption></figure>
+    </div>
+    <div class="card table-scroll" style="margin-top:16px">
+      <table>
+        <thead><tr><th>규칙</th><th>내용</th></tr></thead>
+        <tbody>
+          <tr><td>채집</td><td>지역 바닥(숲 바닥·강가 잔디·꽃밭) 위 걸을 수 있는 칸에만 놓입니다. 같은 날·같은 지도면 언제 켜도 같은 자리. 자리마다 하루 한 번만 주울 수 있습니다.</td></tr>
+          <tr><td>가방·도감</td><td>낚시·수확·채집으로 얻은 것은 가방에 쌓이고, 처음 얻으면 도감에 등록됩니다(물고기 6 · 작물 3 · 채집물 8). 못 찾은 칸은 어디서 찾는지 알려 줍니다.</td></tr>
+          <tr><td>사진 명소</td><td>들녘 5곳 + 바닷가 1곳. 처음 찍은 명소는 마음 온도 +2, 같은 명소는 날짜만 새로 바뀝니다.</td></tr>
+          <tr><td>조작 다듬기</td><td>칸 모서리에 걸려 멈추던 문제를 고쳤습니다(한쪽으로만 밀 때 칸 가운데로 살짝 비켜 줌). 활동 창이 열려 있으면 행동 버튼은 쉽니다. 마을회관 옆에 숲으로 가는 길을 냈습니다.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3 style="margin-top:24px">채집물</h3>
+    <div class="assets">
+<div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/forage/mushroom.png" alt=""></div><b>표고버섯</b><code>forage/mushroom.png</code><span class="tag">숲</span></div>
+<div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/forage/pinecone.png" alt=""></div><b>솔방울</b><code>forage/pinecone.png</code><span class="tag">숲</span></div>
+<div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/forage/chestnut.png" alt=""></div><b>산밤</b><code>forage/chestnut.png</code><span class="tag">숲</span></div>
+<div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/forage/pebble.png" alt=""></div><b>고운 조약돌</b><code>forage/pebble.png</code><span class="tag">강변</span></div>
+<div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/forage/watercress.png" alt=""></div><b>물냉이</b><code>forage/watercress.png</code><span class="tag">강변</span></div>
+<div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/forage/dandelion.png" alt=""></div><b>민들레</b><code>forage/dandelion.png</code><span class="tag">꽃동산</span></div>
+<div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/forage/violet.png" alt=""></div><b>제비꽃</b><code>forage/violet.png</code><span class="tag">꽃동산</span></div>
+<div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/forage/clover.png" alt=""></div><b>네잎클로버</b><code>forage/clover.png</code><span class="tag">꽃동산 · 귀함</span></div>
+    </div>
+    <h3 style="margin-top:24px">명소 엽서</h3>
+    <div class="pipeline">
+<figure><img src="../apps/mobile/assets/game/rpg/postcards/hill.jpg" alt="꽃동산 전망대 엽서" loading="lazy"><figcaption>꽃동산 전망대</figcaption></figure>
+<figure><img src="../apps/mobile/assets/game/rpg/postcards/bridge.jpg" alt="강변 돌다리 엽서" loading="lazy"><figcaption>강변 돌다리</figcaption></figure>
+<figure><img src="../apps/mobile/assets/game/rpg/postcards/spring.jpg" alt="숲속 약수터 엽서" loading="lazy"><figcaption>숲속 약수터</figcaption></figure>
+<figure><img src="../apps/mobile/assets/game/rpg/postcards/plaza.jpg" alt="마을 광장 엽서" loading="lazy"><figcaption>마을 광장</figcaption></figure>
+<figure><img src="../apps/mobile/assets/game/rpg/postcards/pond.jpg" alt="연못 선착장 엽서" loading="lazy"><figcaption>연못 선착장</figcaption></figure>
+<figure><img src="../apps/mobile/assets/game/rpg/postcards/sea.jpg" alt="바닷가 선착장 엽서" loading="lazy"><figcaption>바닷가 선착장</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="hud">
+    <h2>화면 구성: 마을이 곧 화면</h2>
+    <p class="lead">전에는 스크롤 대시보드 안의 440dp 창에 마을이 들어 있었고, 맨 아래에 다섯 칸짜리 바텀 탭이 있었습니다. 이제는 화면 전체가 마을이고, 필요한 정보와 조작만 맵 위에 띄웁니다. 터치 영역은 DESIGN.md 기준(주요 56dp, 보조 48dp 이상)을 지킵니다.</p>
+    <div class="anatomy">
+      <div class="phone">
+        <img src="healing-village/shots/hud.jpg" alt="풀스크린 마을 메인 화면. 위에 상태 패널과 원형 버튼 3개, 아래에 조이스틱과 행동 버튼이 있다" loading="lazy">
+        <span class="pin" style="left:30%;top:10%">1</span>
+        <span class="pin" style="left:15%;top:20%">2</span>
+        <span class="pin" style="left:90%;top:6%">3</span>
+        <span class="pin" style="left:90%;top:15.5%">4</span>
+        <span class="pin" style="left:90%;top:25%">5</span>
+        <span class="pin" style="left:50%;top:41%">6</span>
+        <span class="pin" style="left:21%;top:80%">7</span>
+        <span class="pin" style="left:81%;top:82%">8</span>
+      </div>
+      <ol class="legend">
+        <li><div><b>상태 패널</b><span>급수(CP 등급), 활력 막대, 도토리, 마음 온도. 글꼴 130%에서는 두 줄로 늘어나고 잘리지 않습니다.</span></div></li>
+        <li><div><b>현재 위치</b><span>발밑 타일 이름(마을 돌담길, 연못 선착장, 내 집 등)과 잠깐 뜨는 안내 문구. 안내는 4초 뒤 사라지고, 창이 열려 있으면 창 바로 위에 뜹니다.</span></div></li>
+        <li><div><b>가방 · 일지</b><span>오늘의 일과, 개근 도장, 의뢰 퀘스트, 유대 기록, 나들이 가방, 아침 체조·약 복용 버튼이 들어 있는 바텀시트입니다.</span></div></li>
+        <li><div><b>이야기</b><span>인생 6막 승단 서사 창(시련 도전, 다음 막). 기존 스토리 창을 그대로 엽니다.</span></div></li>
+        <li><div><b>메뉴</b><span>명인전당 가기, 마을 방치 수련 시설과 이웃 동료 영입.</span></div></li>
+        <li><div><b>주인공</b><span>카메라가 따라갑니다. 대화창이나 활동 창이 열리면 주인공을 화면 위쪽(27%)으로 올려 가려지지 않게 합니다.</span></div></li>
+        <li><div><b>가상 조이스틱</b><span>지름 136dp 원판에 60dp 손잡이. 끌고 있는 동안 그 방향으로 계속 걷습니다.</span></div></li>
+        <li><div><b>상황 행동 버튼</b><span>96dp. 서 있는 자리에서 할 수 있는 일 하나로 이름이 바뀝니다. 할 일이 없으면 흐린 ‘둘러보기’로 보입니다.</span></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="controls">
+    <h2>조작 방법</h2>
+    <p class="lead">두 손가락이면 충분합니다. 왼손으로 조이스틱을 끌어 걷고, 오른손으로 큰 행동 버튼 하나만 누릅니다.</p>
+    <div class="card table-scroll">
+      <table>
+        <thead><tr><th>조작</th><th>동작</th><th>세부 규칙</th></tr></thead>
+        <tbody>
+          <tr><td><b>조이스틱 끌기</b></td><td>끈 방향으로 한 칸씩 계속 걷기</td><td>18dp 안의 흔들림은 무시합니다. 더 크게 움직인 축을 기준으로 4방향을 정하고, 누르고 있는 동안 190ms마다 한 칸 걷습니다. 돌담·나무·물·건물 벽은 지나갈 수 없습니다.</td></tr>
+          <tr><td><b>조이스틱 놓기</b></td><td>멈춤</td><td>손잡이가 스프링처럼 가운데로 돌아오고 주인공은 서 있는 자세로 바뀝니다.</td></tr>
+          <tr><td><b>행동 버튼</b></td><td>그 자리의 일 하기</td><td>아래 우선순위에서 가장 먼저 해당하는 하나를 보여 줍니다.</td></tr>
+          <tr><td><b>걷기 시작</b></td><td>진행 중인 활동 취소</td><td>낚시·쉬기·씨앗 고르기 중에 걸으면 창이 닫힙니다.</td></tr>
+          <tr><td><b>뒤로가기 (←, 시스템)</b></td><td>시설·집에서 마을로</td><td>마을에서 누르면 ‘게임을 종료할까요?’ 확인창이 뜹니다. 시트가 열려 있으면 시트만 닫힙니다.</td></tr>
+          <tr><td><b>TalkBack</b></td><td>조이스틱 조정 동작</td><td>조이스틱에 ‘위로/아래로/왼쪽으로/오른쪽으로 걷기’ 접근성 동작이 있어 화면 읽기 사용자도 걸을 수 있습니다.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:24px">행동 버튼 우선순위</h3>
+    <div class="card table-scroll">
+      <table>
+        <thead><tr><th>#</th><th>서 있는 자리</th><th>버튼 이름</th><th>결과</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>시설·내 집 문 타일</td><td><span class="tag">○○ 들어가기</span></td><td>파크골프장·송학기원·매화다실·내 집으로 이동(위에 ← 헤더가 있는 화면)</td></tr>
+          <tr><td>2</td><td>NPC 옆인데 대화창을 닫았을 때</td><td><span class="tag">말 걸기</span></td><td>대화창 다시 열기(NPC 옆에 서면 자동으로 열림)</td></tr>
+          <tr><td>3</td><td>텃밭 칸 바로 옆</td><td><span class="tag">씨앗 심기</span> <span class="tag">물 주기</span> <span class="tag">텃밭 살피기</span> <span class="tag">○○ 수확하기</span></td><td>작물 3종 중 선택 · 하루 1회 물(성장 25% 단축) · 남은 시간 안내 · 수확하면 도토리</td></tr>
+          <tr><td>4</td><td>연못 선착장 위</td><td><span class="tag">낚싯대 던지기</span></td><td>2~6초 뒤 찌가 움직이면 1.5초 안에 ‘당기기’. 놓쳐도 벌칙 없음</td></tr>
+          <tr><td>5</td><td>벤치 옆 · 정자 앞</td><td><span class="tag">앉아 쉬기</span></td><td>하루 1회 활력 +15, 마음 온도 +5(+놓아 둔 가구 수). 오늘의 한 마디 일기</td></tr>
+          <tr><td>6</td><td>마을 광장(3×3)</td><td><span class="tag">아침 체조</span></td><td>하루 1회, 회복 이펙트</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="scenes">
+    <h2>장면별 녹화</h2>
+    <p class="lead">실기기 화면 녹화(adb screenrecord)를 432px 폭으로 줄였고 소리는 없습니다. 입력을 adb로 넣었기 때문에 영상에 손가락 표시는 나오지 않습니다.</p>
+
+    <article class="scene">
+      <div class="phone"><video src="healing-village/video/walk.mp4" poster="healing-village/video/walk.jpg" controls muted playsinline loop preload="none" aria-label="조이스틱으로 마을을 걷는 녹화"></video></div>
+      <div>
+        <h3>① 조이스틱으로 걷기</h3>
+        <ol class="steps">
+          <li>조이스틱을 위·왼쪽으로 끌고 있으면 한 칸씩 걸어가고, 카메라가 따라옵니다.</li>
+          <li>아래쪽 소나무 칸으로는 들어가지 못하고 그 자리에 멈춥니다.</li>
+          <li>오른쪽으로 끌어 큰길로 돌아옵니다. 걷는 동안에는 4방향 걷기 동작이, 멈추면 서 있는 동작이 나옵니다.</li>
+        </ol>
+        <div class="strip">
+          <figure><img src="healing-village/shots/hud.jpg" alt="출발 위치" loading="lazy"><figcaption>출발: 내 집 아래 큰길</figcaption></figure>
+          <figure><img src="healing-village/shots/walk_end.jpg" alt="걸은 뒤 위치" loading="lazy"><figcaption>걸은 뒤: 카메라가 따라옴</figcaption></figure>
+        </div>
+      </div>
+    </article>
+
+    <article class="scene">
+      <div class="phone"><video src="healing-village/video/npc.mp4" poster="healing-village/video/npc.jpg" controls muted playsinline loop preload="none" aria-label="NPC 대화와 시설 입장 녹화"></video></div>
+      <div>
+        <h3>② NPC 대화 · 시설 들어가기</h3>
+        <ol class="steps">
+          <li>최 사범 옆 칸으로 가면 RPG 대화창이 자동으로 열리고, 카메라가 올라가 주인공이 가려지지 않습니다.</li>
+          <li>✕로 닫으면 오른쪽 아래 버튼이 <b>말 걸기</b>로 바뀌고, 누르면 다시 열립니다.</li>
+          <li><b>송학기원 입장 ▶</b>을 누르면 상단 헤더(← 송학기원 · 알까기)가 있는 알까기 화면이 열립니다. 바텀 탭은 없습니다.</li>
+          <li>뒤로가기를 누르면 마을의 같은 자리로 돌아옵니다.</li>
+        </ol>
+        <div class="strip">
+          <figure><img src="healing-village/shots/npc_dialogue.jpg" alt="NPC 대화창" loading="lazy"><figcaption>옆에 서면 대화창</figcaption></figure>
+          <figure><img src="healing-village/shots/npc_talk_button.jpg" alt="말 걸기 버튼" loading="lazy"><figcaption>닫으면 ‘말 걸기’</figcaption></figure>
+          <figure><img src="healing-village/shots/facility.jpg" alt="송학기원 알까기 화면" loading="lazy"><figcaption>시설 화면 · 상단 ←</figcaption></figure>
+        </div>
+      </div>
+    </article>
+
+    <article class="scene">
+      <div class="phone"><video src="healing-village/video/fish.mp4" poster="healing-village/video/fish.jpg" controls muted playsinline loop preload="none" aria-label="연못 낚시 녹화"></video></div>
+      <div>
+        <h3>③ 연못 낚시</h3>
+        <ol class="steps">
+          <li>선착장 위에 서면 버튼이 <b>낚싯대 던지기</b>로 바뀝니다. 누르면 주인공이 낚싯대를 든 자세가 되고 ‘찌를 지켜보는 중…’ 창이 뜹니다.</li>
+          <li>2~6초 뒤 찌가 기울며 ‘찌가 움직여요! 지금 당기세요!’로 바뀝니다. 1.5초 안에 <b>낚싯대 당기기</b>를 누르면 되고, 너무 일찍 누르면 안내만 나옵니다.</li>
+          <li>잡으면 물고기 그림과 이름, 받은 도토리가 나옵니다. 녹화에서는 3.8초에 입질이 와서 붕어를 잡았습니다(도토리 +10, 마음 온도 +1).</li>
+        </ol>
+        <div class="strip">
+          <figure><img src="healing-village/shots/fish_wait.jpg" alt="찌를 지켜보는 중" loading="lazy"><figcaption>대기 · 낚시 포즈</figcaption></figure>
+          <figure><img src="healing-village/shots/fish_bite.jpg" alt="찌가 움직임" loading="lazy"><figcaption>입질: 지금 당기기</figcaption></figure>
+          <figure><img src="healing-village/shots/fish_caught.jpg" alt="붕어를 낚음" loading="lazy"><figcaption>붕어 · 도토리 +10</figcaption></figure>
+        </div>
+      </div>
+    </article>
+
+    <article class="scene">
+      <div class="phone"><video src="healing-village/video/garden.mp4" poster="healing-village/video/garden.jpg" controls muted playsinline loop preload="none" aria-label="텃밭 가꾸기 녹화"></video></div>
+      <div>
+        <h3>④ 텃밭 가꾸기</h3>
+        <ol class="steps">
+          <li>상추가 자라는 칸 옆에서 <b>텃밭 살피기</b>를 누르면 남은 시간(약 2시간)을 알려 줍니다.</li>
+          <li>빈 칸 옆으로 옮기면 <b>씨앗 심기</b>가 나옵니다. 상추(2시간)·고추(4시간)·토마토(8시간) 중에서 고릅니다.</li>
+          <li>심은 칸에 새싹이 나타나고 버튼이 <b>물 주기</b>로 바뀝니다. 하루 한 번 물을 주면 자라는 시간이 25% 줄어듭니다.</li>
+          <li>실제 시간으로 자라므로 앱을 꺼 둬도 자랍니다. 다 자라면 <b>○○ 수확하기</b>로 도토리를 받습니다. 수확은 2시간 넘게 걸려 녹화하지 못했고 단위 테스트로 확인했습니다.</li>
+        </ol>
+        <div class="strip">
+          <figure><img src="healing-village/shots/garden_check.jpg" alt="텃밭 살피기 안내" loading="lazy"><figcaption>살피기: 남은 시간</figcaption></figure>
+          <figure><img src="healing-village/shots/garden_picker.jpg" alt="씨앗 고르기" loading="lazy"><figcaption>씨앗 고르기</figcaption></figure>
+          <figure><img src="healing-village/shots/garden_watered.jpg" alt="물을 준 뒤" loading="lazy"><figcaption>물 주기 완료</figcaption></figure>
+        </div>
+      </div>
+    </article>
+
+    <article class="scene">
+      <div class="phone"><video src="healing-village/video/house.mp4" poster="healing-village/video/house.jpg" controls muted playsinline loop preload="none" aria-label="내 집 꾸미기 녹화"></video></div>
+      <div>
+        <h3>⑤ 내 집 꾸미기</h3>
+        <ol class="steps">
+          <li>마을 북동쪽 내 집 문 앞에 서면 <b>내 집 들어가기</b>가 나옵니다.</li>
+          <li>방에는 큰 칸이 6개 있습니다. 끌어다 놓는 대신 칸을 누르고 가진 가구를 고르는 방식이라, 손이 떨려도 원하는 자리에 놓을 수 있습니다.</li>
+          <li>아래 장터에서 도토리로 가구 8종을 삽니다. 녹화에서는 꽃무늬 이불(도토리 120)을 사서 2번 칸에 놓았습니다.</li>
+          <li>놓아 둔 가구 하나마다 쉬기 보상의 마음 온도가 1씩 오릅니다. 혈압약도 집에서 챙깁니다.</li>
+        </ol>
+        <div class="strip">
+          <figure><img src="healing-village/shots/house_door.jpg" alt="내 집 문 앞" loading="lazy"><figcaption>문 앞: 들어가기</figcaption></figure>
+          <figure><img src="healing-village/shots/house_pick.jpg" alt="칸에 놓을 가구 고르기" loading="lazy"><figcaption>칸 선택 → 가구 고르기</figcaption></figure>
+          <figure><img src="healing-village/shots/house_placed.jpg" alt="가구 배치 완료" loading="lazy"><figcaption>자개장·이불 배치</figcaption></figure>
+        </div>
+      </div>
+    </article>
+
+    <article class="scene">
+      <div class="phone"><video src="healing-village/video/rest.mp4" poster="healing-village/video/rest.jpg" controls muted playsinline loop preload="none" aria-label="벤치 쉬기와 일기 녹화"></video></div>
+      <div>
+        <h3>⑥ 벤치 쉬기 · 오늘의 한 마디</h3>
+        <ol class="steps">
+          <li>벤치 옆이나 연못가 정자 앞에서 <b>앉아 쉬기</b>를 누르면 주인공이 앉고, 카메라가 올라가 앉은 모습이 보입니다.</li>
+          <li>그날 처음 쉬면 활력과 마음 온도가 오릅니다. 같은 날 다시 앉으면 ‘이미 받았어요’라고 알려 줍니다(이 녹화는 두 번째로 쉰 장면).</li>
+          <li>한 줄 일기(최대 80자)를 쓰고 <b>일지에 적기</b>를 누릅니다. 하루에 한 줄만 남고, 같은 날 다시 쓰면 고쳐집니다. 최근 30일치를 보관합니다.</li>
+        </ol>
+        <div class="strip">
+          <figure><img src="healing-village/shots/rest_spot.jpg" alt="벤치 옆" loading="lazy"><figcaption>벤치 옆: 앉아 쉬기</figcaption></figure>
+          <figure><img src="healing-village/shots/rest_sit.jpg" alt="앉은 포즈" loading="lazy"><figcaption>앉은 포즈 + 쉬기 창</figcaption></figure>
+          <figure><img src="healing-village/shots/rest_diary.jpg" alt="일기 저장" loading="lazy"><figcaption>일지에 적기 완료</figcaption></figure>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <section id="screens">
+    <h2>앱 화면</h2>
+    <p class="lead">녹화 말고 따로 찍은 주요 화면입니다. 같은 기기, 같은 빌드에서 찍었습니다. 오후 4시 무렵이라 시간대별 빛 오버레이는 투명한 낮 상태입니다.</p>
+    <div class="gallery">
+      <figure><img src="healing-village/shots/hud.jpg" alt="마을 메인" loading="lazy"><figcaption>마을 메인 · 풀스크린</figcaption></figure>
+      <figure><img src="healing-village/shots/offline.jpg" alt="오프라인 보상" loading="lazy"><figcaption>다시 들어올 때 방치 보상</figcaption></figure>
+      <figure><img src="healing-village/shots/bag.jpg" alt="가방 시트" loading="lazy"><figcaption>가방 · 일지 (오늘의 일과)</figcaption></figure>
+      <figure><img src="healing-village/shots/bag2.jpg" alt="가방 시트 퀘스트" loading="lazy"><figcaption>가방 · 일지 (의뢰 퀘스트)</figcaption></figure>
+      <figure><img src="healing-village/shots/menu.jpg" alt="메뉴 시트" loading="lazy"><figcaption>마을 메뉴 (명인전당 · 방치 시설)</figcaption></figure>
+      <figure><img src="healing-village/shots/story.jpg" alt="이야기 창" loading="lazy"><figcaption>이야기 · 인생 6막</figcaption></figure>
+      <figure><img src="healing-village/shots/npc_dialogue.jpg" alt="대화창" loading="lazy"><figcaption>RPG 대화창</figcaption></figure>
+      <figure><img src="healing-village/shots/facility.jpg" alt="시설" loading="lazy"><figcaption>시설(알까기) · 스택 헤더</figcaption></figure>
+      <figure><img src="healing-village/shots/exit.jpg" alt="종료 확인" loading="lazy"><figcaption>마을에서 뒤로가기 → 종료 확인</figcaption></figure>
+      <figure><img src="healing-village/shots/fish_caught.jpg" alt="낚시 결과" loading="lazy"><figcaption>낚시 결과</figcaption></figure>
+      <figure><img src="healing-village/shots/garden_planted.jpg" alt="씨앗 심음" loading="lazy"><figcaption>씨앗을 심은 직후</figcaption></figure>
+      <figure><img src="healing-village/shots/house_inside.jpg" alt="내 집 내부" loading="lazy"><figcaption>내 집 · 가구 칸과 약 복용</figcaption></figure>
+      <figure><img src="healing-village/shots/house_shop.jpg" alt="가구 장터" loading="lazy"><figcaption>마을 가구 장터</figcaption></figure>
+      <figure><img src="healing-village/shots/rest_sit.jpg" alt="쉬기" loading="lazy"><figcaption>앉아 쉬기</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="assets">
+    <h2>에셋 적용</h2>
+    <p class="lead">새 에셋 36종은 모두 <code>apps/mobile/assets/game/rpg/pixel/</code> 아래에 있고, <code>src/rpg/rpg-sprites.ts</code>에 정적 <code>require()</code>로 등록됩니다. 기존 한옥 건물과 주인공 스프라이트를 레퍼런스로 넣어 픽셀 밀도와 색감을 맞췄습니다. 아래 썸네일은 저장소의 실제 파일을 그대로 불러온 것입니다.</p>
+
+    <div class="asset-group">
+      <div class="asset-head"><h3>건물</h3><p><code>BUILDING_SPRITES</code> · 432×288 · 3×2 타일 자리 위에 그림</p></div>
+      <div class="assets">
+        <div class="asset wide"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/buildings/home.png" alt="내 집 한옥"></div><b>내 집</b><code>buildings/home.png</code><span class="tag info">맵 (17–19, 1–2) · 문 (18, 3)</span></div>
+        <div class="asset wide"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/buildings/pavilion.png" alt="연못가 정자"></div><b>연못가 정자</b><code>buildings/pavilion.png</code><span class="tag info">맵 (19–21, 15–16) · 쉼터 (20, 17)</span></div>
+      </div>
+    </div>
+
+    <div class="asset-group">
+      <div class="asset-head"><h3>월드 타일</h3><p><code>TILE_SPRITES</code> · 144×144 (48dp @3x) · 지도 글자 <code>K</code> <code>F</code> <code>b</code></p></div>
+      <div class="assets">
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/world/dock.png" alt="선착장"></div><b>선착장 판자</b><code>world/dock.png</code><span class="tag info">물 위에 겹쳐 그림 · 걸을 수 있음</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/world/farm_soil.png" alt="텃밭 흙"></div><b>텃밭 흙</b><code>world/farm_soil.png</code><span class="tag info">4칸 · 지나갈 수 없음</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/world/bench.png" alt="벤치"></div><b>벤치</b><code>world/bench.png</code><span class="tag info">(6, 16) · (17, 12)</span></div>
+      </div>
+    </div>
+
+    <div class="asset-group">
+      <div class="asset-head"><h3>텃밭 작물</h3><p><code>CROP_SPRITES</code> · 새싹 → 자람 → 수확 3단계를 텃밭 칸 위에 그림 · 성장 50%와 100%에서 바뀜</p></div>
+      <div class="assets">
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/farm/lettuce_0.png" alt=""></div><b>상추 · 새싹</b><code>farm/lettuce_0.png</code></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/farm/lettuce_1.png" alt=""></div><b>상추 · 자람</b><code>farm/lettuce_1.png</code></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/farm/lettuce_2.png" alt=""></div><b>상추 · 수확</b><code>farm/lettuce_2.png</code></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/farm/pepper_0.png" alt=""></div><b>고추 · 새싹</b><code>farm/pepper_0.png</code></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/farm/pepper_1.png" alt=""></div><b>고추 · 자람</b><code>farm/pepper_1.png</code></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/farm/pepper_2.png" alt=""></div><b>고추 · 수확</b><code>farm/pepper_2.png</code></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/farm/tomato_0.png" alt=""></div><b>토마토 · 새싹</b><code>farm/tomato_0.png</code></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/farm/tomato_1.png" alt=""></div><b>토마토 · 자람</b><code>farm/tomato_1.png</code></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/farm/tomato_2.png" alt=""></div><b>토마토 · 수확</b><code>farm/tomato_2.png</code></div>
+      </div>
+    </div>
+
+    <div class="asset-group">
+      <div class="asset-head"><h3>낚시</h3><p><code>FISH_SPRITES</code> · <code>LIFE_PROP_SPRITES.bobber</code> · 낚시 창에 표시 · 숫자는 나올 확률 가중치</p></div>
+      <div class="assets">
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/farm/bobber.png" alt=""></div><b>찌</b><code>farm/bobber.png</code><span class="tag info">입질 때 기울어짐</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/fish/minnow.png" alt=""></div><b>피라미</b><code>fish/minnow.png</code><span class="tag">35 · 🌰5</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/fish/crucian.png" alt=""></div><b>붕어</b><code>fish/crucian.png</code><span class="tag">28 · 🌰10</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/fish/carp.png" alt=""></div><b>잉어</b><code>fish/carp.png</code><span class="tag">18 · 🌰20</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/fish/catfish.png" alt=""></div><b>메기</b><code>fish/catfish.png</code><span class="tag">10 · 🌰30</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/fish/mandarin.png" alt=""></div><b>쏘가리</b><code>fish/mandarin.png</code><span class="tag">7 · 🌰45</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/fish/golden.png" alt=""></div><b>황금 잉어</b><code>fish/golden.png</code><span class="tag warn">2 · 🌰150</span></div>
+      </div>
+    </div>
+
+    <div class="asset-group">
+      <div class="asset-head"><h3>가구</h3><p><code>FURNITURE_SPRITES</code> · 256×256 · 내 집 칸과 장터</p></div>
+      <div class="assets">
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/furniture/cabinet.png" alt=""></div><b>자개장</b><code>furniture/cabinet.png</code><span class="tag">🌰300</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/furniture/bedding.png" alt=""></div><b>꽃무늬 이불</b><code>furniture/bedding.png</code><span class="tag">🌰120</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/furniture/orchid.png" alt=""></div><b>난초 화분</b><code>furniture/orchid.png</code><span class="tag">🌰80</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/furniture/radio.png" alt=""></div><b>옛 라디오</b><code>furniture/radio.png</code><span class="tag">🌰150</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/furniture/tea_table.png" alt=""></div><b>찻상</b><code>furniture/tea_table.png</code><span class="tag">🌰100</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/furniture/painting.png" alt=""></div><b>고향 풍경화</b><code>furniture/painting.png</code><span class="tag">🌰200</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/furniture/screen.png" alt=""></div><b>매화 병풍</b><code>furniture/screen.png</code><span class="tag">🌰250</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/furniture/fishbowl.png" alt=""></div><b>금붕어 어항</b><code>furniture/fishbowl.png</code><span class="tag">🌰180</span></div>
+      </div>
+    </div>
+
+    <div class="asset-group">
+      <div class="asset-head"><h3>주인공 포즈 · HUD</h3><p><code>PLAYER_POSE_SPRITES</code> 144×264(걷기 스프라이트와 같은 캔버스·발 위치) · HUD 아이콘 192×192</p></div>
+      <div class="assets">
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/player_pose/player_sit.png" alt=""></div><b>앉기</b><code>player_pose/player_sit.png</code><span class="tag info">쉬는 중</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/player_pose/player_fish.png" alt=""></div><b>낚싯대 들기</b><code>player_pose/player_fish.png</code><span class="tag info">낚시 중</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/hud/bag.png" alt=""></div><b>가방</b><code>hud/bag.png</code></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/hud/story.png" alt=""></div><b>이야기</b><code>hud/story.png</code></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/hud/menu.png" alt=""></div><b>메뉴</b><code>hud/menu.png</code></div>
+      </div>
+    </div>
+
+    <div class="asset-group">
+      <div class="asset-head"><h3>생활 행동 소품</h3><p>물 주기와 수확 연출에 연결되어 있습니다. 이 연결 이후 실제 화면은 확인하지 않았습니다.</p></div>
+      <div class="assets">
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/farm/watering_can.png" alt=""></div><b>물뿌리개</b><code>farm/watering_can.png</code><span class="tag info">물 주기</span></div>
+        <div class="asset"><div class="thumb"><img class="pixel" src="../apps/mobile/assets/game/rpg/pixel/farm/basket.png" alt=""></div><b>수확 바구니</b><code>farm/basket.png</code><span class="tag info">수확·채집</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pipeline">
+    <h2>에셋 제작 과정</h2>
+    <p class="lead"><code>/sprite-gen</code>으로 만들었습니다. 지피티(codex) 구독을 쓸 수 없어서 그록(Grok Imagine)으로 생성했습니다.</p>
+    <ol class="flow">
+      <li><b>시트 단위로 생성.</b> 집, 정자, 타일 3종, 작물·소품 12칸, 물고기 6칸, 가구 8칸, HUD 3칸, 앉기, 낚시까지 9장을 동시에 생성했습니다. 각 장에 기존 픽셀 에셋(마을회관, 한약방, 길 타일, 꽃 타일, 주인공 정면·측면)을 <code>--ref</code>로 넣어 화풍을 맞췄습니다.</li>
+      <li><b>배경 제거 실패 발견.</b> Grok이 순수 마젠타(#FF00FF) 대신 진한 크림슨 배경을 그려서, 기본 키잉이 지붕·가구·채소까지 지웠습니다. 앉은 포즈는 초록 배경을 지우면서 청록색 바지까지 지웠습니다.</li>
+      <li><b>배경 다시 따기.</b> 원본 자체는 품질이 좋아서 <code>sprite-gen cutout --key measured</code>(실제 배경색을 재서 지우는 방식)로 다시 땄고, 대부분 깨끗해졌습니다.</li>
+      <li><b>빨간 피사체만 다시 생성.</b> 익은 고추·토마토·찌·이불은 빨간색이 배경색과 겹쳐 허용 오차를 낮춰도 같이 지워졌습니다. 이 4개만 하늘색(#4A90E2) 배경으로 다시 만들어 <code>cutout</code>으로 땄습니다.</li>
+      <li><b>게임 해상도로 자르기.</b> <code>sprite-gen slice-sheet --fit contain</code>으로 타일 144², 건물 432×288, 포즈 144×264(기존 걷기 프레임과 같은 발 위치 261px)로 맞췄습니다. 작물은 시트 전체에 같은 배율을 적용해 크기 비율을 유지했습니다.</li>
+      <li><b>등록과 배치.</b> <code>rpg-sprites.ts</code>에 정적 <code>require()</code>로 등록하고 맵, 활동 창, 내 집 화면에서 씁니다. 파일 경로가 틀리면 Metro 번들 단계에서 바로 오류가 납니다.</li>
+    </ol>
+    <div class="pipeline">
+      <figure><img src="healing-village/pipeline/contact_raw.jpg" alt="Grok 원본 시트들" loading="lazy"><figcaption>Grok 원본: 배경이 순수 마젠타가 아니라 크림슨</figcaption></figure>
+      <figure><img src="healing-village/pipeline/contact_cut.jpg" alt="cutout 결과" loading="lazy"><figcaption><code>cutout --key measured</code>로 다시 딴 결과</figcaption></figure>
+      <figure><img src="healing-village/pipeline/red_check.jpg" alt="빨간 피사체 재생성" loading="lazy"><figcaption>빨간 피사체 4종: 하늘색 배경으로 다시 생성</figcaption></figure>
+      <figure><img src="healing-village/pipeline/final.jpg" alt="최종 슬라이스 36종" loading="lazy"><figcaption>최종 결과 36종</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="code">
+    <h2>코드 위치</h2>
+    <div class="card table-scroll">
+      <table>
+        <thead><tr><th>파일</th><th>역할</th></tr></thead>
+        <tbody>
+          <tr><td><code>apps/mobile/src/app/(game)/_layout.tsx</code></td><td>바텀 탭(<code>Tabs</code>)을 <code>Stack</code>으로 교체. 마을에는 헤더가 없고 시설·내 집에는 ← 헤더가 있습니다. URL(<code>/clubs</code> 등)은 그대로입니다.</td></tr>
+          <tr><td><code>apps/mobile/src/rpg/village-map-screen.tsx</code></td><td>풀스크린 맵, 상단 HUD, 조이스틱, 상황 행동 버튼, 대화창, 가방·메뉴 시트. 안내 문구는 4초 뒤 자동으로 사라집니다.</td></tr>
+          <tr><td><code>apps/mobile/src/rpg/pixel-village-map.tsx</code></td><td>맵 그리기와 카메라. 바뀌지 않는 타일은 한 번만 그리고(<code>StaticTiles</code>), 작물·포즈를 표시하며, <code>focusY</code>로 카메라를 올립니다.</td></tr>
+          <tr><td><code>apps/mobile/src/rpg/rpg-logic.ts</code></td><td>24×24 글자 지도 <code>VILLAGE_LAYOUT</code>, 내 집·정자 건물, 텃밭 좌표 <code>FARM_PLOTS</code>, 지나갈 수 있는지 판정.</td></tr>
+          <tr><td><code>apps/mobile/src/world/virtual-joystick.tsx</code> · <code>joystick-direction.ts</code></td><td>PanResponder 조이스틱. 18dp 무시 구간, 4방향, 190ms 걸음, TalkBack 동작.</td></tr>
+          <tr><td><code>apps/mobile/src/world/life.ts</code></td><td>텃밭·낚시·가구·쉬기·일기 규칙과 저장값 보정(<code>normalizeLife</code>).</td></tr>
+          <tr><td><code>apps/mobile/src/world/world-activities.tsx</code></td><td>서 있는 자리로 할 행동 결정, 활동 창(씨앗·낚시·쉬기), 주인공 포즈.</td></tr>
+          <tr><td><code>apps/mobile/src/world/house-screen.tsx</code></td><td>내 집 6칸 배치, 가구 장터, 약 복용.</td></tr>
+          <tr><td><code>apps/mobile/src/rpg/rpg-store.tsx</code></td><td>저장 상태에 <code>life</code> 추가. <code>applyLife</code>는 도토리·활력·마음 온도 변화를 한 번에 저장하고, <code>movePlayer</code>는 가장 최근 위치 기준으로 벽을 판정합니다.</td></tr>
+          <tr><td><code>apps/mobile/src/rpg/rpg-sprites.ts</code></td><td>새 에셋 목록(레지스트리).</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="limits">
+    <h2>남은 과제</h2>
+    <div class="callout">
+      <p style="margin:0 0 8px"><b>기록 당시 확인한 범위</b>: 디버그 빌드 실기기 조작(adb), 단위 테스트 340개, 타입체크·lint, 릴리스 검증 스크립트. 이 결과는 이후 변경분의 검증을 뜻하지 않습니다.</p>
+      <ul style="margin:0;padding-left:1.2em">
+        <li>당시 디버그 빌드의 긴 이동에서 끊김이 관찰됐습니다. 이후 이동과 렌더링을 변경했지만 현재 코드의 원인과 체감 성능은 확인되지 않았습니다.</li>
+        <li>당시 작물이 자연스럽게 자랄 때까지 기다려 수확하지는 못했습니다. 이후 별도 테스트 상태에서 수확을 확인했으며, 현재 변경분은 다시 확인하지 않았습니다.</li>
+        <li>이후 동행 NPC가 주인공을 따라가도록 추가했지만, 현재 변경분의 실제 움직임은 확인하지 않았습니다.</li>
+        <li>앉기·낚시 포즈는 기본 등급 옷차림 한 벌뿐이라, 높은 등급 주인공도 이 자세에서는 기본 옷차림으로 보입니다.</li>
+        <li>앱을 켠 채로 시스템 글꼴 크기를 바꾸면 화면이 비는 기존 문제(화면 재생성)가 이번 변경과 별개로 남아 있습니다.</li>
+        <li>물뿌리개와 바구니는 이후 생활 행동 효과에 연결했지만, 현재 변경분의 화면 표시는 확인하지 않았습니다.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">기기 RFCW31YGBJA · Android 디버그 빌드(Metro) · 2026-11-12 촬영. 녹화와 스크린샷은 <code>docs/healing-village/</code>에 있고, 에셋은 저장소의 원본 경로를 그대로 참조합니다.</div>
+</footer>
+</body>
+</html>
