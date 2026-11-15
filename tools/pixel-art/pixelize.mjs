@@ -140,6 +140,28 @@ export const GROUPS = {
     },
   },
 
+  /** RPG 창·HUD 스킨 (sprite-gen codex 원본: rpg/ui-src) */
+  gameui: {
+    grid: [32, 32],
+    colors: 32,
+    alpha: true,
+    fit: true,
+    files: {
+      acorn: { path: 'rpg/ui-src/acorn.png' },
+      heart: { path: 'rpg/ui-src/heart.png' },
+      vitality: { path: 'rpg/ui-src/vitality.png' },
+      gift: { path: 'rpg/ui-src/gift.png' },
+      quest: { path: 'rpg/ui-src/quest.png' },
+      mapicon: { path: 'rpg/ui-src/mapicon.png' },
+      star_full: { path: 'rpg/ui-src/star_full.png' },
+      star_empty: { path: 'rpg/ui-src/star_empty.png' },
+      ribbon: { path: 'rpg/ui-src/ribbon.png', grid: [96, 32] },
+      confetti: { path: 'rpg/ui-src/confetti.png', grid: [80, 60] },
+      frame_corner: { path: 'rpg/ui-src/frame_corner.png', grid: [24, 24] },
+      back_button: { path: 'rpg/ui-src/back_button.png', grid: [44, 32] },
+    },
+  },
+
   /** 사천성 패 8종 */
   tileset: {
     grid: [36, 36],
