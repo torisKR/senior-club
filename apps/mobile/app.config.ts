@@ -1,9 +1,22 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
-import { AndroidConfig, withAndroidManifest } from 'expo/config-plugins';
+import { AndroidConfig, withAndroidManifest, withDangerousMod } from 'expo/config-plugins';
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 const GOOGLE_ANDROID_TEST_APP_ID = 'ca-app-pub-3940256099942544~3347511713';
 const PRODUCTION_ADMOB_ANDROID_APP_ID = 'ca-app-pub-3004906966180197~9575830978';
 const ADMOB_APP_ID = /^ca-app-pub-\d{16}~\d{10}$/;
+const WORK_DATABASE_KEEP_RULE = '-keep class androidx.work.impl.WorkDatabase_Impl { public <init>(); }';
+
+// Room creates this generated database through reflection during Android startup.
+const withWorkDatabaseKeepRule = (config: ExpoConfig) => withDangerousMod(config, ['android', async (mod) => {
+  const path = join(mod.modRequest.platformProjectRoot, 'app', 'proguard-rules.pro');
+  const contents = await readFile(path, 'utf8');
+  if (!contents.includes(WORK_DATABASE_KEEP_RULE)) {
+    await writeFile(path, `${contents.trimEnd()}\n\n${WORK_DATABASE_KEEP_RULE}\n`);
+  }
+  return mod;
+}]);
 
 // A Play purchase may open a banking app; singleTask can cancel that flow.
 const withBillingSafeActivity = (config: ExpoConfig) => withAndroidManifest(config, (mod) => {
@@ -54,6 +67,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     plugins: [
       ...(config.plugins ?? []),
       withBillingSafeActivity,
+      withWorkDatabaseKeepRule,
       '@react-native-firebase/app',
       'expo-iap',
       [
