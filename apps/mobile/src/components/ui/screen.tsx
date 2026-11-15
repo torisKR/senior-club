@@ -29,7 +29,7 @@ export function Screen({
 }: ScreenProps) {
   const theme = useTheme();
   const safeInsets = useEffectiveSafeAreaInsets();
-  const segments = useSegments();
+  const segments: readonly string[] = useSegments();
   // 마을 밖 장소(시설·내 집)는 스택 헤더가 상태 표시줄 영역을 이미 차지합니다.
   const headerOwnsTop = segments[0] === '(game)' && segments[1] !== undefined && segments[1] !== 'home';
   const insets = headerOwnsTop ? { ...safeInsets, top: 0 } : safeInsets;
