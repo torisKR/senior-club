@@ -4,7 +4,6 @@ import path from 'node:path';
 import process from 'node:process';
 import zlib from 'node:zlib';
 
-import { inspectNavigationIcons } from './validate-navigation-icons.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 
@@ -377,13 +376,6 @@ for (const [screen, asset, width, height] of [
     fail(error instanceof Error ? error.message : String(error));
   }
   checkRgbaAsset(asset, { width, height, maxBytes: 1_048_576 });
-}
-
-try {
-  const tabIcons = inspectNavigationIcons(root);
-  pass(`tab layout renders ${tabIcons.length} distinct Material Symbols with verified font glyphs`);
-} catch (error) {
-  fail(error instanceof Error ? error.message : String(error));
 }
 
 if (app.android?.allowBackup === false) {

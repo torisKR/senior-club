@@ -1,9 +1,10 @@
 import { Image } from 'expo-image';
 import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppText, SeniorButton } from '@/components/ui';
 import { FontWeights, Radius, Spacing } from '@/constants/theme';
+import { useEffectiveSafeAreaInsets } from '@/hooks/use-effective-safe-area-insets';
 
 import { useRpg } from './rpg-store';
 import { tutorialCopy, tutorialProgress } from './onboarding';
@@ -32,8 +33,9 @@ const PROLOGUE_CARDS = [
  * - 프롤로그: 최초 1회, 3장. "건너뛰기" 상시 노출.
  * - 튜토리얼: 마을 화면 위에 뜨는 배너(차단 없음). 실제 행동으로만 다음 단계로 넘어갑니다.
  */
-export function OnboardingOverlay() {
+export function OnboardingOverlay({ reduceMotion = null }: { reduceMotion?: boolean | null } = {}) {
   const { state, advanceOnboarding } = useRpg();
+  const insets = useEffectiveSafeAreaInsets();
   const { onboarding } = state;
   const [cardIndex, setCardIndex] = useState(0);
 
@@ -53,9 +55,10 @@ export function OnboardingOverlay() {
   return (
     <>
       {prologueOpen ? (
-        <Modal visible transparent animationType="fade" onRequestClose={() => advanceOnboarding('skip')}>
-          <View style={styles.backdrop}>
+        <Modal visible transparent animationType={reduceMotion === false ? 'fade' : 'none'} onRequestClose={() => advanceOnboarding('skip')}>
+          <View style={[styles.backdrop, { paddingTop: insets.top + Spacing.md, paddingBottom: insets.bottom + Spacing.md }]}>
             <View style={styles.prologueCard} accessibilityViewIsModal>
+              <ScrollView style={styles.prologueScroll}>
               <Image source={PROLOGUE_BANNER} style={styles.banner} contentFit="cover" accessible={false} />
               <View style={styles.prologueBody}>
                 <View style={styles.prologueTopRow}>
@@ -99,6 +102,7 @@ export function OnboardingOverlay() {
                   onPress={handleNext}
                 />
               </View>
+              </ScrollView>
             </View>
           </View>
         </Modal>
@@ -149,12 +153,14 @@ const styles = StyleSheet.create({
   prologueCard: {
     width: '100%',
     maxWidth: 420,
+    maxHeight: '100%',
     backgroundColor: '#182620',
     borderRadius: Radius.lg,
     borderWidth: 2,
     borderColor: '#F0BF4F',
     overflow: 'hidden',
   },
+  prologueScroll: { flexShrink: 1 },
   banner: {
     width: '100%',
     height: 148,
@@ -165,6 +171,8 @@ const styles = StyleSheet.create({
   },
   prologueTopRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: Spacing.sm,
     alignItems: 'center',
     justifyContent: 'space-between',
   },

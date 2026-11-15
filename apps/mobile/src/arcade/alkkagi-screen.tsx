@@ -1,16 +1,19 @@
 import { Image } from 'expo-image';
 import { randomUUID } from 'expo-crypto';
-import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { AppText, Card, Screen, SeniorButton } from '@/components/ui';
 import { FontWeights, Layout, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/hooks/use-app-state';
 
 import { playSfx } from '@/audio/sound-manager';
+import { FocusedBackgroundAudio } from '@/audio/focused-background-audio';
 
 import { createInitialAlkkagiStones, executeAlkkagiFlick, hasAlkkagiProgress, type AlkkagiStone } from './arcade-logic';
 import { useArcade } from './arcade-store';
+import { ArcadeSaveNotice } from './arcade-save-notice';
+import { ArcadeQuickSettings } from './arcade-quick-settings';
 import { CompanionCoach } from '@/rpg/companion-coach';
 import { GAME_COACH } from '@/rpg/companion-lines';
 import { useRpg } from '@/rpg/rpg-store';
@@ -21,6 +24,7 @@ import { ChangeConfirmation } from './change-confirmation';
 import { PixelFx } from '@/fx/pixel-fx';
 import { FX_MANIFEST } from '@/fx/fx-manifest';
 import { getStoryTrial, StoryTrialNotice } from './story-trial';
+import { BGM_CLUB_LOUNGE } from '@/audio/bgm';
 
 const STONE_BLACK = require('../../assets/game/rpg/pixel/arcade/stone_black.png');
 const STONE_WHITE = require('../../assets/game/rpg/pixel/arcade/stone_white.png');
@@ -48,6 +52,8 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
   const opponent = story ? { name: story.climaxTrial.opponentName } : AI_OPPONENTS[opponentIdx] ?? AI_OPPONENTS[0];
 
   const [stones, setStones] = useState<AlkkagiStone[]>(() => savedRound?.stones ?? createInitialAlkkagiStones());
+  const flickPending = useRef(false);
+  useEffect(() => { flickPending.current = false; }, [stones]);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>(savedRound?.selectedPlayerId ?? 'p2');
   const [selectedTargetId, setSelectedTargetId] = useState<string>(savedRound?.selectedTargetId ?? 'a2');
   const [powerMode, setPowerMode] = useState<'precision' | 'strong' | 'double'>(savedRound?.powerMode ?? 'double');
@@ -108,16 +114,22 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
   };
 
   const handleFlick = () => {
-    if (!activeShooter || !activeTarget) return;
+    if (flickPending.current || pendingOpponent !== null || !activeShooter || !activeTarget) return;
+    flickPending.current = true;
     triggerHaptic('medium');
     playSfx('stoneClack', state.soundEnabled);
 
     const result = executeAlkkagiFlick(stones, activeShooter.id, activeTarget.id, powerMode);
+    const removed = result.stones.filter((stone) => stone.owner === 'ai' && !stone.alive && stones.some((before) => before.id === stone.id && before.alive));
+    const resultDetail = [
+      removed.length ? `장외: ${removed.map((stone) => `◎${stone.id.slice(1)}`).join(', ')}` : '',
+      result.shooterFellOut ? `내 돌 ★${activeShooter.id.slice(1)}도 장외` : '',
+    ].filter(Boolean).join(' · ');
     setImpactFx({ key: Date.now(), x: activeTarget.x, y: activeTarget.y });
     const nextDoubleCount = matchDoubleKnockouts + (result.doubleKnockout ? 1 : 0);
     setMatchDoubleKnockouts(nextDoubleCount);
     if (result.doubleKnockout) playSfx('combo', state.soundEnabled);
-    setScrollCallout(result.doubleKnockout ? '📜 일석이조(一石二鳥)! 보너스 +500점!' : null);
+    setScrollCallout(result.doubleKnockout ? '📜 일석이조(一石二鳥)! 승리 보상 +50 CP' : null);
 
     const remainingAi = result.stones.filter((s) => s.owner === 'ai' && s.alive);
     const remainingPlayer = result.stones.filter((s) => s.owner === 'player' && s.alive);
@@ -125,11 +137,11 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
     if (remainingAi.length === 0) {
       playSfx('chime', state.soundEnabled);
       setStones(result.stones);
-      const storyNote = story ? (story.id === 'chapter_2' || nextDoubleCount > 0 ? ' 이야기 목표를 마쳤습니다.' : ' 이야기 목표인 일석이조는 이루지 못해 다시 도전할 수 있습니다.') : '';
-      setBannerText(`🎉 대국 승리! 상대 알을 모두 장외로 밀어냈습니다! (+${160 + nextDoubleCount * 50} CP)${storyNote}`);
+      const storyRecorded = story && storyAttemptId ? recordStoryResult({ type: 'alkkagi', doubleKnockouts: nextDoubleCount, chapterId: story.id, attemptId: storyAttemptId }) : false;
+      const storyNote = story ? (!storyRecorded ? ' 이야기 기록이 반영되지 않았어요. 마을에서 진행 상태를 확인해 주세요.' : story.id === 'chapter_2' || nextDoubleCount > 0 ? ' 이야기 목표를 마쳤습니다.' : ' 이야기 목표인 일석이조는 이루지 못해 다시 도전할 수 있습니다.') : '';
+      setBannerText(`🎉 대국 승리! 상대 알을 모두 장외로 밀어냈습니다! (+${160 + nextDoubleCount * 50} CP · 인장 +1)${resultDetail ? ` · ${resultDetail}` : ''}${storyNote}`);
       recordAlkkagiWin(nextDoubleCount);
       completeQuestStep('alkkagi');
-      if (story && storyAttemptId) recordStoryResult({ type: 'alkkagi', doubleKnockouts: nextDoubleCount, chapterId: story.id, attemptId: storyAttemptId });
       recordGameWithNpc(GAME_COACH.alkkagi);
       return;
     }
@@ -137,18 +149,24 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
     // Simple deterministic AI counter-nudge that keeps gameplay fair & exciting
     const aiStone = remainingAi[0];
     const targetPlayer = remainingPlayer[remainingPlayer.length - 1];
+    let opponentNote = '';
     if (aiStone && targetPlayer) {
-      aiStone.y = Math.min(72, Number((aiStone.y + 12).toFixed(1)));
+      const nextY = Math.min(72, Number((aiStone.y + 12).toFixed(1)));
+      if (nextY !== aiStone.y) opponentNote = `상대 ◎${aiStone.id.slice(1)}이 자리를 옮겼어요.`;
+      aiStone.y = nextY;
     }
 
     setStones([...result.stones]);
-    setBannerText(`${result.summaryText} (남은 상대 알: ${remainingAi.length}개)`);
+    setBannerText([result.summaryText, resultDetail, `남은 상대 알 ${remainingAi.length}개`, opponentNote].filter(Boolean).join(' · '));
     if (remainingPlayer[0]) setSelectedPlayerId(remainingPlayer[0].id);
     if (remainingAi[0]) setSelectedTargetId(remainingAi[0].id);
   };
 
   return (
     <Screen testID="alkkagi-screen" contentContainerStyle={styles.container}>
+      <FocusedBackgroundAudio source={BGM_CLUB_LOUNGE} enabled={state.soundEnabled} />
+      <ArcadeSaveNotice />
+      <ArcadeQuickSettings />
       {/* 1. 상단 대국 현황판 (Art Bible §7: 28pt ExtraBold tabular-nums) */}
       <View style={styles.hudCard}>
         <View style={[styles.oppTabsRow, stackControls && styles.stackedRow]}>
@@ -174,9 +192,12 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
             );
           }) : <AppText variant="bodyStrong" style={{ color: '#FCF9F2' }}>{opponent.name}과 이야기 대국</AppText>}
         </View>
+        <AppText variant="caption" style={{ color: '#E4EDDA' }}>
+          {story ? '여유롭게 조준해 보세요. 마지막 내 돌은 판 밖으로 나가지 않아요.' : '어느 상대와도 같은 편안한 규칙으로 둡니다. 마지막 내 돌은 판 밖으로 나가지 않아요.'}
+        </AppText>
 
         <View style={[styles.versusRow, stackControls && styles.stackedRow]}>
-          <View style={[styles.sideStatBox, stackControls && styles.stackedControl]}>
+          <View style={stackControls ? styles.stackedStatBox : styles.sideStatBox}>
             <AppText variant="caption" style={styles.sideLabel}>나 (흑석 ★)</AppText>
             <AppText variant="title" style={styles.playerStoneCount}>
               남은 알 {alivePlayers.length}개
@@ -185,7 +206,7 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
           <View style={styles.vsBadge}>
             <AppText variant="bodyStrong" style={{ color: '#F0BF4F' }}>VS</AppText>
           </View>
-          <View style={[styles.sideStatBox, stackControls && styles.stackedControl, { alignItems: stackControls ? 'flex-start' : 'flex-end' }]}>
+          <View style={[stackControls ? styles.stackedStatBox : styles.sideStatBox, { alignItems: stackControls ? 'flex-start' : 'flex-end' }]}>
             <AppText variant="caption" style={styles.sideLabel}>{opponent.name} (백석)</AppText>
             <AppText variant="title" style={styles.enemyStoneCount}>
               남은 알 {aliveEnemies.length}개
@@ -211,7 +232,7 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
       {scrollCallout ? (
         <View style={styles.scrollBanner}>
           <View style={styles.scrollBannerEmblem}>
-            <PixelFx name="match" scale={0.42} loop />
+          <PixelFx name="match" scale={0.42} />
           </View>
           <AppText variant="sectionTitle" style={styles.scrollBannerText}>
             {scrollCallout}
@@ -225,8 +246,10 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
         mood={aliveEnemies.length === 0 ? 'success' : 'start'}
       />
 
-      {/* 배경에 돌 그림을 넣지 않아 누를 수 있는 돌만 보이도록 합니다. */}
-      <View style={styles.boardFrame}>
+      {/* 작은 화면에서도 돌 사이 간격을 유지하고 보드는 가로로 이동합니다. */}
+      <AppText variant="caption" style={styles.selectionGuide}>바둑판을 좌우로 밀어 볼 수 있어요. 돌이 가까우면 아래의 바꾸기 버튼으로도 선택할 수 있습니다.</AppText>
+      <ScrollView horizontal showsHorizontalScrollIndicator accessibilityLabel="알까기 바둑판, 좌우로 스크롤 가능">
+      <View style={[styles.boardFrame, { width: Math.max(360, width - Layout.screenPadding * 2) }]}>
         {Array.from({ length: 9 }, (_, index) => (
           <React.Fragment key={`grid-${index}`}>
             <View pointerEvents="none" style={[styles.gridVertical, { left: `${10 + index * 10}%` }]} />
@@ -297,11 +320,12 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
           />
         ) : null}
       </View>
+      </ScrollView>
 
       {/* 3. 하단 조준 및 타격 컨트롤 */}
       {aliveEnemies.length === 0 ? (
         <Card style={styles.victoryCard}>
-          <AppText variant="sectionTitle" style={{ color: '#0E5142' }}>
+          <AppText variant="sectionTitle" accessibilityLiveRegion="polite" style={{ color: '#0E5142' }}>
             {bannerText}
           </AppText>
           <SeniorButton
@@ -319,11 +343,14 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
         </Card>
       ) : (
         <Card style={styles.controlCard}>
-          <AppText variant="bodyStrong" style={{ color: '#182620' }}>
+          <AppText variant="bodyStrong" accessibilityLiveRegion="polite" style={{ color: '#182620' }}>
             {bannerText}
           </AppText>
-          <AppText variant="caption" style={styles.selectionGuide}>
+          <AppText variant="caption" accessibilityLiveRegion="polite" style={styles.selectionGuide}>
             내 돌 ★{activeShooter?.id.slice(1)} · 목표 돌 ◎{activeTarget?.id.slice(1)} 선택 중. 돌을 직접 누르거나 아래 버튼으로 바꾸세요.
+          </AppText>
+          <AppText variant="caption" style={styles.selectionGuide}>
+            정밀 타격은 내 돌을 덜 밀고, 강타는 상대를 더 멀리 밉니다. 일석이조는 가까운 다른 상대 돌도 노릴 수 있지만 내 돌이 밖으로 나갈 수 있어요.
           </AppText>
 
           <Image
@@ -339,7 +366,7 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
             {([
               { id: 'precision', label: '정밀 타격', sub: '내 알 보호' },
               { id: 'strong', label: '강력 타격', sub: '장외 밀어내기' },
-              { id: 'double', label: '일석이조 강타', sub: '2개 동시 격파' },
+              { id: 'double', label: '일석이조 강타', sub: '가까운 돌도 노리기' },
             ] as const).map((mode) => {
               const selected = powerMode === mode.id;
               return (
@@ -372,7 +399,7 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
             <View style={stackControls ? styles.stackedControl : { flex: 1 }}>
               <SeniorButton
                 testID="btn-alkkagi-switch-stone"
-                label="다음 내 알 선택"
+                label="내 알 바꾸기"
                 variant="secondary"
                 onPress={cycleNextShooter}
               />
@@ -380,13 +407,13 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
             <View style={stackControls ? styles.stackedControl : { flex: 1 }}>
               <SeniorButton
                 testID="btn-alkkagi-switch-target"
-                label="다음 상대 알 선택"
+                label="목표 알 바꾸기"
                 variant="secondary"
                 onPress={cycleNextTarget}
               />
             </View>
           </View>
-          <SeniorButton testID="btn-alkkagi-flick" label="알 튕기기 (타격!)" variant="accent" onPress={handleFlick} />
+          <SeniorButton testID="btn-alkkagi-flick" label={pendingOpponent !== null ? '위쪽에서 상대 변경을 확인해 주세요' : '알 튕기기 (타격!)'} variant="accent" disabled={pendingOpponent !== null} onPress={handleFlick} />
         </Card>
       )}
     </Screen>
@@ -448,6 +475,10 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  stackedStatBox: {
+    alignSelf: 'stretch',
+    gap: 2,
+  },
   sideLabel: {
     color: '#D8B384',
   },
@@ -491,7 +522,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   boardFrame: {
-    width: '100%',
     height: 330,
     borderRadius: Radius.lg,
     overflow: 'hidden',

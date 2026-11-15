@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Screen } from './screen';
 
-const state = vi.hoisted(() => ({ tabs: true, top: 24, bottom: 48 }));
+const state = vi.hoisted(() => ({ top: 24, bottom: 48, segments: ['event', '[id]'] }));
 const flatten = (style: unknown): Record<string, unknown> => Array.isArray(style)
   ? Object.assign({}, ...style.map(flatten))
   : typeof style === 'object' && style !== null ? style as Record<string, unknown> : {};
@@ -10,14 +10,13 @@ vi.mock('react-native', () => ({
   ScrollView: 'ScrollView', View: 'View', StyleSheet: { flatten: (style: unknown) => flatten(style) },
   Platform: { select: (options: { default: unknown }) => options.default },
 }));
-vi.mock('expo-router', () => ({ useSegments: () => state.tabs ? ['(tabs)', 'home'] : ['event', '[id]'] }));
+vi.mock('expo-router', () => ({ useSegments: () => state.segments }));
 vi.mock('@/hooks/use-theme', () => ({ useTheme: () => ({ background: '#eef2e9' }) }));
 vi.mock('@/hooks/use-effective-safe-area-insets', () => ({ useEffectiveSafeAreaInsets: () => ({ top: state.top, bottom: state.bottom }) }));
 
 describe('native screen insets', () => {
-  beforeEach(() => Object.assign(state, { tabs: true, top: 24, bottom: 48 }));
+  beforeEach(() => Object.assign(state, { top: 24, bottom: 48, segments: ['event', '[id]'] }));
   it('keeps the status-bar inset outside scrolling content so scrolled controls cannot cover it', () => {
-    state.tabs = true;
     const screen = Screen({ contentContainerStyle: { paddingTop: 8 }, children: 'Content' });
     expect(screen.type).toBe('View');
     expect(flatten(screen.props.style)).toMatchObject({ paddingTop: 24, backgroundColor: '#eef2e9' });
@@ -35,22 +34,19 @@ describe('native screen insets', () => {
     expect(screen.props.children.props.keyboardDismissMode).toBe('on-drag');
     expect(flatten(screen.props.children.props.contentContainerStyle).paddingTop).toBe(16);
   });
-  it('lets the tab bar own the bottom system inset', () => {
-    state.tabs = true;
-    state.bottom = 80;
-    expect(flatten(Screen({}).props.children.props.contentContainerStyle).paddingBottom).toBe(32);
-  });
-  it('reserves the bottom inset on a screen outside the tab navigator', () => {
-    state.tabs = false;
+  it('reserves the bottom system inset now that no tab bar owns it', () => {
     state.bottom = 80;
     expect(flatten(Screen({}).props.children.props.contentContainerStyle).paddingBottom).toBe(96);
     expect(flatten(Screen({ includeBottomInset: false }).props.children.props.contentContainerStyle).paddingBottom).toBe(32);
-    state.tabs = true;
   });
   it('retains a fixed top inset for non-scrolling scenes', () => {
     const screen = Screen({ scroll: false, contentContainerStyle: { paddingTop: 8 } });
     expect(screen.type).toBe('View');
     expect(flatten(screen.props.children.props.style).paddingTop).toBe(24);
     expect(flatten(screen.props.children.props.children.props.style).paddingTop).toBe(8);
+  });
+  it('leaves the status bar to the stack header on places entered from the village', () => {
+    state.segments = ['(game)', 'clubs'];
+    expect(flatten(Screen({}).props.style).paddingTop).toBe(0);
   });
 });

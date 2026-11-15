@@ -2,13 +2,14 @@ import React from 'react';
 
 import type { BillingPort, TokenStore } from './billing-port';
 import type { PurchaseOutcome, RestoreOutcome } from './remove-ads';
-import { purchaseRemoveAds, restoreRemoveAds, syncEntitlement } from './remove-ads';
+import { purchaseRemoveAds, restoreRemoveAds, syncEntitlementStatus } from './remove-ads';
 import { REMOVE_ADS_PRODUCT_ID } from './product';
 import { useBillingReconciliation } from './use-billing-reconciliation';
 
 export type BillingContextValue = {
   readonly owned: boolean;
   readonly ready: boolean;
+  readonly verifiedAbsent: boolean;
   readonly price: string | null;
   readonly priceLoaded: boolean;
   readonly retryPrice: () => void;
@@ -29,7 +30,7 @@ export function useBilling(): BillingContextValue {
 export function useAdsAllowed(): boolean {
   const value = React.useContext(BillingContext);
   if (value === null) return false;
-  return value.ready && !value.owned;
+  return value.ready && value.verifiedAbsent && !value.owned;
 }
 
 export type BillingProviderProps = {
@@ -47,6 +48,7 @@ export function BillingProvider({
 }: BillingProviderProps): React.ReactElement {
   const [owned, setOwned] = React.useState(false);
   const [ready, setReady] = React.useState(false);
+  const [verifiedAbsent, setVerifiedAbsent] = React.useState(false);
   const [price, setPrice] = React.useState<string | null>(null);
   const [priceLoaded, setPriceLoaded] = React.useState(false);
   const [priceAttempt, setPriceAttempt] = React.useState(0);
@@ -58,9 +60,10 @@ export function BillingProvider({
     if (busy.current) return;
     busy.current = true;
     try {
-      const next = await syncEntitlement(deps);
+      const next = await syncEntitlementStatus(deps);
       if (mounted.current) {
-        setOwned(next);
+        setOwned((previous) => next.owned ? true : next.verifiedAbsent ? false : previous);
+        setVerifiedAbsent(next.verifiedAbsent);
         setReady(true);
       }
     } finally {
@@ -97,6 +100,7 @@ export function BillingProvider({
     busy.current = true;
     try {
       const outcome = await purchaseRemoveAds(deps);
+      if (outcome.status === 'pending' && mounted.current) setVerifiedAbsent(false);
       if (outcome.status === 'owned') {
         if (mounted.current) setOwned(true);
         void syncPurchase?.().catch(() => undefined);
@@ -112,17 +116,19 @@ export function BillingProvider({
     busy.current = true;
     try {
       const outcome = await restoreRemoveAds(deps);
-      if (outcome.status !== 'failed' && mounted.current) setOwned(outcome.status === 'owned');
+      if (outcome.status === 'owned' && mounted.current) setOwned(true);
+      if (mounted.current) setVerifiedAbsent(false);
       if (outcome.status === 'owned') void syncPurchase?.().catch(() => undefined);
       return outcome;
     } finally {
       busy.current = false;
+      void refresh();
     }
-  }, [deps, syncPurchase]);
+  }, [deps, syncPurchase, refresh]);
 
   const value = React.useMemo<BillingContextValue>(
-    () => ({ owned, ready, price, priceLoaded, retryPrice, buy, restore }),
-    [owned, ready, price, priceLoaded, retryPrice, buy, restore],
+    () => ({ owned, ready, verifiedAbsent, price, priceLoaded, retryPrice, buy, restore }),
+    [owned, ready, verifiedAbsent, price, priceLoaded, retryPrice, buy, restore],
   );
 
   return <BillingContext.Provider value={value}>{children}</BillingContext.Provider>;

@@ -24,6 +24,8 @@ export interface ArcadePersistedState {
   cp: number;
   seals: number;
   soundEnabled: boolean;
+  hapticEnabled: boolean;
+  reduceMotion: boolean;
   lastPlayedMode: 'parkgolf' | 'alkkagi' | 'sacheonseong';
   parkGolfClears: number;
   parkGolfBestUnderPar: number;
@@ -40,6 +42,8 @@ export const INITIAL_ARCADE_STATE: ArcadePersistedState = {
   cp: 0,
   seals: 0,
   soundEnabled: true,
+  hapticEnabled: true,
+  reduceMotion: false,
   lastPlayedMode: 'parkgolf',
   parkGolfClears: 0,
   parkGolfBestUnderPar: 0,
@@ -61,3 +65,19 @@ export const INITIAL_ARCADE_STATE: ArcadePersistedState = {
     tile: 'ivory_wood',
   },
 };
+
+/** 이전 버전은 소리 설정 하나로 진동도 제어했으므로 그 상태를 보존합니다. */
+export function mergeArcadeState(saved: Partial<ArcadePersistedState>): ArcadePersistedState {
+  const soundEnabled = typeof saved.soundEnabled === 'boolean' ? saved.soundEnabled : INITIAL_ARCADE_STATE.soundEnabled;
+  const hapticEnabled = typeof saved.hapticEnabled === 'boolean' ? saved.hapticEnabled : soundEnabled;
+  return {
+    ...INITIAL_ARCADE_STATE,
+    ...saved,
+    soundEnabled,
+    hapticEnabled,
+    reduceMotion: typeof saved.reduceMotion === 'boolean' ? saved.reduceMotion : false,
+    dailyMissions: { ...INITIAL_ARCADE_STATE.dailyMissions, ...(saved.dailyMissions ?? {}) },
+    lastDailyResetDate: saved.lastDailyResetDate ?? null,
+    equippedSkins: { ...INITIAL_ARCADE_STATE.equippedSkins, ...(saved.equippedSkins ?? {}) },
+  };
+}

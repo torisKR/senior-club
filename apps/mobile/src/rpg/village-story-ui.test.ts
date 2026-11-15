@@ -22,9 +22,11 @@ vi.mock('react-native', () => {
     Alert: { alert() {} }, Linking: { openURL: async () => undefined },
     Modal: ({ visible, children }: { visible: boolean; children?: ReactNode }) => visible ? box({ children }) : null,
     ScrollView: box, View: box,
+    Switch: () => null,
     Pressable: ({ children, onPress, testID }: { children?: ReactNode; onPress?: () => void; testID?: string }) => createElement('button', { onClick: onPress, 'data-testid': testID }, children),
-    StyleSheet: { create: (styles: unknown) => styles },
+    StyleSheet: { create: (styles: unknown) => styles, absoluteFill: {} },
     useWindowDimensions: () => ({ width: 390, height: 800 }),
+    PixelRatio: { roundToNearestPixel: (value: number) => value },
   };
 });
 vi.mock('./rpg-db', () => ({ getRpgStorage: () => ({
@@ -56,6 +58,7 @@ vi.mock('@/arcade/arcade-store', () => ({ useArcade: () => ({
 }) }));
 vi.mock('@/audio/sound-manager', () => ({ playSfx() {} }));
 vi.mock('@/fx/pixel-fx', () => ({ PixelFx: () => null }));
+vi.mock('@/fx/use-reduce-motion', () => ({ useReduceMotion: () => false }));
 vi.mock('@/components/ui', () => {
   const box = ({ children }: { children?: ReactNode }) => createElement('div', null, children);
   return {
@@ -64,9 +67,14 @@ vi.mock('@/components/ui', () => {
       createElement('button', { disabled, onClick: onPress, 'data-testid': testID }, label),
   };
 });
+vi.mock('@/hooks/use-effective-safe-area-insets', () => ({ useEffectiveSafeAreaInsets: () => ({ top: 24, bottom: 24, left: 0, right: 0 }) }));
+vi.mock('@/hooks/use-app-state', () => ({ useAppState: () => ({ largeTextEnabled: false }) }));
+vi.mock('@/world/virtual-joystick', () => ({ VirtualJoystick: () => null }));
 vi.mock('./exit-confirm-dialog', () => ({ ExitConfirmDialog: () => null }));
 vi.mock('./onboarding-overlay', () => ({ OnboardingOverlay: () => null }));
-vi.mock('./pixel-village-map', () => ({ PixelVillageMap: () => null }));
+vi.mock('@/world/world-view', () => ({ WorldView: () => null }));
+vi.mock('@/world/use-world-active', () => ({ useWorldActive: () => true }));
+vi.mock('react-native-reanimated', () => ({ useSharedValue: (initial: number) => { let value = initial; return { get: () => value, set: (next: number) => { value = next; } }; } }));
 vi.mock('./rpg-sprites', () => ({ portraitFor: () => 1 }));
 vi.mock('./use-android-back-exit', () => ({ useAndroidBackExit: () => ({ confirming: false, cancel() {}, confirm() {} }) }));
 
@@ -262,5 +270,17 @@ describe('village story controls', () => {
     expect(container.textContent).toContain('회관 문을 함께 열 사람');
     expect(current.state.completedTrialIds).not.toContain('chapter_6');
     expect(mocks.cp).toBe(3500);
+  });
+
+  it('stops rapid joystick steps at a wall even before the screen re-renders', async () => {
+    mocks.saves.set('senior_club_rpg_state_v1', JSON.stringify({
+      storyVersion: 3, currentChapterId: 'chapter_1', completedChapterIds: [], completedTrialIds: [],
+      playerPos: { x: 7, y: 14 }, lastSavedTimestampMs: Date.now(),
+    }));
+    await mount();
+    let moves: boolean[] = [];
+    await act(async () => { moves = [current.movePlayer(1, 0), current.movePlayer(1, 0)]; });
+    expect(moves).toEqual([true, false]); // (29,30)은 돌담 — 옛 저장 (7,14)는 들녘 좌표 (27,30)으로 옮겨짐
+    expect(current.state.playerPos).toEqual({ x: 28, y: 30 });
   });
 });

@@ -508,6 +508,51 @@ export function findFirstSacheonseongHint(
   return null;
 }
 
+/** 같은 패로 채운 판에서 제거 가능한 순서를 만든 뒤 문양을 배정합니다. */
+export function createSacheonseongDeal(stage: number): {
+  board: SacheonseongCell[][];
+  solution: [{ row: number; col: number }, { row: number; col: number }][];
+} {
+  const original = createSacheonseongBoard(4, 6);
+  const working = original.map((row) => row.map((cell) => ({ ...cell, motifId: 'crane' as string | null })));
+  const solution: [{ row: number; col: number }, { row: number; col: number }][] = [];
+  let seed = (Math.max(1, Math.floor(stage)) * 2654435761) >>> 0;
+  const choose = (length: number) => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed % length;
+  };
+  while (solution.length < 12) {
+    const slots = working.flat().filter((cell) => cell.motifId !== null);
+    for (let i = slots.length - 1; i > 0; i -= 1) {
+      const j = choose(i + 1);
+      [slots[i], slots[j]] = [slots[j], slots[i]];
+    }
+    let pair: [SacheonseongCell, SacheonseongCell] | null = null;
+    for (let i = 0; i < slots.length && !pair; i += 1) for (let j = i + 1; j < slots.length; j += 1) {
+      if (findSacheonseongPath(working, slots[i], slots[j])) { pair = [slots[i], slots[j]]; break; }
+    }
+    if (!pair) {
+      // 예기치 못한 막힘에도 기존의 짝 배치는 항상 완주할 수 있습니다.
+      return { board: original, solution: original.flatMap((row) => [0, 2, 4].map((col) => [row[col], row[col + 1]] as [{ row: number; col: number }, { row: number; col: number }])) };
+    }
+    const [a, b] = pair;
+    solution.push([{ row: a.row, col: a.col }, { row: b.row, col: b.col }]);
+    working[a.row][a.col].motifId = null;
+    working[b.row][b.col].motifId = null;
+  }
+  const board = original.map((row) => row.map((cell) => ({ ...cell, motifId: null as string | null })));
+  const motifs = original.flat().filter((_, index) => index % 2 === 0).map((cell) => cell.motifId!);
+  for (let i = motifs.length - 1; i > 0; i -= 1) {
+    const j = choose(i + 1);
+    [motifs[i], motifs[j]] = [motifs[j], motifs[i]];
+  }
+  solution.forEach(([a, b], index) => {
+    board[a.row][a.col].motifId = motifs[index];
+    board[b.row][b.col].motifId = motifs[index];
+  });
+  return { board, solution };
+}
+
 /** Rearranges only remaining motifs and tries to leave at least one legal pair. */
 export function shuffleSacheonseongBoard(board: readonly (readonly SacheonseongCell[])[]): SacheonseongCell[][] {
   const slots = board.flat().filter((cell) => cell.motifId !== null);

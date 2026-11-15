@@ -2,6 +2,7 @@
 import { act, createElement, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MotionPreferenceContext } from './motion-preference';
 
 const motion = vi.hoisted(() => ({
   query: vi.fn<() => Promise<boolean>>(),
@@ -10,6 +11,7 @@ const motion = vi.hoisted(() => ({
 }));
 
 vi.mock('react-native', () => ({
+  AppState: { currentState: 'active', addEventListener: () => ({ remove: () => undefined }) },
   AccessibilityInfo: {
     isReduceMotionEnabled: motion.query,
     addEventListener: (_event: string, listener: (enabled: boolean) => void) => {
@@ -54,6 +56,16 @@ afterEach(async () => {
 });
 
 describe('pixel effects and OS reduce motion', () => {
+  it('honors the in-app motion setting even when the operating system allows animation', async () => {
+    motion.query.mockResolvedValue(false);
+    await act(async () => root.render(createElement(MotionPreferenceContext.Provider, { value: true },
+      createElement(PixelFx, { name: 'match', loop: true }))));
+    const staticFrame = imageStyle();
+    await act(async () => vi.advanceTimersByTime(1000));
+    expect(imageStyle()).toEqual(staticFrame);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('stays static while loading and completes a reduced one-shot exactly once', async () => {
     let resolvePreference!: (enabled: boolean) => void;
     motion.query.mockReturnValue(new Promise((resolve) => { resolvePreference = resolve; }));

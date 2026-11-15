@@ -18,7 +18,7 @@ export const NPC_DISPLAY: Record<NpcId, { name: string; title: string; short: st
 /** 동행 산책 중 3~5걸음마다 하나씩 보여줍니다. */
 export const WALK_LINES: Record<NpcId, readonly string[]> = {
   chief: [
-    '해가 좋네. 천천히 가세나.',
+    '오늘도 천천히 함께 걸어보세.',
     '이 길은 내 젊을 때도 그대로일세.',
     '마을에 사람 소리가 나니 좋구먼.',
     '오늘은 어디까지 걸어볼까?',
@@ -26,14 +26,14 @@ export const WALK_LINES: Record<NpcId, readonly string[]> = {
   golf_captain: [
     '오늘 잔디 결이 아주 좋습니다.',
     '어깨 힘 빼고, 발끝만 보세요.',
-    '바람은 왼쪽에서 불어옵니다.',
+    '바람을 느끼며 가볍게 걸어요.',
     '퍼터는 가볍게 쥐는 게 좋아요.',
   ],
   baduk_master: [
     '바람 소리가 반상 같구려.',
     '서두르지 않아도 됩니다.',
     '한 수 쉬어가는 것도 실력이지요.',
-    '이 나무 아래서 한번 쉬어갈까요.',
+    '쉬고 싶으면 잠시 앉아 가도 좋겠소.',
   ],
   tea_manager: [
     '매화 향이 벌써 퍼지네요.',
@@ -44,7 +44,7 @@ export const WALK_LINES: Record<NpcId, readonly string[]> = {
   herbalist: [
     '숨을 깊게, 천천히 마시세요.',
     '무릎은 가볍게 디디시고요.',
-    '오늘은 30분이면 충분합니다.',
+    '마음이 내키는 만큼만 걸어도 좋아요.',
     '걷는 습관이 제일 좋은 처방이오.',
   ],
 };

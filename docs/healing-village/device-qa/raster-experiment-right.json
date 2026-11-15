@@ -1,0 +1,48 @@
+{
+  "budgetMs": 16.666666666666668,
+  "profiles": [
+    {
+      "profile": 1,
+      "frames": 119,
+      "skippedRows": 1,
+      "p50Ms": 14.034111,
+      "p95Ms": 73.558545,
+      "p99Ms": 145.824468,
+      "maxMs": 159.158342,
+      "over60HzBudget": 41,
+      "over60HzBudgetPercent": 34.45378151260504,
+      "stages": {
+        "vsyncDelay": {
+          "frames": 119,
+          "p50Ms": 0,
+          "p95Ms": 24.985875,
+          "maxMs": 41.63587
+        },
+        "uiToDraw": {
+          "frames": 119,
+          "p50Ms": 5.421211,
+          "p95Ms": 14.408874,
+          "maxMs": 35.714376
+        },
+        "drawToSync": {
+          "frames": 119,
+          "p50Ms": 0.335154,
+          "p95Ms": 2.011462,
+          "maxMs": 6.779693
+        },
+        "renderToSwap": {
+          "frames": 119,
+          "p50Ms": 3.268923,
+          "p95Ms": 30.962077,
+          "maxMs": 46.8795
+        },
+        "swapToGpu": {
+          "frames": 119,
+          "p50Ms": 4.8375,
+          "p95Ms": 10.393808,
+          "maxMs": 60.433038
+        }
+      }
+    }
+  ]
+}

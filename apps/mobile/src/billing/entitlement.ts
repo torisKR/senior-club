@@ -30,6 +30,7 @@ export function decideEntitlement(
       const reported = probe.tokens.find((token) => presentToken(token) !== null) ?? null;
 
       if (reported === null) {
+        if (probe.pending) return stored === null ? { owned: false, write: 'none' } : { owned: true, write: 'none' };
         return stored === null
           ? { owned: false, write: 'none' }
           : { owned: false, write: 'clear' };

@@ -17,6 +17,11 @@ describe('decideEntitlement', () => {
     expect(decideEntitlement(OLD, unavailable)).toEqual({ owned: true, write: 'none' });
   });
 
+  it('does not clear a stored purchase while the store reports a pending purchase', () => {
+    expect(decideEntitlement(OLD, { status: 'ok', tokens: [], pending: true })).toEqual({ owned: true, write: 'none' });
+    expect(decideEntitlement(null, { status: 'ok', tokens: [], pending: true })).toEqual({ owned: false, write: 'none' });
+  });
+
   it('grants ownership from a store restore', () => {
     expect(decideEntitlement(null, ok(NEW))).toEqual({
       owned: true,

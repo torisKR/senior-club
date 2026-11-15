@@ -3,7 +3,7 @@ import { act, createElement, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { PARK_GOLF_HOLES, createInitialAlkkagiStones, simulateParkGolfShot } from './arcade-logic';
+import { PARK_GOLF_HOLES, createInitialAlkkagiStones, createSacheonseongBoard, executeAlkkagiFlick, simulateParkGolfShot } from './arcade-logic';
 
 const mocks = vi.hoisted(() => {
   const values = new Map<string, string>();
@@ -17,18 +17,36 @@ const mocks = vi.hoisted(() => {
   };
   const arcade = {
     state: { soundEnabled: false, parkGolfClears: 0, parkGolfBestUnderPar: 0 },
+    saveReadProtected: false,
+    saveWriteFailed: false,
+    retrySave: vi.fn(),
     appearance: { putter: 'persimmon', stone: 'black', tile: 'ivory_wood' },
     recordParkGolfClear: vi.fn(), recordAlkkagiWin: vi.fn(), recordSacheonseongClear: vi.fn(), triggerHaptic: vi.fn(),
   };
   const textLayout = { width: 393, fontScale: 1, large: false };
-  return { values, storage, rpg, arcade, textLayout, makeAttemptId: () => `attempt-${++nextAttempt}` };
+  const animation = { reduceMotion: true, values: [] as { value: number }[], stop: vi.fn(), layout: null as null | ((event: { nativeEvent: { layout: { width: number; height: number } } }) => void) };
+  return { values, storage, rpg, arcade, textLayout, animation, makeAttemptId: () => `attempt-${++nextAttempt}` };
 });
 
 vi.mock('react-native', () => ({
   StyleSheet: { create: <T,>(styles: T) => styles },
   useWindowDimensions: () => mocks.textLayout,
-  View: ({ children, testID, style }: { children?: ReactNode; testID?: string; style?: unknown }) =>
-    createElement('div', { 'data-testid': testID, 'data-style': JSON.stringify(style) }, children),
+  Animated: {
+    Value: class {
+      constructor(public value: number) { mocks.animation.values.push(this); }
+      setValue(value: number) { this.value = value; }
+    },
+    timing: () => ({}),
+    parallel: () => ({}),
+    sequence: () => ({ start: () => {}, stop: mocks.animation.stop }),
+    View: ({ children, testID, style }: { children?: ReactNode; testID?: string; style?: unknown }) =>
+      createElement('div', { 'data-testid': testID, 'data-style': JSON.stringify(style) }, children),
+  },
+  Easing: { linear: (value: number) => value },
+  View: ({ children, testID, style, onLayout }: { children?: ReactNode; testID?: string; style?: unknown; onLayout?: typeof mocks.animation.layout }) => {
+    if (onLayout) mocks.animation.layout = onLayout;
+    return createElement('div', { 'data-testid': testID, 'data-style': JSON.stringify(style) }, children);
+  },
   ScrollView: ({ children }: { children?: ReactNode }) => createElement('div', null, children),
   Pressable: ({ children, testID, onPress, accessibilityLabel, accessibilityState, style }: {
     children?: ReactNode; testID?: string; onPress?: () => void; accessibilityLabel?: string;
@@ -55,12 +73,16 @@ vi.mock('@/constants/theme', () => ({
 vi.mock('@/audio/sound-manager', () => ({ playSfx: vi.fn() }));
 vi.mock('@/hooks/use-app-state', () => ({ useAppState: () => ({ largeTextEnabled: mocks.textLayout.large }) }));
 vi.mock('@/fx/pixel-fx', () => ({ PixelFx: () => null }));
+vi.mock('@/fx/use-reduce-motion', () => ({ useReduceMotion: () => mocks.animation.reduceMotion }));
 vi.mock('@/fx/fx-manifest', () => ({ FX_MANIFEST: { impact: { frameWidth: 10, frameHeight: 10 } } }));
 vi.mock('@/rpg/companion-coach', () => ({ CompanionCoach: () => null }));
 vi.mock('@/rpg/companion-lines', () => ({ GAME_COACH: { parkgolf: 'captain', alkkagi: 'choi', sacheonseong: 'tea' } }));
 vi.mock('@/rpg/rpg-store', () => ({ useRpg: () => mocks.rpg }));
 vi.mock('@/rpg/rpg-db', () => ({ getRpgStorage: () => mocks.storage }));
 vi.mock('./arcade-store', () => ({ useArcade: () => mocks.arcade }));
+vi.mock('@/world/use-world-active', () => ({ useWorldActive: () => true }));
+vi.mock('@/audio/focused-background-audio', () => ({ FocusedBackgroundAudio: () => null }));
+vi.mock('@/audio/bgm', () => ({ BGM_CLUB_LOUNGE: 1 }));
 
 let root: Root;
 let container: HTMLDivElement;
@@ -70,6 +92,11 @@ beforeEach(async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal('require', () => 1);
   mocks.values.clear();
+  mocks.animation.reduceMotion = true;
+  mocks.animation.values = [];
+  mocks.animation.layout = null;
+  mocks.arcade.saveReadProtected = false;
+  mocks.arcade.saveWriteFailed = false;
   Object.assign(mocks.textLayout, { width: 393, fontScale: 1, large: false });
   vi.clearAllMocks();
   container = document.createElement('div');
@@ -117,9 +144,23 @@ function contrastRatio(a: string, b: string) {
 }
 
 describe('arcade screens', () => {
+  it.each(['ParkGolfArcadeScreen', 'AlkkagiBoardScreen', 'SacheonseongTileScreen'] as const)(
+    'warns about protected arcade records in %s', async (screen) => {
+      mocks.arcade.saveReadProtected = true;
+      await render(screens[screen]);
+      expect(container.textContent).toContain('기존 대국 기록을 읽지 못해 덮어쓰지 않았어요');
+    },
+  );
+  it('offers a save retry after a write failure', async () => {
+    mocks.arcade.saveWriteFailed = true;
+    await render(screens.ParkGolfArcadeScreen);
+    expect(container.textContent).toContain('대국 기록을 저장하지 못했어요');
+    await pressLabel('다시 저장');
+    expect(mocks.arcade.retrySave).toHaveBeenCalledOnce();
+  });
   it.each([
     ['golf', 'ParkGolfArcadeScreen', 'parkgolf-power-2', '가까운 그린 정밀 퍼팅', '현재 홀'],
-    ['alkkagi', 'AlkkagiBoardScreen', 'alkkagi-power-double', '2개 동시 격파', '나 (흑석 ★)'],
+    ['alkkagi', 'AlkkagiBoardScreen', 'alkkagi-power-double', '가까운 돌도 노리기', '나 (흑석 ★)'],
   ] as const)('keeps %s power descriptions readable and stacks controls for larger text', async (_, screen, selectedId, description, scoreLabel) => {
     Object.assign(mocks.textLayout, { width: 320, fontScale: 2, large: true });
     await render(screens[screen]);
@@ -138,9 +179,10 @@ describe('arcade screens', () => {
     expect(contrastRatio(captionStyle.color, buttonStyles[2].backgroundColor)).toBeGreaterThanOrEqual(4.5);
     expect(container.textContent).toContain(description);
     const score = [...container.querySelectorAll('span')].find((text) => text.textContent === scoreLabel)!;
-    expect(JSON.parse(score.parentElement!.getAttribute('data-style')!)[1]).toMatchObject({
-      flexGrow: 0, flexShrink: 0, flexBasis: 'auto',
-    });
+    const scoreStyles = JSON.parse(score.parentElement!.getAttribute('data-style')!);
+    const scoreBox = Array.isArray(scoreStyles) ? scoreStyles[0] : scoreStyles;
+    expect(scoreBox).toMatchObject({ alignSelf: 'stretch' });
+    expect(scoreBox.flex).toBeUndefined();
   });
 
   it('stacks controls for the in-app large-text setting even at the default system scale', async () => {
@@ -148,6 +190,21 @@ describe('arcade screens', () => {
     await render(screens.AlkkagiBoardScreen);
     const button = container.querySelector<HTMLElement>('[data-testid="alkkagi-opponent-18k"]')!;
     expect(JSON.parse(button.parentElement!.getAttribute('data-style')!)[1]).toMatchObject({ flexDirection: 'column' });
+  });
+
+  it.each([
+    { width: 320, fontScale: 2, large: false },
+    { width: 393, fontScale: 1, large: true },
+  ])('stacks Sacheonseong tools for narrow or enlarged text', async (layout) => {
+    Object.assign(mocks.textLayout, layout);
+    await render(screens.SacheonseongTileScreen);
+    const hint = container.querySelector<HTMLElement>('[data-testid="btn-sacheonseong-hint"]')!;
+    const wrapperStyle = JSON.parse(hint.parentElement!.getAttribute('data-style')!);
+    const rowStyle = JSON.parse(hint.parentElement!.parentElement!.getAttribute('data-style')!);
+    expect(wrapperStyle).toMatchObject({ flexGrow: 0, flexShrink: 0, alignSelf: 'stretch' });
+    expect(rowStyle[1]).toMatchObject({ flexDirection: 'column' });
+    await press('btn-sacheonseong-hint');
+    expect(container.querySelector('[data-testid="sacheonseong-path-segment-0"]')).not.toBeNull();
   });
 
   it('preserves a golf round on reselect, confirms switching, and plays the displayed preview', async () => {
@@ -175,6 +232,22 @@ describe('arcade screens', () => {
     expect(bumperStyle[1]).toEqual({ left: '20%', top: '42%', width: '16%' });
   });
 
+  it('stops a moving golf ball at its saved result when reduced motion is enabled', async () => {
+    mocks.animation.reduceMotion = false;
+    await render(screens.ParkGolfArcadeScreen);
+    expect(mocks.animation.layout).not.toBeNull();
+    await act(async () => mocks.animation.layout!({ nativeEvent: { layout: { width: 300, height: 200 } } }));
+    await press('btn-parkgolf-shoot');
+    const result = saved('senior_club_golf_round_v1').ballPos;
+    const stoppedBefore = mocks.animation.stop.mock.calls.length;
+    mocks.animation.reduceMotion = true;
+    await render(screens.ParkGolfArcadeScreen);
+    expect(mocks.animation.stop).toHaveBeenCalledTimes(stoppedBefore + 1);
+    expect(mocks.animation.values[0].value).toBeCloseTo(result.x * 3);
+    expect(mocks.animation.values[1].value).toBeCloseTo(result.y * 2);
+    expect(saved('senior_club_golf_round_v1').strokes).toBe(1);
+  });
+
   it('preserves an alkkagi match on reselect and only changes an active match after confirmation', async () => {
     await render(screens.AlkkagiBoardScreen);
     expect(container.querySelectorAll('[data-testid^="alkkagi-stone-"]')).toHaveLength(10);
@@ -199,6 +272,21 @@ describe('arcade screens', () => {
     expect(container.textContent).toContain('목표 돌 ◎3 선택 중');
   });
 
+  it('names knocked-out stones and describes the reward that is actually granted on victory', async () => {
+    const initial = createInitialAlkkagiStones();
+    const expected = executeAlkkagiFlick(initial, 'p2', 'a2', 'double');
+    const knockedOut = expected.stones.filter((stone) => stone.owner === 'ai' && !stone.alive);
+    expect(knockedOut.length).toBeGreaterThan(0);
+    await render(screens.AlkkagiBoardScreen);
+    await press('btn-alkkagi-flick');
+    for (const stone of knockedOut) expect(container.textContent).toContain(`◎${stone.id.slice(1)}`);
+    if (expected.doubleKnockout) {
+      expect(container.textContent).toContain('승리 보상 +50 CP');
+      expect(container.textContent).not.toContain('500점');
+    }
+    expect(saved('senior_club_alkkagi_round_v1').stones.filter((stone: { owner: string; alive: boolean }) => stone.owner === 'ai' && !stone.alive)).toHaveLength(knockedOut.length);
+  });
+
   it('clears stale selection for hints and draws the actual path while preserving selectable states', async () => {
     await render(screens.SacheonseongTileScreen);
     const tileStyle = JSON.parse(container.querySelector('[data-testid="sacheonseong-tile-0-0"]')!.getAttribute('data-style')!);
@@ -216,6 +304,40 @@ describe('arcade screens', () => {
     expect(container.querySelector('[data-testid="sacheonseong-tile-0-0"]')).toBeNull();
     expect(container.querySelector('[data-testid="sacheonseong-path-segment-0"]')).not.toBeNull();
     expect(saved('senior_club_tile_round_v1').board[0][0].motifId).toBeNull();
+  });
+
+  it('starts and saves a new varied stage after a completed round', async () => {
+    const empty = createSacheonseongBoard().map((row) => row.map((cell) => ({ ...cell, motifId: null })));
+    mocks.values.set('senior_club_tile_round_v1', JSON.stringify({
+      stageNum: 1, board: empty, combo: 12, maxCombo: 12, statusMessage: '완료',
+    }));
+    await render(screens.SacheonseongTileScreen);
+    await press('btn-sacheonseong-next');
+    const round = saved('senior_club_tile_round_v1');
+    expect(round.stageNum).toBe(2);
+    expect(round.board.flat().filter((cell: { motifId: string | null }) => cell.motifId)).toHaveLength(24);
+    expect(round.board.map((row: { motifId: string }[]) => row.map((cell) => cell.motifId))).not.toEqual(
+      createSacheonseongBoard().map((row) => row.map((cell) => cell.motifId)),
+    );
+    await press('btn-sacheonseong-hint');
+    expect(container.querySelector('[data-testid="sacheonseong-path-segment-0"]')).not.toBeNull();
+  });
+
+  it('explains whether a pair has different motifs or a blocked path', async () => {
+    const board = createSacheonseongBoard().map((row) => row.map((cell) => ({ ...cell, motifId: 'plum' })));
+    board[1][2].motifId = 'crane';
+    board[2][3].motifId = 'crane';
+    mocks.values.set('senior_club_tile_round_v1', JSON.stringify({
+      stageNum: 1, board, combo: 0, maxCombo: 0, statusMessage: '시작',
+    }));
+    await render(screens.SacheonseongTileScreen);
+    await press('sacheonseong-tile-1-2');
+    await press('sacheonseong-tile-1-1');
+    expect(container.textContent).toContain('문양이 달라요');
+    await press('sacheonseong-tile-1-2');
+    await press('sacheonseong-tile-2-3');
+    expect(container.textContent).toContain('길이 막혀 있어요');
+    expect(container.querySelector('[data-testid="sacheonseong-tile-2-3"]')?.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('shows a save failure and retries without pretending the round was stored', async () => {
@@ -263,6 +385,23 @@ describe('arcade screens', () => {
     expect(saved('senior_club_golf_round_v1')).toMatchObject({
       holeIndex: 0, ballPos: hole.tee, strokes: 0, holedBanner: null,
     });
+  });
+
+  it('records a winning shot only once when taps arrive before the screen updates', async () => {
+    const hole = PARK_GOLF_HOLES[0];
+    mocks.values.set('senior_club_golf_round_v1', JSON.stringify({
+      holeIndex: 0, ballPos: hole.cup, strokes: 2,
+      aimAngle: 0, powerStep: 2, holedBanner: null, lastShotNote: '계속',
+    }));
+    await render(screens.ParkGolfArcadeScreen);
+    const button = container.querySelector<HTMLButtonElement>('[data-testid="btn-parkgolf-shoot"]')!;
+    await act(async () => { button.click(); button.click(); });
+    expect(mocks.arcade.recordParkGolfClear).toHaveBeenCalledOnce();
+    expect(mocks.rpg.recordGameWithNpc).toHaveBeenCalledOnce();
+    expect(saved('senior_club_golf_round_v1').strokes).toBe(3);
+    await press('btn-parkgolf-replay-hole');
+    await press('btn-parkgolf-shoot');
+    expect(saved('senior_club_golf_round_v1').strokes).toBe(1);
   });
 
   it('keeps a story golf attempt separate, restores it and counts only confirmed distinct attempts', async () => {
@@ -343,5 +482,23 @@ describe('arcade screens', () => {
     await press('btn-alkkagi-same-opponent');
     expect(saved('senior_club_alkkagi_round_v1')).toMatchObject({ opponentIdx: 0, matchDoubleKnockouts: 0 });
     expect(container.querySelectorAll('[data-testid^="alkkagi-stone-"]')).toHaveLength(10);
+  });
+
+  it('records an alkkagi win only once when the flick button is tapped twice quickly', async () => {
+    const stones = createInitialAlkkagiStones().map((stone) =>
+      stone.owner === 'ai' && stone.id !== 'a1' ? { ...stone, alive: false } : stone,
+    );
+    mocks.values.set('senior_club_alkkagi_round_v1', JSON.stringify({
+      opponentIdx: 0, stones, selectedPlayerId: 'p1', selectedTargetId: 'a1',
+      powerMode: 'double', matchDoubleKnockouts: 0, bannerText: '계속',
+    }));
+    await render(screens.AlkkagiBoardScreen);
+    const button = container.querySelector<HTMLButtonElement>('[data-testid="btn-alkkagi-flick"]')!;
+    await act(async () => { button.click(); button.click(); });
+    expect(mocks.arcade.recordAlkkagiWin).toHaveBeenCalledOnce();
+    expect(mocks.rpg.recordGameWithNpc).toHaveBeenCalledOnce();
+    await press('btn-alkkagi-same-opponent');
+    await press('btn-alkkagi-flick');
+    expect(saved('senior_club_alkkagi_round_v1').stones.some((stone: { owner: string; alive: boolean }) => stone.owner === 'ai' && !stone.alive)).toBe(true);
   });
 });

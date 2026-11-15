@@ -13,20 +13,22 @@ import { PixelFx } from '@/fx/pixel-fx';
 
 import { RANK_TIERS } from './arcade-logic';
 import { useArcade } from './arcade-store';
+import { ArcadeSaveNotice } from './arcade-save-notice';
 import { CosmeticShop } from './cosmetic-shop';
 
 const MASTER_BADGE = require('../../assets/game/rpg/pixel/ui/badge_master.png');
 
 export function MasterHallScreen() {
   const { largeTextEnabled, toggleLargeText } = useAppState();
-  const { state, rankProgress, equipSkin, toggleSound } = useArcade();
+  const { state, rankProgress, equipSkin, toggleSound, toggleHaptic, toggleReduceMotion } = useArcade();
 
   return (
     <Screen testID="master-hall-screen" contentContainerStyle={styles.container}>
+      <ArcadeSaveNotice />
       {/* 1. 명인전당 대표 급수 명패 */}
       <View style={styles.masterBanner}>
         <View style={styles.hallFlourish}>
-          <PixelFx name="promotion" scale={0.48} loop />
+          <PixelFx name="promotion" scale={0.48} />
         </View>
         <Image source={MASTER_BADGE} style={styles.badgeLarge} contentFit="contain" />
         <AppText variant="caption" style={styles.plaqueTag}>
@@ -161,12 +163,30 @@ export function MasterHallScreen() {
         </View>
         <View style={styles.settingRow}>
           <View style={{ flex: 1 }}>
-            <AppText variant="bodyStrong">손맛 진동 및 효과음</AppText>
+            <AppText variant="bodyStrong">효과음과 배경 음악</AppText>
             <AppText variant="caption" style={{ color: '#526451' }}>
-              퍼터 타격·바둑알 충돌·패 맞춤 시 촉각 피드백을 켭니다.
+              게임 소리와 마을 배경 음악을 켭니다.
             </AppText>
           </View>
-          <Switch value={state.soundEnabled} onValueChange={toggleSound} />
+          <Switch accessibilityLabel="효과음과 배경 음악" value={state.soundEnabled} onValueChange={toggleSound} />
+        </View>
+        <View style={styles.settingRow}>
+          <View style={{ flex: 1 }}>
+            <AppText variant="bodyStrong">손맛 진동</AppText>
+            <AppText variant="caption" style={{ color: '#526451' }}>
+              퍼팅과 패 맞춤 등에서 짧은 진동을 켭니다.
+            </AppText>
+          </View>
+          <Switch accessibilityLabel="손맛 진동" value={state.hapticEnabled} onValueChange={toggleHaptic} />
+        </View>
+        <View style={styles.settingRow}>
+          <View style={{ flex: 1 }}>
+            <AppText variant="bodyStrong">화면 움직임 줄이기</AppText>
+            <AppText variant="caption" style={{ color: '#526451' }}>
+              캐릭터와 효과의 움직임을 줄입니다. 기기의 접근성 설정도 함께 적용됩니다.
+            </AppText>
+          </View>
+          <Switch accessibilityLabel="화면 움직임 줄이기" value={state.reduceMotion} onValueChange={toggleReduceMotion} />
         </View>
         <SeniorButton
           label="개인정보 처리방침"

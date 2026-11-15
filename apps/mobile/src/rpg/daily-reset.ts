@@ -62,7 +62,9 @@ export function withDailyReset<T extends DailyResettableState>(state: T, today: 
           },
         }
       : {}),
-    ...(typeof state.heartWarmth === 'number'
+    // 이전 날짜가 확인되고 오늘보다 앞설 때만 경과한 하루로 취급합니다.
+    ...(typeof state.heartWarmth === 'number' && state.lastDailyResetDate &&
+      /^\d{4}-\d{2}-\d{2}$/.test(state.lastDailyResetDate) && state.lastDailyResetDate < today
       ? { heartWarmth: Math.max(0, state.heartWarmth - WARMTH_DAILY_DECAY) }
       : {}),
     ...(state.quests

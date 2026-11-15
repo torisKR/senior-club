@@ -6,6 +6,8 @@
  * (require 경로가 실제 파일과 다르면 번들 단계에서 바로 실패합니다.)
  */
 import type { ImageProps } from 'expo-image';
+import type { ForageId } from '@/world/explore';
+import type { CropId, FishId, FurnitureId } from '@/world/life';
 import type { VillageBuildingId } from './rpg-types';
 
 type SpriteSource = NonNullable<ImageProps['source']>;
@@ -18,10 +20,23 @@ export const TILE_SPRITES = {
   path: require('../../assets/game/rpg/pixel/tiles/path.png'),
   water: require('../../assets/game/rpg/pixel/tiles/water.png'),
   fence: require('../../assets/game/rpg/pixel/tiles/fence.png'),
-  pine: require('../../assets/game/rpg/pixel/tiles/pine.png'),
+  pine: require('../../assets/game/rpg/tiles/pine_01.png'),
   cherry: require('../../assets/game/rpg/pixel/tiles/cherry.png'),
   lantern: require('../../assets/game/rpg/pixel/tiles/lantern.png'),
   flower: require('../../assets/game/rpg/pixel/tiles/flower.png'),
+  dock: require('../../assets/game/rpg/pixel/world/dock.png'),
+  farm: require('../../assets/game/rpg/pixel/world/farm_soil.png'),
+  bench: require('../../assets/game/rpg/pixel/world/bench.png'),
+  forest: require('../../assets/game/rpg/pixel/world/forest_floor.png'),
+  bush: require('../../assets/game/rpg/pixel/world/bush.png'),
+  bridge: require('../../assets/game/rpg/pixel/world/stone_bridge.png'),
+  flowersYellow: require('../../assets/game/rpg/pixel/world/flowers_yellow.png'),
+  flowersPurple: require('../../assets/game/rpg/pixel/world/flowers_purple.png'),
+  rock: require('../../assets/game/rpg/pixel/world/boulder.png'),
+  well: require('../../assets/game/rpg/pixel/world/spring_well.png'),
+  table: require('../../assets/game/rpg/pixel/world/picnic_table.png'),
+  firewood: require('../../assets/game/rpg/pixel/world/firewood.png'),
+  signpost: require('../../assets/game/rpg/pixel/world/signpost.png'),
 } as const satisfies Record<string, SpriteSource>;
 
 /** 시설 건물 에셋 (3 x 2 타일 풋프린트 기준) */
@@ -31,6 +46,13 @@ export const BUILDING_SPRITES = {
   alkkagi: require('../../assets/game/rpg/pixel/buildings/alkkagi.png'),
   sacheonseong: require('../../assets/game/rpg/pixel/buildings/sacheonseong.png'),
   herbal: require('../../assets/game/rpg/pixel/buildings/herbal.png'),
+  home: require('../../assets/game/rpg/pixel/buildings/home.png'),
+  pavilion: require('../../assets/game/rpg/pixel/buildings/pavilion.png'),
+  stall_gukbap: require('../../assets/game/rpg/pixel/buildings/stall_gukbap.png'),
+  stall_goods: require('../../assets/game/rpg/pixel/buildings/stall_goods.png'),
+  stall_fish: require('../../assets/game/rpg/pixel/buildings/stall_fish.png'),
+  bus_stop: require('../../assets/game/rpg/pixel/buildings/bus_stop.png'),
+  observatory: require('../../assets/game/rpg/pixel/buildings/observatory.png'),
 } as const satisfies Record<VillageBuildingId, SpriteSource>;
 
 /** 주인공 어르신 4방향 스프라이트 (idle / walk 4프레임) */
@@ -236,4 +258,91 @@ export function tileSpriteFor(sprite: keyof typeof TILE_SPRITES): SpriteSource {
 
 export function buildingSpriteFor(id: VillageBuildingId): SpriteSource {
   return BUILDING_SPRITES[id];
+}
+
+// ── 힐링 생활 에셋 (sprite-gen · Grok 생성) ──────────────────
+
+/** 텃밭 작물 3단계: 새싹 · 자라는 중 · 수확 */
+export const CROP_SPRITES: Record<CropId, readonly [SpriteSource, SpriteSource, SpriteSource]> = {
+  lettuce: [
+    require('../../assets/game/rpg/pixel/farm/lettuce_0.png'),
+    require('../../assets/game/rpg/pixel/farm/lettuce_1.png'),
+    require('../../assets/game/rpg/pixel/farm/lettuce_2.png'),
+  ],
+  pepper: [
+    require('../../assets/game/rpg/pixel/farm/pepper_0.png'),
+    require('../../assets/game/rpg/pixel/farm/pepper_1.png'),
+    require('../../assets/game/rpg/pixel/farm/pepper_2.png'),
+  ],
+  tomato: [
+    require('../../assets/game/rpg/pixel/farm/tomato_0.png'),
+    require('../../assets/game/rpg/pixel/farm/tomato_1.png'),
+    require('../../assets/game/rpg/pixel/farm/tomato_2.png'),
+  ],
+};
+
+export const LIFE_PROP_SPRITES = {
+  wateringCan: require('../../assets/game/rpg/pixel/farm/watering_can.png'),
+  basket: require('../../assets/game/rpg/pixel/farm/basket.png'),
+  bobber: require('../../assets/game/rpg/pixel/farm/bobber.png'),
+} as const satisfies Record<string, SpriteSource>;
+
+export const FISH_SPRITES: Record<FishId, SpriteSource> = {
+  minnow: require('../../assets/game/rpg/pixel/fish/minnow.png'),
+  crucian: require('../../assets/game/rpg/pixel/fish/crucian.png'),
+  carp: require('../../assets/game/rpg/pixel/fish/carp.png'),
+  catfish: require('../../assets/game/rpg/pixel/fish/catfish.png'),
+  mandarin: require('../../assets/game/rpg/pixel/fish/mandarin.png'),
+  golden: require('../../assets/game/rpg/pixel/fish/golden.png'),
+};
+
+export const FURNITURE_SPRITES: Record<FurnitureId, SpriteSource> = {
+  cabinet: require('../../assets/game/rpg/pixel/furniture/cabinet.png'),
+  bedding: require('../../assets/game/rpg/pixel/furniture/bedding.png'),
+  orchid: require('../../assets/game/rpg/pixel/furniture/orchid.png'),
+  radio: require('../../assets/game/rpg/pixel/furniture/radio.png'),
+  tea_table: require('../../assets/game/rpg/pixel/furniture/tea_table.png'),
+  painting: require('../../assets/game/rpg/pixel/furniture/painting.png'),
+  screen: require('../../assets/game/rpg/pixel/furniture/screen.png'),
+  fishbowl: require('../../assets/game/rpg/pixel/furniture/fishbowl.png'),
+};
+
+/** 휴식·낚시와 생활 활동의 정지 포즈 */
+export const PLAYER_POSE_SPRITES = {
+  sit: require('../../assets/game/rpg/pixel/player_pose/player_sit.png'),
+  fish: require('../../assets/game/rpg/pixel/player_pose/player_fish.png'),
+  watering: require('../../assets/game/rpg/pixel/player_pose/player_watering.png'),
+  harvest: require('../../assets/game/rpg/pixel/player_pose/player_harvest.png'),
+  photo: require('../../assets/game/rpg/pixel/player_pose/player_photo.png'),
+} as const satisfies Record<string, SpriteSource>;
+export type PlayerPose = keyof typeof PLAYER_POSE_SPRITES;
+
+// ── 탐험: 채집물 · 명소 엽서 ──────────────────────────
+
+export const FORAGE_SPRITES: Record<ForageId, SpriteSource> = {
+  mushroom: require('../../assets/game/rpg/pixel/forage/mushroom.png'),
+  pinecone: require('../../assets/game/rpg/pixel/forage/pinecone.png'),
+  chestnut: require('../../assets/game/rpg/pixel/forage/chestnut.png'),
+  pebble: require('../../assets/game/rpg/pixel/forage/pebble.png'),
+  watercress: require('../../assets/game/rpg/pixel/forage/watercress.png'),
+  dandelion: require('../../assets/game/rpg/pixel/forage/dandelion.png'),
+  violet: require('../../assets/game/rpg/pixel/forage/violet.png'),
+  clover: require('../../assets/game/rpg/pixel/forage/clover.png'),
+};
+
+export const POSTCARDS: Record<string, SpriteSource> = {
+  hill: require('../../assets/game/rpg/postcards/hill.jpg'),
+  bridge: require('../../assets/game/rpg/postcards/bridge.jpg'),
+  spring: require('../../assets/game/rpg/postcards/spring.jpg'),
+  plaza: require('../../assets/game/rpg/postcards/plaza.jpg'),
+  pond: require('../../assets/game/rpg/postcards/pond.jpg'),
+  sea: require('../../assets/game/rpg/postcards/sea.jpg'),
+};
+
+/** 가방·도감 아이콘: 물고기 · 다 자란 작물 · 채집물 */
+export function itemSprite(id: string): SpriteSource | null {
+  if (id in FISH_SPRITES) return FISH_SPRITES[id as FishId];
+  if (id in CROP_SPRITES) return CROP_SPRITES[id as CropId][2];
+  if (id in FORAGE_SPRITES) return FORAGE_SPRITES[id as ForageId];
+  return null;
 }

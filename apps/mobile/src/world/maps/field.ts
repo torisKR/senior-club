@@ -1,0 +1,232 @@
+import type { VillageNpc } from '@/rpg/rpg-types';
+
+import type { MapBuilding, MapDef } from './map-types';
+
+/**
+ * 청솔 들녘 (64 x 56). 원래 24 x 24 청솔마을이 (20, 16)에 그대로 들어 있고
+ * 북쪽 숲 산책로 · 동쪽 강변과 돌다리 · 남쪽 꽃동산 언덕 · 서쪽 장터 거리가 둘러쌉니다.
+ * 글자 뜻은 tiles.ts 의 LEGEND 를 보세요.
+ */
+export const FIELD_VILLAGE_OFFSET = { x: 20, y: 16 } as const;
+
+export const FIELD_LAYOUT = [
+  'PPPuPPuPPuPPuPPuPPuPPuPPuPPuPPuPPuPPuPPuPPuPPuPPu~~~~PuPPuPPuPPP',
+  'PfffffPfffffffffffffPffuffffPfuufffffffPffoffffff~~~~fPfffoffffP',
+  'Pfffffff=========================================~~~~===fffffffP',
+  'PffffffP=ffffffufffffffffff=fufffffffffffffffffff~~~~ff=ffffPffP',
+  'Pfffffff=fPPfffffPfffffofff=fffffffffffffuffffPff~~~~ff=fufffffP',
+  'Pfffffff=fffuffffffffoffPff=ffffWfffffffufffPPfff~~~~ff=uffffffP',
+  'PfPfffff=fffPffffPfffffffff=fffffffffffffffPfffffSSSSff=fufffffP',
+  'Pfffffof=fffffPffPfffffffPu=ffffffffffffffffofPffSSSSff=ffuPfffP',
+  'Pffffoff=fffPufPPfPuPfffffP=ufTffbfwfPPofffffffff~~~~ff=fufffPfP',
+  'Pffffffu=fffffffffoPfffPfff=ffffffffPfffffffPfPuf~~~~ff=fffPuffP',
+  'Pfffffff=Pffffffffffoffffff=ffffffffffoufuPffPfff~~~~ff=ffffPffP',
+  'Pfffffff=fPofPffPfuufffouPf=fffffffPfffffffPfffff~~~~ff=fffffffP',
+  'PffPffff====================ffufffffffPf=========~~~~===fffffofP',
+  'PfPffffffPufffPfPfffffffoPf=ffffffffffff=ffffffff~~~~ufufffffffP',
+  'PffffofufffffuoPfffPfffffff=fPfffufPffff=ffffPfff~~~~ffffffffffP',
+  'Pffffffffffffffffffffffffff=ffffffffffff=ffffffff~~~~ffffffffffP',
+  'PPCPCPCPCPCPCPCPCPCPP....===.#....P.......P...=..~~~~..........P',
+  'P........................=BBB.......PBBB......=..~~~~....C.....P',
+  'P.......................P=BBB.P......BBB...P..=..~~~~..........P',
+  'P........................==B=.........B.......=..~~~~..........P',
+  'P...................#BBB.=.=...BBB#.*.=.FF....=..~~~~.P........P',
+  'P...BBB..BBB..BBB....BBB...=...BBB..*.=.FF....=..~~~~.......P..P',
+  'P...BBB..BBB..BBB.....B..*L=L*..B.....=.......=..~~~~..........P',
+  'P====B====B====B=================================SSSS==========P',
+  'P===================P....*===*....P...=...*.=====SSSS==========P',
+  'P.===========........BBB...=...BBB....=.......=..~~~~.....P....P',
+  'P.=..BBB............#BBB...=...BBB#P..=..C.P..=..~~~~.o..P..o..P',
+  'P.=..BBB..............B....=....B.....=.......=..~~~~..........P',
+  'P.=...B...............=.C.C=C.C.=....b=.C.....=..~~~~.P........P',
+  'P.=====.......*.......=========~~~~~~.=...C...=..~~~~.....T.b..P',
+  'P.=......................#.=.#.~~~~~~.=.......=.K~~~~.P........P',
+  'P.=........................=.~~~~~~~~.=BBB.P..=.K~~~~..C.......P',
+  'P.=.............*...P.....b=.~~~~~~~~.=BBB....=..~~~~..........P',
+  'P.=.............C..........==KKK~~~~~.==B.*...=..~~~~......C...P',
+  'P.=.....P..............**..=.~~~~~~~~.=...*...=..~~~~K.........P',
+  'P.=..P...........*...P.....=.~~~~~~~~.=.......=..~~~~K.........P',
+  'P.=.............C..........=.~~~~~~~~.=....P..=..~~~~..C......PP',
+  'P.=...........C.......=================.......=..~~~~..o......CP',
+  'P.=......................C.=.C..P.P......C....=..~~~~..........P',
+  'P.=......*..........P..C..P=.C..P..C..P..C....=..~~~~..........P',
+  'P..........................=.....................~~~~..........P',
+  'P..........................=.....................~~~~..........P',
+  'P..........................=.....................~~~~.yyyyyyyyyP',
+  'P..........................=.....................~~~~.yyyyyyyyyP',
+  'P...yyyyyyyyyyyyyyyyyyyyy..=..vvvvvvvvvvvvvvvvvv.~~~~.yyyyyyyyyP',
+  'P...yyyyyyyyyyyyyyy*yyyyy..=..vvvvvvvyvvvvyvvvvv.~~~~.yyyvyyyy*P',
+  'P...yyyyyvyyyyyyyyyyyyyyy..=..vvvvvvvvvvvvvvvvvv.~~~~.yyyyyyyyyP',
+  'P...yyyy======================================================yP',
+  'P...yyyyyyyyyyyyyyyyyyyyy.....vyvvvv=yvvvvvvvvvv.~~~~.yyyyvyyyyP',
+  'P...yyyyyyyyyyyyyyyyyyyyy.....vvvvvv=vvvvvvvvvvv.~~~~.yyyyyyyyyP',
+  'P...yvyyyvyyyyyyyyyyyyyyy.....vvvvvBBBvvvvvvvvvv.~~~~.yyyyyyyyyP',
+  'P...yyyyyyy*yyyyyyyyyyyyy.....vvvvvBBBvvvvvvvvvv.~~~~.yyyyyyyyvP',
+  'P...yyyy*yyyyyyyyyyyyyyyy.....vvvvvBBBvvvvvvvvvv.~~~~.*yyyyyyyyP',
+  'P...yyyyyyyyyyyyyyyyyyyyy.....vvvvvvBvvvvvvvvvvv.~~~~.yyyyyyyyyP',
+  'P...yyyyyyyyyyyyyyyyyyyyy.....vvvvvy=vvvvvvvvvvv.~~~~.yyyyyyyyyP',
+  'PPCPCPCPCPCPCPCPCPCPCPCPCPCPCPCPCPCPCPCPCPCPCPCPCPCPCPCPCPCPCPCP',
+] as const;
+
+export const FIELD_NPCS: readonly VillageNpc[] = [
+  {
+    id: 'chief',
+    name: '김 이장',
+    title: '마을회관 어르신',
+    x: 27,
+    y: 20,
+    dialogue: [
+      '어서 오시게! 청솔마을에 잘 정착하고 계시는가?',
+      '아침 체조와 약 챙겨먹기는 건강의 기본이니 꼭 잊지 말게나.',
+      '마을 시설마다 명인 어르신들이 기다리고 계시니 한 번 둘러보시게.',
+      '급할 것 없네. 꽃동산을 한 바퀴 돌고 벤치에 앉아 바람을 느껴 보게.',
+    ],
+  },
+  {
+    id: 'golf_captain',
+    name: '박 캡틴',
+    title: '파크골프장 반장',
+    x: 22,
+    y: 23,
+    dialogue: [
+      '오늘 그린 잔디 결이 기가 막히게 잘 깎였습니다!',
+      '소나무 1홀에서 감나무 퍼터로 버디 한 번 노려보시지요?',
+      '공이 멀리 가지 않아도 괜찮습니다. 잔디를 보며 천천히 한 번 더 쳐 보세요.',
+    ],
+    questId: 'quest_parkgolf',
+    facilityRoute: '/clubs',
+    facilityLabel: '파크골프장 입장 ▶',
+  },
+  {
+    id: 'baduk_master',
+    name: '최 사범',
+    title: '송학기원 원장',
+    x: 32,
+    y: 23,
+    dialogue: [
+      '반갑구려. 비자나무 바둑판에서 한 수 두시겠소?',
+      '상대 알을 둘 이상 밀어내는 일석이조의 손맛이 일품이지요.',
+      '한 수가 뜻대로 안 풀리면 차 한 모금 마시고 다시 보면 된다오.',
+    ],
+    questId: 'quest_alkkagi',
+    facilityRoute: '/events',
+    facilityLabel: '송학기원 입장 ▶',
+  },
+  {
+    id: 'tea_manager',
+    name: '이 다도명인',
+    title: '매화다실 안주인',
+    x: 22,
+    y: 28,
+    dialogue: [
+      '향긋한 찻잔과 함께 전통 패 사천성 한 판 어떠세요?',
+      '길상 문양의 짝을 맞추다 보면 뇌 활력이 솟아난답니다.',
+      '다실 앞을 지나는 바람이 좋아요. 서두르지 말고 잠시 쉬어 가세요.',
+    ],
+    questId: 'quest_sacheonseong',
+    facilityRoute: '/chat',
+    facilityLabel: '매화다실 입장 ▶',
+  },
+  {
+    id: 'herbalist',
+    name: '강 원장',
+    title: '청솔 한약방',
+    x: 32,
+    y: 28,
+    dialogue: [
+      '기운이 허하실 땐 쌍화차와 아침 체조가 보약입니다.',
+      '활력(HP)을 가득 채우고 모험을 떠나보세요.',
+      '강가에서 주운 작은 돌 하나도 여행의 좋은 기념이 되지요.',
+    ],
+  },
+] as const;
+
+const VILLAGE_BLOCK_BUILDINGS: readonly MapBuilding[] = [
+  {
+    id: 'club_hall',
+    name: '마을회관',
+    x: 26,
+    y: 17,
+    width: 3,
+    height: 2,
+    door: { x: 27, y: 19 },
+  },
+  {
+    id: 'parkgolf',
+    name: '파크골프장',
+    x: 21,
+    y: 20,
+    width: 3,
+    height: 2,
+    door: { x: 22, y: 22 },
+    facilityRoute: '/clubs',
+  },
+  {
+    id: 'alkkagi',
+    name: '송학기원',
+    x: 31,
+    y: 20,
+    width: 3,
+    height: 2,
+    door: { x: 32, y: 22 },
+    facilityRoute: '/events',
+  },
+  {
+    id: 'sacheonseong',
+    name: '매화다실',
+    x: 21,
+    y: 25,
+    width: 3,
+    height: 2,
+    door: { x: 22, y: 27 },
+    facilityRoute: '/chat',
+  },
+  {
+    id: 'herbal',
+    name: '청솔 한약방',
+    x: 31,
+    y: 25,
+    width: 3,
+    height: 2,
+    door: { x: 32, y: 27 },
+  },
+  {
+    id: 'home',
+    name: '내 집',
+    x: 37,
+    y: 17,
+    width: 3,
+    height: 2,
+    door: { x: 38, y: 19 },
+    facilityRoute: '/house',
+  },
+  {
+    id: 'pavilion',
+    name: '연못가 정자',
+    x: 39,
+    y: 31,
+    width: 3,
+    height: 2,
+    door: { x: 40, y: 33 },
+  },
+] as const;
+
+/** 마을 밖 들녘의 건물: 장터 노점 · 버스 정류장 · 꽃동산 전망대 */
+const FIELD_OUTSKIRT_BUILDINGS: readonly MapBuilding[] = [
+  { id: 'stall_gukbap', name: '장터 국밥집', x: 4, y: 21, width: 3, height: 2, door: { x: 5, y: 23 } },
+  { id: 'stall_goods', name: '장터 잡화점', x: 9, y: 21, width: 3, height: 2, door: { x: 10, y: 23 } },
+  { id: 'stall_fish', name: '장터 생선가게', x: 14, y: 21, width: 3, height: 2, door: { x: 15, y: 23 } },
+  { id: 'bus_stop', name: '청솔 버스 정류장', x: 5, y: 26, width: 3, height: 2, door: { x: 6, y: 28 }, busStop: true },
+  { id: 'observatory', name: '꽃동산 전망대', x: 35, y: 50, width: 3, height: 3, door: { x: 36, y: 53 } },
+];
+
+export const FIELD_BUILDINGS: readonly MapBuilding[] = [...VILLAGE_BLOCK_BUILDINGS, ...FIELD_OUTSKIRT_BUILDINGS];
+
+export const FIELD_MAP: MapDef = {
+  id: 'field',
+  name: '청솔 들녘',
+  layout: FIELD_LAYOUT,
+  buildings: FIELD_BUILDINGS,
+  npcs: FIELD_NPCS,
+  arrival: { x: 6, y: 29 },
+};

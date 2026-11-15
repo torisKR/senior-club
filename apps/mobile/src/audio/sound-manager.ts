@@ -4,6 +4,7 @@
  * 어떤 실패도 게임플레이를 중단시키지 않는다.
  */
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
+import { AppState } from 'react-native';
 
 export type SfxId =
   | 'putt'        // 파크골프 타구 "딱!"
@@ -23,6 +24,8 @@ const SOURCES: Record<SfxId, number> = {
 };
 
 const cache: Partial<Record<SfxId, AudioPlayer>> = {};
+let playbackGeneration = 0;
+const isForeground = () => AppState.currentState == null || AppState.currentState === 'active';
 
 function getPlayer(id: SfxId): AudioPlayer {
   const cached = cache[id];
@@ -33,20 +36,34 @@ function getPlayer(id: SfxId): AudioPlayer {
 }
 
 async function replayFromStart(id: SfxId): Promise<void> {
-  const player = getPlayer(id);
+  const generation = playbackGeneration;
   try {
+    const player = getPlayer(id);
     if (player.playing) {
       player.pause();
     }
     await player.seekTo(0);
+    if (generation !== playbackGeneration || !isForeground()) return;
     player.play();
   } catch {
     // 오디오 실패는 무시 — 게임 진행을 막지 않는다.
   }
 }
 
+/** Stops active effects and cancels requests still seeking to their start. */
+export function stopAllSfx(): void {
+  playbackGeneration += 1;
+  for (const player of Object.values(cache)) {
+    try {
+      player?.pause();
+    } catch {
+      // A released or unavailable player must not interrupt gameplay.
+    }
+  }
+}
+
 /** SFX 원샷 재생. `enabled`가 false면 아무 소리도 내지 않는다. */
 export function playSfx(id: SfxId, enabled = true): void {
-  if (!enabled) return;
+  if (!enabled || !isForeground()) return;
   void replayFromStart(id);
 }

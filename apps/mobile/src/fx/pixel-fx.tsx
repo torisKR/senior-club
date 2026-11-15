@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { AppState, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { FX_MANIFEST, type FxName } from './fx-manifest';
 import { frameAt, frameCell } from './fx-timing';
@@ -43,6 +43,7 @@ export function PixelFx({ name, scale = 1, loop, onDone, style }: PixelFxProps) 
   const meta = FX_MANIFEST[name];
   const shouldLoop = loop ?? meta.loop;
   const reduceMotion = useReduceMotion();
+  const [foreground, setForeground] = useState(() => AppState.currentState == null || AppState.currentState === 'active');
   const [playback, setPlayback] = useState({ name, shouldLoop, frame: 0 });
   const frame = playback.name === name && playback.shouldLoop === shouldLoop ? playback.frame : 0;
   const doneRef = useRef(false);
@@ -56,11 +57,16 @@ export function PixelFx({ name, scale = 1, loop, onDone, style }: PixelFxProps) 
   }, [onDone]);
 
   useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => setForeground(state === 'active'));
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
     doneRef.current = false;
   }, [name, shouldLoop]);
 
   useEffect(() => {
-    if (reduceMotion === null || doneRef.current) return;
+    if (!foreground || reduceMotion === null || doneRef.current) return;
 
     const finish = () => {
       if (doneRef.current) return;
@@ -90,7 +96,7 @@ export function PixelFx({ name, scale = 1, loop, onDone, style }: PixelFxProps) 
     }, Math.max(16, Math.round(1000 / meta.fps)));
 
     return () => clearInterval(timer);
-  }, [name, meta, shouldLoop, reduceMotion]);
+  }, [name, meta, shouldLoop, reduceMotion, foreground]);
 
   const visibleFrame = reduceMotion === false ? frame : Math.floor((meta.frames - 1) / 2);
   const cell = useMemo(() => frameCell(visibleFrame, meta.columns), [visibleFrame, meta.columns]);

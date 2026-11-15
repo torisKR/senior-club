@@ -14,7 +14,7 @@ function describePurchase(outcome: PurchaseOutcome): string {
     case 'cancelled':
       return '결제를 취소했어요. 언제든 다시 열 수 있어요.';
     case 'pending':
-      return '결제 확인을 기다리고 있어요. 완료되면 광고가 사라져요.';
+      return '결제 확인을 기다리고 있어요. 승인 후에도 반영이 늦으면 구매 복원으로 다시 확인해 주세요.';
     case 'failed':
       return describeFailure('구매를 완료하지 못했어요.', outcome.retryable, outcome.code);
   }
@@ -108,8 +108,8 @@ export function PlusCard() {
           accessibilityHint="같은 Google 계정으로 산 플러스를 이 기기에 다시 적용합니다"
         />
 
-        {status ? (
-          <AppText testID="plus-status" color="textSecondary">
+        {status && !billing.owned ? (
+          <AppText testID="plus-status" color="textSecondary" accessibilityLiveRegion="polite">
             {status}
           </AppText>
         ) : null}

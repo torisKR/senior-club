@@ -57,7 +57,7 @@ function settledToken(decision: EntitlementDecision, storedToken: string | null)
     : decision.write.token;
 }
 
-export async function syncEntitlement(deps: RemoveAdsDeps, productId = REMOVE_ADS_PRODUCT_ID): Promise<boolean> {
+export async function syncEntitlementStatus(deps: RemoveAdsDeps, productId = REMOVE_ADS_PRODUCT_ID): Promise<{ owned: boolean; verifiedAbsent: boolean }> {
   const storedToken = await deps.tokens.get().catch(() => null);
 
   try {
@@ -72,10 +72,14 @@ export async function syncEntitlement(deps: RemoveAdsDeps, productId = REMOVE_AD
       await finishQuietly(deps.billing, purchaseFromToken(settledToken(decision, storedToken), productId));
     }
 
-    return decision.owned;
+    return { owned: decision.owned, verifiedAbsent: probe.status === 'ok' && !probe.pending && !decision.owned };
   } catch {
-    return storedToken !== null && storedToken !== '';
+    return { owned: storedToken !== null && storedToken !== '', verifiedAbsent: false };
   }
+}
+
+export async function syncEntitlement(deps: RemoveAdsDeps, productId = REMOVE_ADS_PRODUCT_ID): Promise<boolean> {
+  return (await syncEntitlementStatus(deps, productId)).owned;
 }
 
 async function reconcileFromStore(deps: RemoveAdsDeps, productId: string): Promise<RestoreOutcome> {
@@ -87,6 +91,9 @@ async function reconcileFromStore(deps: RemoveAdsDeps, productId: string): Promi
   }
 
   const decision = decideEntitlement(storedToken, probe);
+  if (probe.pending && !decision.owned) {
+    return RETRYABLE_FAILURE;
+  }
   await applyDecision(deps, decision).catch(() => undefined);
 
   if (!decision.owned) {

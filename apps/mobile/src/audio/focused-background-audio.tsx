@@ -1,7 +1,7 @@
 import { useAudioPlayer } from 'expo-audio';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 type Props = { source: number; enabled: boolean };
 
@@ -16,8 +16,16 @@ function AudioPlayerOnFocus({ source, enabled }: Props) {
   }, [player]);
 
   useFocusEffect(useCallback(() => {
-    if (enabled) player.play();
-    return () => player.pause();
+    const syncPlayback = (status: string | null | undefined) => {
+      if (enabled && (status == null || status === 'active')) player.play();
+      else player.pause();
+    };
+    syncPlayback(AppState.currentState);
+    const listener = AppState.addEventListener('change', syncPlayback);
+    return () => {
+      listener.remove();
+      player.pause();
+    };
   }, [enabled, player]));
 
   return null;

@@ -17,6 +17,12 @@
 
 [내부 wrapper](../.github/workflows/android-play-internal.yml)와 production workflow는 각각 `play-internal`, `play-store-production` GitHub Environment를 사용한다. 해당 환경에 `ANDROID_UPLOAD_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `ANDROID_UPLOAD_CERT_SHA256`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`, `GOOGLE_SERVICES_JSON_BASE64`가 필요하다. Firebase client JSON은 패키지 일치를 검사하고 Play 서비스 계정은 workflow에 지정된 계정을 검사한다. 비밀값을 문서, 로그, 캡처에 넣지 않는다.
 
+### 프로덕션 환경 설정
+
+`.env.local` 자체는 프로덕션 AAB에 포함되는 설정 파일이 아니다. EAS는 [`.easignore`](../apps/mobile/.easignore)에서 `.env`와 `.env.*`를 제외하되 예제 파일은 허용하고, [`eas.json`](../apps/mobile/eas.json)의 production 프로필에 공개 AdMob 식별자와 `EXPO_PUBLIC_APP_ENV`를 지정한다. EAS 환경에 별도로 공급해야 할 값이 있다면 로컬 파일이 업로드될 것이라고 가정하지 않는다.
+
+위의 직접 Gradle workflow는 EAS 프로필을 사용하지 않고 `EXPO_NO_DOTENV=1`로 로컬 dotenv 로딩을 끈다. 소스의 기본 AdMob 앱·배너 식별자를 사용하며, Firebase Android 클라이언트 파일은 GitHub Environment의 `GOOGLE_SERVICES_JSON_BASE64`에서 임시 파일로 만들어 `GOOGLE_SERVICES_JSON` 경로로 prebuild에 전달한다. 이는 소스와 workflow 설정을 읽은 결과이며, 특정 AAB에 해당 값과 파일이 실제 반영되었거나 광고·Firebase가 동작했다는 증거는 아니다. 최종 빌드 산출물과 실행 환경은 별도로 확인한다.
+
 upload 인증서와 사용자가 Play에서 설치하는 앱의 Play App Signing 인증서는 구별한다. workflow의 upload 인증서 검사는 Play 배포본의 서명이나 기기 설치 검증을 대신하지 않는다.
 
 ## 스크린샷과 출시 게이트
