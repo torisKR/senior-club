@@ -34,7 +34,7 @@ export function IdlePanel() {
                 onPress={() => upgradeFacility(fac.id)}
                 style={[styles.upgradeBtn, panelStyles.touchTarget, !canUpgrade && { opacity: 0.55 }]}>
                 <AppText variant="caption" style={{ color: '#FCF9F2', fontFamily: FontWeights.strong }}>
-                  레벨업 (🌰 {fac.upgradeCost}개)
+                  레벨업 (도토리 {fac.upgradeCost}개)
                 </AppText>
               </Pressable>
             </View>
@@ -93,7 +93,7 @@ export function IdlePanel() {
                     onPress={() => recruitPartner(partner.id)}
                     style={[styles.upgradeBtn, panelStyles.recruitButton, !canRecruit && { opacity: 0.55 }]}>
                     <AppText variant="caption" style={{ color: '#FCF9F2', fontFamily: FontWeights.strong }}>
-                      영입 (🌰 {partner.recruitCost}개)
+                      영입 (도토리 {partner.recruitCost}개)
                     </AppText>
                   </Pressable>
                 )}

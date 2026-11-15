@@ -2,10 +2,11 @@ import { Image } from 'expo-image';
 import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 
+import { PixelRadius } from '@/components/game/pixel-theme';
 import { useArcade } from '@/arcade/arcade-store';
 import { playSfx } from '@/audio/sound-manager';
 import { AppText, SeniorButton } from '@/components/ui';
-import { FontWeights, Radius, Spacing } from '@/constants/theme';
+import { FontWeights, Spacing } from '@/constants/theme';
 import { todayKey } from '@/rpg/daily-reset';
 import { FARM_PLOTS, getVillageTile } from '@/rpg/rpg-logic';
 import { getMap, type MapId } from '@/world/maps';
@@ -450,7 +451,7 @@ export function useWorldActivities(onNotice: (text: string) => void, paused = fa
 
 const styles = StyleSheet.create({
   panel: {
-    borderRadius: Radius.lg,
+    borderRadius: PixelRadius,
     backgroundColor: 'rgba(252, 249, 242, 0.97)',
     borderWidth: 3,
     borderColor: '#8A5A2B',
@@ -462,11 +463,11 @@ const styles = StyleSheet.create({
   bobber: { width: 48, height: 48 },
   bobberBite: { transform: [{ translateY: 8 }, { rotate: '-12deg' }] },
   fish: { width: 72, height: 72 },
-  postcard: { width: '100%', aspectRatio: 4 / 3, borderRadius: Radius.md, borderWidth: 2, borderColor: '#8A5A2B' },
+  postcard: { width: '100%', aspectRatio: 4 / 3, borderRadius: PixelRadius, borderWidth: 2, borderColor: '#8A5A2B' },
   input: {
     minHeight: 56,
     paddingHorizontal: Spacing.md,
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     borderWidth: 2,
     borderColor: '#B89A7A',
     backgroundColor: '#FFFFFF',

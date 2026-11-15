@@ -3,6 +3,8 @@ import type { ScrollViewProps, StyleProp, ViewStyle } from 'react-native';
 import { useSegments } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { useGameSkin } from '@/components/game/game-skin';
+import { PixelPalette } from '@/components/game/pixel-theme';
 import { Layout, Spacing } from '@/constants/theme';
 import { useEffectiveSafeAreaInsets } from '@/hooks/use-effective-safe-area-insets';
 import { useTheme } from '@/hooks/use-theme';
@@ -28,6 +30,8 @@ export function Screen({
   testID,
 }: ScreenProps) {
   const theme = useTheme();
+  const isGameSkin = useGameSkin();
+  const background = isGameSkin ? PixelPalette.hanjiShade : theme.background;
   const safeInsets = useEffectiveSafeAreaInsets();
   const segments: readonly string[] = useSegments();
   // 마을 밖 장소(시설·내 집)는 스택 헤더가 상태 표시줄 영역을 이미 차지합니다.
@@ -51,7 +55,7 @@ export function Screen({
 
   if (!scroll) {
     return (
-      <View testID={testID} style={[{ flex: 1, backgroundColor: theme.background }, style]}>
+      <View testID={testID} style={[{ flex: 1, backgroundColor: background }, style]}>
         <View style={{ flex: 1, paddingTop: insets.top }}>
           <View style={[{ flex: 1 }, innerStyle]}>{children}</View>
         </View>
@@ -62,7 +66,7 @@ export function Screen({
   return (
     <View
       testID={testID}
-      style={[{ flex: 1, backgroundColor: theme.background }, style, { paddingTop: insets.top, overflow: 'hidden' }]}>
+      style={[{ flex: 1, backgroundColor: background }, style, { paddingTop: insets.top, overflow: 'hidden' }]}>
       {/* Keep system space outside the viewport; content padding scrolls away. */}
       <ScrollView
         contentInsetAdjustmentBehavior="never"

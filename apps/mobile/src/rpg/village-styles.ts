@@ -1,6 +1,25 @@
 import { StyleSheet } from 'react-native';
 
+import { PixelPalette, PixelRadius } from '@/components/game/pixel-theme';
 import { FontWeights, Layout, Radius, Spacing } from '@/constants/theme';
+
+/** 대화·컷신용 어두운 RPG 창: 진한 숲색 바탕 + 호두 바깥선 + 금색 안쪽 테. */
+const pixelDark = {
+  backgroundColor: PixelPalette.dialogue,
+  borderRadius: 2,
+  borderWidth: 3,
+  borderColor: PixelPalette.outline,
+  boxShadow: `inset 0 0 0 2px ${PixelPalette.gold}, 0 4px 0 ${PixelPalette.outline}66`,
+} as const;
+
+/** 보상·안내용 밝은 RPG 창: 한지 바탕 + 호두 바깥선 + 나무 안쪽 테. */
+const pixelLight = {
+  backgroundColor: PixelPalette.hanji,
+  borderRadius: 2,
+  borderWidth: 3,
+  borderColor: PixelPalette.outline,
+  boxShadow: `inset 0 0 0 3px ${PixelPalette.woodLight}, 0 4px 0 ${PixelPalette.outline}66`,
+} as const;
 
 /** 마을 화면과 그 패널들이 함께 쓰는 고전 원목 톤 스타일. */
 export const villageStyles = StyleSheet.create({
@@ -12,7 +31,7 @@ export const villageStyles = StyleSheet.create({
   },
   statusPlaque: {
     backgroundColor: '#24382B',
-    borderRadius: Radius.lg,
+    borderRadius: PixelRadius,
     borderWidth: 2,
     borderColor: '#D8B384',
     padding: Spacing.md,
@@ -85,7 +104,7 @@ export const villageStyles = StyleSheet.create({
   },
   noticeBox: {
     backgroundColor: '#E3F3EA',
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     padding: Spacing.md,
     borderWidth: 1,
     borderColor: '#277357',
@@ -97,7 +116,7 @@ export const villageStyles = StyleSheet.create({
   toggleBtn: {
     flex: 1,
     minHeight: 48,
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     borderWidth: 1.5,
     borderColor: '#6E4228',
     backgroundColor: '#24382B',
@@ -111,7 +130,7 @@ export const villageStyles = StyleSheet.create({
   mapViewportFrame: {
     width: '100%',
     height: 440,
-    borderRadius: Radius.lg,
+    borderRadius: PixelRadius,
     overflow: 'hidden',
     borderWidth: 3,
     borderColor: '#6E4228',
@@ -124,7 +143,7 @@ export const villageStyles = StyleSheet.create({
     left: 8,
     right: 8,
     backgroundColor: 'rgba(24, 38, 32, 0.88)',
-    borderRadius: Radius.sm,
+    borderRadius: PixelRadius,
     paddingVertical: 4,
     paddingHorizontal: 8,
     alignItems: 'center',
@@ -134,9 +153,7 @@ export const villageStyles = StyleSheet.create({
     fontFamily: FontWeights.emphasis,
   },
   dialogueCard: {
-    backgroundColor: '#24382B',
-    borderWidth: 2,
-    borderColor: '#D8B384',
+    ...pixelDark,
     gap: Spacing.sm,
   },
   dialogueHeader: {
@@ -145,15 +162,24 @@ export const villageStyles = StyleSheet.create({
     gap: Spacing.sm,
   },
   npcPortraitCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#0E5142',
-    borderWidth: 1.5,
-    borderColor: '#F0BF4F',
+    width: 64,
+    height: 64,
+    borderRadius: 2,
+    backgroundColor: PixelPalette.hanji,
+    borderWidth: 3,
+    borderColor: PixelPalette.gold,
+    boxShadow: `0 0 0 2px ${PixelPalette.outline}`,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+  },
+  dialogueNameplate: {
+    flex: 1,
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: PixelPalette.gold,
   },
   npcPortraitImage: {
     width: '100%',
@@ -161,7 +187,7 @@ export const villageStyles = StyleSheet.create({
   },
   dialogueBody: {
     backgroundColor: '#182620',
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     padding: Spacing.md,
     borderWidth: 1,
     borderColor: '#6E4228',
@@ -191,7 +217,7 @@ export const villageStyles = StyleSheet.create({
   dpadBtn: {
     width: 68,
     height: 60,
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     backgroundColor: '#24382B',
     borderWidth: 2,
     borderColor: '#D8B384',
@@ -227,7 +253,7 @@ export const villageStyles = StyleSheet.create({
   },
   questBadge: {
     backgroundColor: '#FFF1C7',
-    borderRadius: Radius.sm,
+    borderRadius: PixelRadius,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderWidth: 1,
@@ -245,7 +271,7 @@ export const villageStyles = StyleSheet.create({
   },
   claimBtn: {
     backgroundColor: '#C2410C',
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
@@ -264,7 +290,7 @@ export const villageStyles = StyleSheet.create({
   },
   invUseBtn: {
     backgroundColor: '#0E5142',
-    borderRadius: Radius.sm,
+    borderRadius: PixelRadius,
     paddingHorizontal: 10,
     paddingVertical: 4,
     marginTop: 4,
@@ -279,10 +305,7 @@ export const villageStyles = StyleSheet.create({
   offlineRewardCard: {
     width: '100%',
     maxWidth: 420,
-    backgroundColor: '#FCF9F2',
-    borderRadius: Radius.lg,
-    borderWidth: 3,
-    borderColor: '#F0BF4F',
+    ...pixelLight,
     padding: Spacing.lg,
     alignItems: 'center',
     gap: Spacing.md,
@@ -296,24 +319,22 @@ export const villageStyles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
+  rewardRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   rewardBox: {
     width: '100%',
-    backgroundColor: '#E4EDDA',
-    borderRadius: Radius.md,
+    backgroundColor: PixelPalette.hanjiShade,
+    borderRadius: 2,
     padding: Spacing.md,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: '#779367',
+    gap: 6,
+    borderWidth: 2,
+    borderColor: PixelPalette.woodLight,
   },
   storyCutsceneCard: {
     width: '100%',
     maxWidth: 440,
     flexGrow: 0,
     flexShrink: 1,
-    backgroundColor: '#24382B',
-    borderRadius: Radius.lg,
-    borderWidth: 3,
-    borderColor: '#D8B384',
+    ...pixelDark,
     maxHeight: '90%',
   },
   storyCutsceneContent: {
@@ -331,7 +352,7 @@ export const villageStyles = StyleSheet.create({
   },
   climaxNotice: {
     backgroundColor: '#FFF1C7',
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     padding: Spacing.md,
     gap: 2,
     borderWidth: 1,
@@ -341,7 +362,7 @@ export const villageStyles = StyleSheet.create({
     marginTop: Spacing.sm,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     backgroundColor: 'rgba(24, 38, 32, 0.88)',
     borderWidth: 1.5,
     borderColor: '#F0BF4F',
@@ -350,7 +371,7 @@ export const villageStyles = StyleSheet.create({
   },
   companionCard: {
     backgroundColor: '#FFF6DC',
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     borderWidth: 1.5,
     borderColor: '#F0BF4F',
     gap: Spacing.sm,
@@ -402,7 +423,7 @@ export const villageStyles = StyleSheet.create({
   },
   storyProgressionBanner: {
     backgroundColor: '#0E5142',
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     borderWidth: 2,
     borderColor: '#F0BF4F',
     padding: Spacing.md,
@@ -429,13 +450,13 @@ export const villageStyles = StyleSheet.create({
   },
   upgradeBtn: {
     backgroundColor: '#C2410C',
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   partnerAssignRow: {
     backgroundColor: '#E4EDDA',
-    borderRadius: Radius.sm,
+    borderRadius: PixelRadius,
     paddingHorizontal: 8,
     paddingVertical: 4,
     marginTop: 2,
@@ -458,16 +479,14 @@ export const villageStyles = StyleSheet.create({
     borderColor: '#0E5142',
   },
   storyCardLarge: {
-    backgroundColor: '#24382B',
-    borderColor: '#D8B384',
-    borderWidth: 2,
+    ...pixelDark,
     gap: Spacing.md,
   },
   storyDialogueBox: {
     backgroundColor: '#182620',
-    borderRadius: Radius.md,
-    borderWidth: 1.5,
-    borderColor: '#6E4228',
+    borderRadius: 2,
+    borderWidth: 2,
+    borderColor: PixelPalette.woodLight,
     padding: Spacing.md,
     gap: 6,
   },
@@ -489,7 +508,7 @@ export const villageStyles = StyleSheet.create({
   missionIcon: {
     width: 44,
     height: 44,
-    borderRadius: Radius.sm,
+    borderRadius: PixelRadius,
     backgroundColor: '#E4EDDA',
   },
   dailyDivider: {

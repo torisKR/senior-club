@@ -2,11 +2,12 @@ import { Image } from 'expo-image';
 import React from 'react';
 import { Alert, Linking, Pressable, StyleSheet, Switch, View } from 'react-native';
 
+import { PixelRadius } from '@/components/game/pixel-theme';
 import { AppText, Card, Screen, SectionHeader, SeniorButton } from '@/components/ui';
 import { AdsPrivacySettings } from '@/ads/AdsPrivacySettings';
 import { AnalyticsSettingsEntry } from '@/analytics/consent-card';
 import { getPublicWebPageUrl } from '@/config/public-web-links';
-import { FontWeights, Layout, Radius, Spacing } from '@/constants/theme';
+import { FontWeights, Layout, Spacing } from '@/constants/theme';
 import { useAppState } from '@/hooks/use-app-state';
 import { PlusCard } from '@/screens/profile/plus-card';
 import { PixelFx } from '@/fx/pixel-fx';
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
   },
   masterBanner: {
     backgroundColor: '#24382B',
-    borderRadius: Radius.lg,
+    borderRadius: PixelRadius,
     borderWidth: 2,
     borderColor: '#F0BF4F',
     padding: Spacing.lg,
@@ -250,7 +251,7 @@ const styles = StyleSheet.create({
   statItem: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     borderWidth: 1.5,
     borderColor: '#D8B384',
     padding: Spacing.md,
@@ -281,7 +282,7 @@ const styles = StyleSheet.create({
   skinChip: {
     flex: 1,
     minHeight: 48,
-    borderRadius: Radius.md,
+    borderRadius: PixelRadius,
     borderWidth: 1.5,
     borderColor: '#6E4228',
     backgroundColor: '#FFFFFF',
@@ -303,7 +304,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     paddingHorizontal: 10,
-    borderRadius: Radius.sm,
+    borderRadius: PixelRadius,
     backgroundColor: '#F1F5F3',
   },
   tierRowUnlocked: {
