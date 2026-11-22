@@ -259,6 +259,12 @@ export async function validateMergedAndroidManifest(xml, { expoConfig = checkedI
   }
   check(declaredPermissions.has(dynamicReceiverPermission), 'Missing signature permission for AndroidX private receivers');
 
+  // A portrait-locked activity implies a required screen.portrait feature, which Play uses to filter devices.
+  const portraitFeatures = (manifest['uses-feature'] ?? [])
+    .filter((node) => attributes(node)['android:name'] === 'android.hardware.screen.portrait');
+  check(portraitFeatures.length === 1 && exactEnum(attributes(portraitFeatures[0])['android:required'], 'false', 0),
+    'android.hardware.screen.portrait must be declared exactly once with android:required="false"');
+
   check(manifest.application?.length === 1, 'Expected exactly one application');
   const application = manifest.application?.[0];
   const appAttrs = attributes(application);

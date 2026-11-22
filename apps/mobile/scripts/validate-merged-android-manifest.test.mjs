@@ -21,6 +21,7 @@ const validManifest = `<?xml version="1.0" encoding="utf-8"?>
   <uses-permission android:name="com.android.vending.BILLING" />
   <uses-permission android:name="com.toris.seniorclub.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
   <permission android:name="com.toris.seniorclub.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" android:protectionLevel="signature" />
+  <uses-feature android:name="android.hardware.screen.portrait" android:required="false" />
   <application android:allowBackup="false">
     <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop">
       <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
@@ -240,6 +241,12 @@ test('the AndroidX private receiver permission must stay signature protected', a
     await assert.rejects(validate(validManifest.replace('android:protectionLevel="signature"', `android:protectionLevel="${level}"`)), /weakened permission declaration/);
   }
   await assert.rejects(validate(validManifest.replace(/<permission [^>]+\/>/, '')), /Missing signature permission/);
+});
+
+test('portrait lock must not filter out devices through an implied required screen feature', async () => {
+  const feature = '<uses-feature android:name="android.hardware.screen.portrait" android:required="false" />';
+  await assert.rejects(validate(validManifest.replace(feature, '')), /screen\.portrait/);
+  await assert.rejects(validate(validManifest.replace('android:required="false"', 'android:required="true"')), /screen\.portrait/);
 });
 
 test('checks package identity, modern platform defaults, and singular application', async () => {
