@@ -268,6 +268,15 @@ if (!mainActivity) {
   }
 }
 
+const portraitFeatures = asArray(manifest['uses-feature']).filter(
+  (feature) => attributes(feature)['android:name'] === 'android.hardware.screen.portrait',
+);
+if (portraitFeatures.length === 1 && attributes(portraitFeatures[0])['android:required'] === 'false') {
+  pass('android.hardware.screen.portrait required=false');
+} else {
+  fail('android.hardware.screen.portrait는 required=false로 한 번만 선언해야 합니다(기기 필터링 방지).');
+}
+
 const intentFilters = asArray(mainActivity?.['intent-filter']);
 const launcherFilters = intentFilters.filter((intentFilter) => {
   const actions = childAttributeValues(intentFilter, 'action', 'android:name');

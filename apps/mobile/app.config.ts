@@ -25,6 +25,20 @@ const withBillingSafeActivity = (config: ExpoConfig) => withAndroidManifest(conf
   return mod;
 });
 
+// screenOrientation=portrait makes Play imply a required screen.portrait feature and filter devices.
+const PORTRAIT_SCREEN_FEATURE = 'android.hardware.screen.portrait';
+const withOptionalPortraitScreen = (config: ExpoConfig) => withAndroidManifest(config, (mod) => {
+  const manifest = mod.modResults.manifest;
+  const features = (manifest['uses-feature'] ?? []).filter(
+    (feature) => feature.$['android:name'] !== PORTRAIT_SCREEN_FEATURE,
+  );
+  manifest['uses-feature'] = [
+    ...features,
+    { $: { 'android:name': PORTRAIT_SCREEN_FEATURE, 'android:required': 'false' } },
+  ];
+  return mod;
+});
+
 function configuredAndroidAppId(): string {
   const candidate = process.env.EXPO_PUBLIC_ADMOB_ANDROID_APP_ID?.trim() || PRODUCTION_ADMOB_ANDROID_APP_ID;
   const isProduction = process.env.EXPO_PUBLIC_APP_ENV === 'production';
@@ -67,6 +81,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     plugins: [
       ...(config.plugins ?? []),
       withBillingSafeActivity,
+      withOptionalPortraitScreen,
       withWorkDatabaseKeepRule,
       '@react-native-firebase/app',
       'expo-iap',
