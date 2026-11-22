@@ -12,7 +12,7 @@
     "primaryColor": "#0E5142",
     "android": {
       "package": "com.toris.seniorclub",
-      "versionCode": 213033836,
+      "versionCode": 213033837,
       "allowBackup": false,
       "predictiveBackGestureEnabled": true,
       "permissions": [],
