@@ -140,6 +140,21 @@ export const GROUPS = {
     },
   },
 
+  /** 미니게임 코스·보드 (sprite-gen codex gpt-6.2-sol 원본: rpg/arcade-src) */
+  arcadeart: {
+    grid: [180, 120],
+    colors: 32,
+    alpha: true,
+    fit: true,
+    files: {
+      course_green: { path: 'rpg/arcade-src/course_green.png' },
+      alkkagi_board: { path: 'rpg/arcade-src/alkkagi_board.png' },
+      bunker: { path: 'rpg/arcade-src/bunker.png', grid: [72, 48] },
+      cup: { path: 'rpg/arcade-src/cup.png', grid: [28, 28] },
+      bumper: { path: 'rpg/arcade-src/bumper.png', grid: [120, 40] },
+    },
+  },
+
   /** RPG 창·HUD 스킨 (sprite-gen codex 원본: rpg/ui-src) */
   gameui: {
     grid: [32, 32],
