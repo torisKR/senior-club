@@ -35,6 +35,12 @@ const CLUB_BALL_SET = require('../../assets/game/rpg/pixel/arcade/equip_club_bal
 const PUTTER_HEAD = require('../../assets/game/rpg/pixel/arcade/equip_putter.png');
 const BALL_WHITE = require('../../assets/game/rpg/pixel/arcade/equip_ball.png');
 const AIM_SLOPE_FLOURISH = require('../../assets/game/rpg/ui/ui_parkgolf_aim_slope_01.png');
+// sprite-gen(codex gpt-6.2-sol) → pixelize arcadeart: 코스·벙커·홀컵·범퍼 픽셀 아트
+const COURSE_GREEN = require('../../assets/game/rpg/pixel/arcadeart/course_green.png');
+const BUNKER_SAND = require('../../assets/game/rpg/pixel/arcadeart/bunker.png');
+const CUP_HOLE = require('../../assets/game/rpg/pixel/arcadeart/cup.png');
+const BUMPER_LOG = require('../../assets/game/rpg/pixel/arcadeart/bumper.png');
+const HOLE_FLAG = require('../../assets/game/rpg/pixel/arcade/equip_flag.png');
 const PUTTER_NAMES = {
   persimmon: '감나무 황동 퍼터', redwood: '적삼목 클래식',
   master_gold: '명인 금장 퍼터', nacre: '매화 나전 퍼터',
@@ -301,6 +307,7 @@ export function ParkGolfArcadeScreen({ storyChapter, onLeaveStory }: { storyChap
         const { width: boardWidth, height: boardHeight } = nativeEvent.layout;
         setBoardSize((old) => old.width === boardWidth && old.height === boardHeight ? old : { width: boardWidth, height: boardHeight });
       }}>
+        <Image source={COURSE_GREEN} style={StyleSheet.absoluteFill} contentFit="cover" accessible={false} />
         <View pointerEvents="none" style={[styles.courseBoundary, {
           left: `${PARK_GOLF_BOUNDS.left}%`, top: `${PARK_GOLF_BOUNDS.top}%`,
           width: `${PARK_GOLF_BOUNDS.right - PARK_GOLF_BOUNDS.left}%`, height: `${PARK_GOLF_BOUNDS.bottom - PARK_GOLF_BOUNDS.top}%`,
@@ -308,7 +315,9 @@ export function ParkGolfArcadeScreen({ storyChapter, onLeaveStory }: { storyChap
         <View testID="parkgolf-bunker" pointerEvents="none" style={[styles.bunker, {
           left: `${hole.bunker.x - hole.bunker.rx}%`, top: `${hole.bunker.y - hole.bunker.ry}%`,
           width: `${hole.bunker.rx * 2}%`, height: `${hole.bunker.ry * 2}%`,
-        }]} />
+        }]}>
+          <Image source={BUNKER_SAND} style={StyleSheet.absoluteFill} contentFit="fill" accessible={false} />
+        </View>
 
         {/* 홀 데이터의 선분을 범퍼 충돌선과 같은 좌표에 그립니다. */}
         {hole.bumper ? (
@@ -316,7 +325,9 @@ export function ParkGolfArcadeScreen({ storyChapter, onLeaveStory }: { storyChap
             testID="parkgolf-bumper"
             style={[styles.bumperLine, { left: `${hole.bumper.x1}%`, top: `${hole.bumper.y1}%`, width: `${hole.bumper.x2 - hole.bumper.x1}%` }]}
             pointerEvents="none"
-          />
+          >
+            <Image source={BUMPER_LOG} style={StyleSheet.absoluteFill} contentFit="fill" accessible={false} />
+          </View>
         ) : null}
 
         {/* 점선 조준 궤적 (Art Bible §4 Colorblind Safety Rule 3: 상아 외곽선 + 주황/금빛 점) */}
@@ -342,7 +353,16 @@ export function ParkGolfArcadeScreen({ storyChapter, onLeaveStory }: { storyChap
           style={[
             styles.cupRing,
             { left: `${hole.cup.x - hole.cup.radius}%`, top: `${hole.cup.y - hole.cup.radius}%`, width: `${hole.cup.radius * 2}%`, height: `${hole.cup.radius * 2}%` },
-          ]} />
+          ]}>
+          <Image source={CUP_HOLE} style={StyleSheet.absoluteFill} contentFit="contain" accessible={false} />
+        </View>
+        <Image
+          source={HOLE_FLAG}
+          pointerEvents="none"
+          accessible={false}
+          contentFit="contain"
+          style={[styles.holeFlag, { left: `${hole.cup.x}%`, top: `${hole.cup.y}%` }]}
+        />
 
         {/* 조준 방향에 맞춘 원목 퍼터 헤드 가이드 */}
         {!holedBanner && !shotAnimating ? (
@@ -604,15 +624,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#0E5142',
     position: 'relative',
   },
+  // 코스 그림 위에 실제 충돌 경계만 옅은 나무 테로 보여 줍니다.
   courseBoundary: {
-    position: 'absolute', borderWidth: 4, borderColor: '#D8B384', backgroundColor: '#317C51',
+    position: 'absolute', borderWidth: 3, borderColor: 'rgba(110, 66, 40, 0.55)',
   },
   bunker: {
-    position: 'absolute', borderRadius: '50%', borderWidth: 2, borderColor: '#9A6835', backgroundColor: '#E6BD76',
+    position: 'absolute',
   },
   bumperLine: {
     position: 'absolute',
-    zIndex: 1, height: 6, marginTop: -3, borderRadius: 3, backgroundColor: '#663B1D', borderWidth: 1, borderColor: '#F3D59A',
+    zIndex: 1, height: 14, marginTop: -7,
+  },
+  holeFlag: {
+    position: 'absolute', zIndex: 3, width: 40, height: 40, marginLeft: -6, marginTop: -38,
   },
   trajectoryDot: {
     position: 'absolute',
@@ -628,7 +652,6 @@ const styles = StyleSheet.create({
   cupRing: {
     position: 'absolute',
     zIndex: 2,
-    borderRadius: '50%', borderWidth: 2, borderColor: '#FCF9F2', backgroundColor: '#102A1B',
   },
   putterGuide: {
     position: 'absolute',
