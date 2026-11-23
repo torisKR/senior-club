@@ -213,6 +213,7 @@ export function VillageMapScreen() {
   }, [savePosition, walkTo]);
   const handleTravel = (to: typeof state.mapId) => {
     setBusOpen(false);
+    setOpenedNpcId(null);
     if (travelTo(to)) {
       setCompanionDialogueOpen(false);
       setActionNotice(`${getMap(to).name}에 도착했어요.`);
@@ -222,6 +223,8 @@ export function VillageMapScreen() {
   };
 
   const enterPlace = (route: string) => {
+    // 돌아왔을 때 대화창이 저절로 다시 열리지 않게 닫아 둡니다.
+    setOpenedNpcId(null);
     // 튜토리얼 3단계는 파크골프 입장으로만 완료됩니다.
     if (route === '/clubs') advanceOnboarding('openedParkGolf');
     router.push({ pathname: route, params: { storyChapter: '' } } as Href);
