@@ -102,6 +102,12 @@ async function clickLabel(label: string) {
   expect(button!.disabled, label).toBe(false);
   await act(async () => button!.click());
 }
+async function talkToNearby() {
+  // 대화창은 근처에 와도 저절로 열리지 않고, 행동 버튼의 "말 걸기"로 엽니다.
+  await clickTestId('btn-world-action');
+  const talk = [...container.querySelectorAll('button')].find((item) => /말 걸기/.test(item.textContent ?? ''));
+  if (talk) await act(async () => talk.click());
+}
 async function mount() {
   villageScreen = (await import('./village-map-screen')).VillageMapScreen;
   root = createRoot(container);
@@ -141,12 +147,26 @@ describe('village story controls', () => {
     expect(mocks.push).toHaveBeenCalledWith({ pathname, params: { storyChapter: chapterId } });
   });
 
+  it('does not pop the dialogue open just because an NPC is nearby', async () => {
+    mocks.saves.set('senior_club_rpg_state_v1', JSON.stringify({
+      storyVersion: 3, currentChapterId: 'chapter_1', completedChapterIds: [], completedTrialIds: [],
+      playerPos: { x: 2, y: 7 }, lastSavedTimestampMs: Date.now(),
+    }));
+    await mount();
+    expect(container.querySelector('[data-testid="btn-close-dialogue"]')).toBeNull();
+    await talkToNearby();
+    expect(container.querySelector('[data-testid="btn-close-dialogue"]')).not.toBeNull();
+    await clickTestId('btn-close-dialogue');
+    expect(container.querySelector('[data-testid="btn-close-dialogue"]')).toBeNull();
+  });
+
   it('clears an earlier story parameter when entering a facility for ordinary play', async () => {
     mocks.saves.set('senior_club_rpg_state_v1', JSON.stringify({
       storyVersion: 3, currentChapterId: 'chapter_1', completedChapterIds: [], completedTrialIds: [],
       playerPos: { x: 2, y: 7 }, lastSavedTimestampMs: Date.now(),
     }));
     await mount();
+    await talkToNearby();
     await clickTestId('btn-enter-facility');
     expect(mocks.push).toHaveBeenCalledWith({ pathname: '/clubs', params: { storyChapter: '' } });
   });
@@ -199,12 +219,14 @@ describe('village story controls', () => {
       bonds: createInitialBonds().map((bond) => bond.npcId === 'chief' ? { ...bond, points: 50 } : bond),
     }));
     await mount();
+    await talkToNearby();
     await clickTestId('story-action-invite_exchange');
     await clickTestId('bond-episode-chief_50');
     await clickTestId('bond-choice-chief_50-prepare');
     expect(container.textContent).toContain('올 사람의 자리를 먼저');
     await clickLabel('돌아가기');
     await act(async () => { current.movePlayer(-5, 8); });
+    await talkToNearby();
     await clickTestId('story-action-welcome_exchange');
     await act(async () => current.recordStoryResult({ type: 'sacheonseong', maxCombo: 3, chapterId: 'chapter_3', attemptId: 'story-round' }));
     await clickTestId('btn-open-story-cutscene');
@@ -219,8 +241,10 @@ describe('village story controls', () => {
       completedTrialIds: ['chapter_1', 'chapter_2', 'chapter_3'], playerPos: { x: 12, y: 12 }, lastSavedTimestampMs: Date.now(),
     }));
     await mount();
+    await talkToNearby();
     await clickTestId('story-action-collect_supplies');
     await act(async () => { current.movePlayer(-10, 0); });
+    await talkToNearby();
     expect(container.textContent).toContain('차와 약재 꾸러미를 가지고 있습니다');
     expect(container.textContent).toContain('사천성 연습하기');
     await clickTestId('story-action-deliver_supplies');
