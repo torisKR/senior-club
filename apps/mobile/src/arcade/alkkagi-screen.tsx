@@ -31,6 +31,8 @@ import { BGM_CLUB_LOUNGE } from '@/audio/bgm';
 
 const STONE_BLACK = require('../../assets/game/rpg/pixel/arcade/stone_black.png');
 const STONE_WHITE = require('../../assets/game/rpg/pixel/arcade/stone_white.png');
+// sprite-gen(codex gpt-6.2-sol) → pixelize arcadeart: 비자나무 바둑판 결
+const BOARD_WOOD = require('../../assets/game/rpg/pixel/arcadeart/alkkagi_board.png');
 const FLICK_GAUGE_UI = require('../../assets/game/rpg/ui/ui_alkkagi_flick_gauge_01.png');
 const ROUND_KEY = 'senior_club_alkkagi_round_v1';
 
@@ -253,6 +255,7 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
       <AppText variant="caption" style={styles.selectionGuide}>바둑판을 좌우로 밀어 볼 수 있어요. 돌이 가까우면 아래의 바꾸기 버튼으로도 선택할 수 있습니다.</AppText>
       <ScrollView horizontal showsHorizontalScrollIndicator accessibilityLabel="알까기 바둑판, 좌우로 스크롤 가능">
       <View style={[styles.boardFrame, { width: Math.max(360, width - Layout.screenPadding * 2) }]}>
+        <Image source={BOARD_WOOD} style={StyleSheet.absoluteFill} contentFit="cover" accessible={false} />
         {Array.from({ length: 9 }, (_, index) => (
           <React.Fragment key={`grid-${index}`}>
             <View pointerEvents="none" style={[styles.gridVertical, { left: `${10 + index * 10}%` }]} />

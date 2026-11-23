@@ -44,7 +44,7 @@ export const hud = StyleSheet.create({
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: Spacing.md, gap: Spacing.sm },
   dialogue: { marginBottom: 0, padding: Spacing.md },
   closeBtn: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
-  controlsRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  controlsRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'flex-end' },
   actionBtn: {
     minWidth: 96, minHeight: 96, flexShrink: 1, marginLeft: Spacing.sm, paddingHorizontal: Spacing.md,
     borderRadius: 48, alignItems: 'center', justifyContent: 'center',

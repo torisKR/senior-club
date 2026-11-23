@@ -98,7 +98,8 @@ export function VillageMapScreen() {
   } = useRpg();
 
   const [sheet, setSheet] = useState<'journal' | 'menu' | null>(null);
-  const [dismissedNpcId, setDismissedNpcId] = useState<string | null>(null);
+  // 근처에 왔다고 대화창이 저절로 뜨면 화면이 갑자기 바뀝니다. 말을 걸었을 때만 엽니다.
+  const [openedNpcId, setOpenedNpcId] = useState<string | null>(null);
   const [companionDialogueOpen, setCompanionDialogueOpen] = useState(false);
   const [companionLineIndex, setCompanionLineIndex] = useState(0);
   const [npcLine, setNpcLine] = useState<{ npcId: string; index: number } | null>(null);
@@ -161,6 +162,7 @@ export function VillageMapScreen() {
   const handleStep = (dx: number, dy: number) => {
     setActionChoiceAt(null);
     setCompanionDialogueOpen(false);
+    setOpenedNpcId(null);
     activities.cancel();
     const result = stepPlayer(dx, dy);
     const direction = dx < 0 ? '왼쪽' : dx > 0 ? '오른쪽' : dy < 0 ? '위쪽' : '아래쪽';
@@ -196,6 +198,7 @@ export function VillageMapScreen() {
     if (moving && !joystickMoving.current) {
       setActionChoiceAt(null);
       setCompanionDialogueOpen(false);
+      setOpenedNpcId(null);
       activities.cancel();
     }
     joystickMoving.current = moving;
@@ -210,6 +213,7 @@ export function VillageMapScreen() {
   }, [savePosition, walkTo]);
   const handleTravel = (to: typeof state.mapId) => {
     setBusOpen(false);
+    setOpenedNpcId(null);
     if (travelTo(to)) {
       setCompanionDialogueOpen(false);
       setActionNotice(`${getMap(to).name}에 도착했어요.`);
@@ -219,6 +223,8 @@ export function VillageMapScreen() {
   };
 
   const enterPlace = (route: string) => {
+    // 돌아왔을 때 대화창이 저절로 다시 열리지 않게 닫아 둡니다.
+    setOpenedNpcId(null);
     // 튜토리얼 3단계는 파크골프 입장으로만 완료됩니다.
     if (route === '/clubs') advanceOnboarding('openedParkGolf');
     router.push({ pathname: route, params: { storyChapter: '' } } as Href);
@@ -269,7 +275,7 @@ export function VillageMapScreen() {
 
   const companionDialogueNpc = companionDialogueOpen && companionId
     ? MAP_IDS.flatMap((id) => getMap(id).npcs).find((npc) => npc.id === companionId) ?? null : null;
-  const dialogueNpc = companionDialogueNpc ?? (nearbyNpc && nearbyNpc.id !== dismissedNpcId ? nearbyNpc : null);
+  const dialogueNpc = companionDialogueNpc ?? (nearbyNpc && nearbyNpc.id === openedNpcId ? nearbyNpc : null);
   useEffect(() => {
     backActionRef.current = () => {
       if (activities.overlay) {
@@ -279,7 +285,7 @@ export function VillageMapScreen() {
       if (dialogueNpc) {
         setCompanionDialogueOpen(false);
         setNpcLine(null);
-        setDismissedNpcId(dialogueNpc.id);
+        setOpenedNpcId(null);
         return true;
       }
       return false;
@@ -298,7 +304,7 @@ export function VillageMapScreen() {
     ? { label: `${doorHere.name}\n들어가기`, run: () => enterPlace(doorHere.facilityRoute!) }
     : null;
   const talkAction = nearbyNpc && !dialogueNpc
-    ? { label: `${nearbyNpc.name}에게 말 걸기`, run: () => setDismissedNpcId(null) }
+    ? { label: `${nearbyNpc.name}에게 말 걸기`, run: () => setOpenedNpcId(nearbyNpc.id) }
     : null;
   const availableActions = activities.overlay ? [] : [
     ...(placeAction ? [placeAction] : []),
@@ -328,6 +334,16 @@ export function VillageMapScreen() {
         <WorldView map={map} joyX={joyX} joyY={joyY} onTileChange={handleTileChange} onMovementEnd={handleMovementEnd} pose={activities.pose} celebration={activities.celebration} celebrationProp={activities.celebrationProp} onCelebrationDone={activities.finishCelebration} nowMs={activities.nowMs} paused={modalOpen} focusY={panelOpen ? 0.27 : 0.5} />
       </View>
       <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: timeOfDayTint(localTime.getHours() + localTime.getMinutes() / 60) }]} />
+      {/* 떠다니는 조이스틱: 마을 빈 곳 어디든 누른 자리에서 시작합니다 (HUD·대화창은 이 층 위). */}
+      <VirtualJoystick
+        onVector={handleVector}
+        onRelease={savePosition}
+        onStep={handleStep}
+        disabled={modalOpen || !activities.active}
+        reduceMotion={reduceMotion}
+        restLeft={Spacing.md}
+        restBottom={insets.bottom + Spacing.md}
+      />
       {healFxKey > 0 ? (
         <PixelFx key={healFxKey} name="heal" scale={1.6} onDone={() => setHealFxKey(0)} style={styles.healFxLayer} />
       ) : null}
@@ -620,7 +636,7 @@ export function VillageMapScreen() {
                 <AppText variant="caption" style={{ color: '#D8B384' }}>{dialogueNpc.title}</AppText>
                 <AppText variant="sectionTitle" style={{ color: '#FCF9F2' }}>{dialogueNpc.name}</AppText>
               </View>
-              <Pressable testID="btn-close-dialogue" accessibilityRole="button" accessibilityLabel="대화창 닫기" onPress={() => { setCompanionDialogueOpen(false); setNpcLine(null); setDismissedNpcId(dialogueNpc.id); }} style={hud.closeBtn}>
+              <Pressable testID="btn-close-dialogue" accessibilityRole="button" accessibilityLabel="대화창 닫기" onPress={() => { setCompanionDialogueOpen(false); setNpcLine(null); setOpenedNpcId(null); }} style={hud.closeBtn}>
                 <AppText variant="bodyStrong" style={{ color: '#FCF9F2' }}>✕</AppText>
               </Pressable>
             </View>
@@ -690,7 +706,6 @@ export function VillageMapScreen() {
           </View>
         ) : null}
         <View pointerEvents="box-none" style={hud.controlsRow}>
-          <VirtualJoystick onVector={handleVector} onRelease={savePosition} onStep={handleStep} disabled={modalOpen || !activities.active} reduceMotion={reduceMotion} />
           <Pressable
             testID="btn-world-action"
             accessibilityRole="button"
@@ -727,7 +742,7 @@ export function VillageMapScreen() {
                       <AppText variant="sectionTitle" style={hud.settingsTitle}>{NPC_DISPLAY[companionId].name}와 산책 중</AppText>
                       <AppText variant="caption" style={hud.settingsTitle}>마을 어디에서든 오늘의 산책을 기록하거나 동행을 마칠 수 있어요.</AppText>
                       <SeniorButton testID="btn-menu-talk-companion" label="동행과 이야기하기" variant="secondary"
-                        onPress={() => { activities.cancel(); setSheet(null); setDismissedNpcId(null); setCompanionLineIndex(0); setCompanionDialogueOpen(true); }} />
+                        onPress={() => { activities.cancel(); setSheet(null); setOpenedNpcId(null); setCompanionLineIndex(0); setCompanionDialogueOpen(true); }} />
                       <SeniorButton testID="btn-menu-claim-walk" label={walkClaimAvailable ? '오늘의 산책 기록하기' : '오늘 산책 기록 완료 ✔'} variant={walkClaimAvailable ? 'primary' : 'secondary'} disabled={!walkClaimAvailable}
                         onPress={() => { setSheet(null); handleClaimDailyWalk(); }} />
                       <SeniorButton testID="btn-menu-end-walk" label="인사하고 동행 마치기" variant="secondary"
