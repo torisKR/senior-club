@@ -75,6 +75,8 @@ vi.mock('./exit-confirm-dialog', () => ({ ExitConfirmDialog: () => null }));
 vi.mock('./onboarding-overlay', () => ({ OnboardingOverlay: () => null }));
 vi.mock('@/world/world-view', () => ({ WorldView: () => null }));
 vi.mock('@/world/use-world-active', () => ({ useWorldActive: () => true }));
+vi.mock('@/world/play/use-simple-play', () => ({ useSimplePlay: () => false }));
+vi.mock('@/world/play/play-sprites', () => ({ PLAY_SPRITES: {} }));
 vi.mock('react-native-reanimated', () => ({ useSharedValue: (initial: number) => { let value = initial; return { get: () => value, set: (next: number) => { value = next; } }; } }));
 vi.mock('./rpg-sprites', () => ({ portraitFor: () => 1 }));
 vi.mock('./use-android-back-exit', () => ({ useAndroidBackExit: () => ({ confirming: false, cancel() {}, confirm() {} }) }));
