@@ -4,6 +4,9 @@ const COLORS: Record<string, string> = {
   f: '#2F5A33', y: '#C9CE5A', v: '#9C88C9', P: '#1F3F25', C: '#D98FB0', u: '#2A5A2E', o: '#7E8487',
   '*': '#D98FB0', '#': '#8C8C8C', L: '#8C8C8C', F: '#6B4426', b: '#8A5A2B', W: '#7FB3D5', T: '#8A5A2B',
   w: '#8A5A2B', g: '#8A5A2B',
+  // 솔숲 산길 · 오일장터
+  m: '#B07A45', s: '#A7ADB2', r: '#3F7F86', H: '#8A5A2B', R: '#6B5648', Q: '#7FB3D5', c: '#7E8487', M: '#8A5A2B', A: '#1F3F25',
+  p: '#B5A690', Y: '#D9B98A', l: '#C0504D', x: '#8A5A2B', j: '#5A3A2A', n: '#B5A690',
 };
 
 export function rowRuns(row: string): { color: string; length: number }[] {

@@ -1,6 +1,6 @@
-import type { VillageBuildingId, VillageNpc } from '@/rpg/rpg-types';
+import type { FacilityRoute, VillageBuildingId, VillageNpc } from '@/rpg/rpg-types';
 
-export type MapId = 'field' | 'seaside';
+export type MapId = 'field' | 'seaside' | 'mountain' | 'market';
 
 export interface MapBuilding {
   id: VillageBuildingId;
@@ -11,7 +11,7 @@ export interface MapBuilding {
   height: number;
   /** 걸어서 올라설 수 있는 출입구 타일 */
   door: { x: number; y: number };
-  facilityRoute?: '/clubs' | '/events' | '/chat' | '/me' | '/house';
+  facilityRoute?: FacilityRoute;
   /** 문 앞에서 버스를 탑니다 */
   busStop?: boolean;
 }
@@ -28,4 +28,6 @@ export interface MapDef {
   npcs: readonly VillageNpc[];
   /** 처음 오거나 버스에서 내릴 때 서는 자리 */
   arrival: { x: number; y: number };
+  /** 나무·바위만 모인 곳 아래에 까는 바닥 (없으면 잔디) */
+  wildFloor?: 'forest';
 }

@@ -6,7 +6,7 @@ import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reani
 import { TILE_SPRITES } from '@/rpg/rpg-sprites';
 
 import type { MapDef } from '../maps/map-types';
-import { mapHeight, mapWidth } from '../maps/tiles';
+import { isWaterSymbol, mapHeight, mapWidth } from '../maps/tiles';
 import { CHUNK_TILES, type PassGrid } from '../movement/motion';
 import { boundaryEdges, type BoundaryEdge } from './boundary-edges';
 import { chunkLayers } from './tile-visuals';
@@ -29,7 +29,7 @@ function chunkEdges(map: MapDef, grid: PassGrid, cx: number, cy: number): Bounda
   const key = `${cx}:${cy}`;
   let edges = chunks.get(key);
   if (!edges) {
-    edges = boundaryEdges(grid, cx, cy, CHUNK_TILES, (x, y) => map.layout[y]?.[x] === '~');
+    edges = boundaryEdges(grid, cx, cy, CHUNK_TILES, (x, y) => isWaterSymbol(map.layout[y]?.[x]));
     chunks.set(key, edges);
   }
   return edges;

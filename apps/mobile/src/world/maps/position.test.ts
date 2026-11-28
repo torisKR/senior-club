@@ -24,4 +24,19 @@ describe('restorePosition', () => {
     expect(restorePosition({ mapId: 'seaside', playerPos: { x: 4, y: 6 }, worldVersion: WORLD_VERSION }, { x: 0, y: 0 }))
       .toMatchObject({ mapId: 'seaside', playerPos: { x: 4, y: 6 } });
   });
+
+  it('restores saves made on the new maps and still sends unknown maps home', () => {
+    expect(restorePosition({ mapId: 'mountain', playerPos: { x: 41, y: 11 }, worldVersion: WORLD_VERSION }, { x: 0, y: 0 }))
+      .toMatchObject({ mapId: 'mountain', playerPos: { x: 41, y: 11 } });
+    expect(restorePosition({ mapId: 'market', playerPos: { x: 19, y: 18 }, worldVersion: WORLD_VERSION }, { x: 0, y: 0 }))
+      .toMatchObject({ mapId: 'market', playerPos: { x: 19, y: 18 } });
+    // 계곡물 한가운데로 저장된 자리는 가까운 땅으로 옮깁니다.
+    const nudged = restorePosition({ mapId: 'mountain', playerPos: { x: 36, y: 20 }, worldVersion: WORLD_VERSION }, { x: 0, y: 0 });
+    expect(nudged.mapId).toBe('mountain');
+    expect(nudged.playerPos).not.toEqual({ x: 36, y: 20 });
+  });
+
+  it('does not shift a new-map save that lacks a world version', () => {
+    expect(restorePosition({ mapId: 'market', playerPos: { x: 4, y: 5 } }, { x: 0, y: 0 }).playerPos).toEqual({ x: 4, y: 5 });
+  });
 });

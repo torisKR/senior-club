@@ -19,6 +19,51 @@ function reachable(map: ReturnType<typeof getMap>): Set<string> {
   return seen;
 }
 
+describe('new map finds and photo spots', () => {
+  const expected = {
+    mountain: { count: 8 + 4 + 6, items: { '솔숲 산길': ['mushroom', 'pinecone', 'chestnut'], 산마루: ['pinecone', 'chestnut'], '산골 계곡': ['pebble', 'watercress'] } },
+    market: { count: 5, items: { '장터 뒤뜰': ['dandelion', 'violet'] } },
+  } as const;
+
+  it('spawns reachable, stable finds in the forage zones of the mountain and the market', () => {
+    for (const mapId of ['mountain', 'market'] as const) {
+      const map = getMap(mapId);
+      const seen = reachable(map);
+      for (let day = 1; day <= 30; day += 1) {
+        const date = `2026-11-${String(day).padStart(2, '0')}`;
+        const spawns = forageSpawns(map, date);
+        expect(spawns).toHaveLength(expected[mapId].count);
+        expect(forageSpawns(map, date)).toEqual(spawns);
+        expect(new Set(spawns.map((spawn) => spawn.key)).size).toBe(spawns.length);
+        for (const spawn of spawns) {
+          expect(seen.has(spawn.key), `${mapId}:${spawn.key}`).toBe(true);
+          const allowed: readonly string[] = (expected[mapId].items as Record<string, readonly string[]>)[regionName(mapId, spawn.x, spawn.y)] ?? [];
+          expect(allowed, `${mapId}:${spawn.key}`).toContain(spawn.itemId);
+        }
+      }
+    }
+  });
+
+  it('has a reachable photo spot on every map without growing the item dex', () => {
+    for (const mapId of ['field', 'seaside', 'mountain', 'market'] as const) {
+      const spots = PHOTO_SPOTS.filter((spot) => spot.mapId === mapId);
+      expect(spots.length, mapId).toBeGreaterThanOrEqual(1);
+      const seen = reachable(getMap(mapId));
+      for (const spot of spots) expect(seen.has(`${spot.x},${spot.y}`), spot.id).toBe(true);
+    }
+    expect(new Set(PHOTO_SPOTS.map((spot) => spot.id)).size).toBe(PHOTO_SPOTS.length);
+    expect(DEX).toHaveLength(6 + 3 + 8);
+  });
+
+  it('keeps an old album and bag when new photo spots are added', () => {
+    const life = normalizeLife({ photos: [{ spotId: 'hill', day: '2026-11-01' }], items: { pebble: 2 }, discovered: ['pebble'] });
+    expect(life.photos).toEqual([{ spotId: 'hill', day: '2026-11-01' }]);
+    expect(takePhoto(life, 'valley', '2026-11-28')).toMatchObject({ isNew: true });
+    expect(photoSpotAt('mountain', 43, 10)?.id).toBe('valley');
+    expect(photoSpotAt('market', 19, 19)?.id).toBe('fair');
+  });
+});
+
 describe('forageSpawns', () => {
   const field = getMap('field');
 

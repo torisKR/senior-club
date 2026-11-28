@@ -9,7 +9,7 @@ import { isWalkable, mapHeight, mapWidth, tileAt } from './maps/tiles';
 export type ForageId = 'mushroom' | 'pinecone' | 'chestnut' | 'pebble' | 'watercress' | 'dandelion' | 'violet' | 'clover';
 export type ItemId = CropId | FishId | ForageId;
 
-type ForageRegion = '숲 산책로' | '강변' | '꽃동산 언덕';
+type ForageRegion = '숲 산책로' | '강변' | '꽃동산 언덕' | '솔숲 산길' | '산마루' | '산골 계곡' | '장터 뒤뜰';
 
 export const FORAGE: Record<ForageId, { name: string; region: ForageRegion; weight: number; acorns: number }> = {
   mushroom: { name: '표고버섯', region: '숲 산책로', weight: 4, acorns: 12 },
@@ -23,11 +23,18 @@ export const FORAGE: Record<ForageId, { name: string; region: ForageRegion; weig
 };
 export const FORAGE_IDS = Object.keys(FORAGE) as ForageId[];
 
-/** 지역마다 하루에 나오는 채집물 수와 놓이는 바닥 */
-const SPAWN_RULES: Record<ForageRegion, { count: number; ground: readonly string[] }> = {
+/**
+ * 지역마다 하루에 나오는 채집물 수와 놓이는 바닥.
+ * items 가 있으면 그 목록에서, 없으면 FORAGE 의 region 이 같은 것에서 고릅니다.
+ */
+const SPAWN_RULES: Record<ForageRegion, { count: number; ground: readonly string[]; items?: readonly ForageId[] }> = {
   '숲 산책로': { count: 9, ground: ['forest'] },
   강변: { count: 6, ground: ['grass'] },
   '꽃동산 언덕': { count: 9, ground: ['flowerfield'] },
+  '솔숲 산길': { count: 8, ground: ['forest'], items: ['mushroom', 'pinecone', 'chestnut'] },
+  산마루: { count: 4, ground: ['forest'], items: ['pinecone', 'chestnut'] },
+  '산골 계곡': { count: 6, ground: ['forest'], items: ['pebble', 'watercress'] },
+  '장터 뒤뜰': { count: 5, ground: ['grass'], items: ['dandelion', 'violet'] },
 };
 
 export interface ForageSpawn {
@@ -53,7 +60,7 @@ function seeded(seed: string): () => number {
   };
 }
 
-function pickWeighted(rand: () => number, ids: ForageId[]): ForageId {
+function pickWeighted(rand: () => number, ids: readonly ForageId[]): ForageId {
   const total = ids.reduce((sum, id) => sum + FORAGE[id].weight, 0);
   let point = rand() * total;
   for (const id of ids) {
@@ -72,9 +79,9 @@ export function forageSpawns(map: MapDef, day: string): ForageSpawn[] {
   if (cached) return cached;
   const rand = seeded(cacheKey);
   const spawns: ForageSpawn[] = [];
-  const candidatesByRegion: Record<ForageRegion, { x: number; y: number }[]> = {
-    '숲 산책로': [], 강변: [], '꽃동산 언덕': [],
-  };
+  const candidatesByRegion = Object.fromEntries(
+    Object.keys(SPAWN_RULES).map((region) => [region, []]),
+  ) as unknown as Record<ForageRegion, { x: number; y: number }[]>;
   const beach: { x: number; y: number }[] = [];
   for (let y = 0; y < mapHeight(map); y += 1) {
     for (let x = 0; x < mapWidth(map); x += 1) {
@@ -91,7 +98,7 @@ export function forageSpawns(map: MapDef, day: string): ForageSpawn[] {
   for (const region of Object.keys(SPAWN_RULES) as ForageRegion[]) {
     const rule = SPAWN_RULES[region];
     const candidates = candidatesByRegion[region];
-    const ids = FORAGE_IDS.filter((id) => FORAGE[id].region === region);
+    const ids = rule.items ?? FORAGE_IDS.filter((id) => FORAGE[id].region === region);
     for (let i = 0; i < rule.count && candidates.length; i += 1) {
       const [spot] = candidates.splice(Math.floor(rand() * candidates.length), 1);
       spawns.push({ key: `${spot.x},${spot.y}`, x: spot.x, y: spot.y, itemId: pickWeighted(rand, ids) });
@@ -125,6 +132,8 @@ export const PHOTO_SPOTS: readonly PhotoSpot[] = [
   { id: 'plaza', mapId: 'field', x: 27, y: 23, name: '마을 광장', caption: '석등 사이로 마을회관이 보입니다.' },
   { id: 'pond', mapId: 'field', x: 31, y: 33, name: '연못 선착장', caption: '연못에 노을이 내려앉았습니다.' },
   { id: 'sea', mapId: 'seaside', x: 16, y: 18, name: '바닷가 선착장', caption: '파도 소리 너머로 등대가 보입니다.' },
+  { id: 'valley', mapId: 'mountain', x: 43, y: 11, name: '계곡 돌탑 정자', caption: '물소리 곁에 돌탑이 차곡차곡 쌓였습니다.' },
+  { id: 'fair', mapId: 'market', x: 19, y: 19, name: '오일장 마당', caption: '청사초롱 아래 장날 흥이 가득합니다.' },
 ];
 
 export function photoSpotAt(mapId: MapId, x: number, y: number): PhotoSpot | undefined {
