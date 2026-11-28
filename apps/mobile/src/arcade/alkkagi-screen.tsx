@@ -269,7 +269,7 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
     if (turn.doubleKnockout) playSfx('combo', state.soundEnabled);
     setScrollCallout(turn.doubleKnockout ? '일석이조(一石二鳥)! 승리 보상 +50 CP' : null);
     setOpponentMoving(false);
-    setPlayback(turn.frames.length > 1 ? { key: Date.now(), frames: turn.frames, hits: turn.hits, aiStartFrame: turn.aiStartFrame } : null);
+    setPlayback(reduceMotion === false && turn.frames.length > 1 ? { key: Date.now(), frames: turn.frames, hits: turn.hits, aiStartFrame: turn.aiStartFrame } : null);
 
     if (turn.result === 'win') finishWin(doubles, detail);
     else if (turn.result === 'lose') finishLoss(detail);
@@ -287,7 +287,7 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
   const liveBanner = !moving ? bannerText : opponentMoving ? `${opponent.name}이 돌을 튕겼습니다…` : '돌이 굴러갑니다…';
 
   return (
-    <Screen testID="alkkagi-screen" contentContainerStyle={styles.container} scrollViewProps={{ scrollEnabled: !moving }}>
+    <Screen testID="alkkagi-screen" contentContainerStyle={styles.container}>
       <FocusedBackgroundAudio source={BGM_CLUB_LOUNGE} enabled={state.soundEnabled} />
       <ArcadeSaveNotice />
       <ArcadeQuickSettings />
