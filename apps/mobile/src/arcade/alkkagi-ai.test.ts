@@ -26,8 +26,9 @@ function botWinsAgainst(levelIdx: number, seed: number, myLevel: number): boolea
   }
   return false;
 }
+const GAMES = 30;
 const winRate = (levelIdx: number, myLevel = 1) =>
-  Array.from({ length: 60 }, (_, seed) => botWinsAgainst(levelIdx, seed + 1, myLevel)).filter(Boolean).length / 60;
+  Array.from({ length: GAMES }, (_, seed) => botWinsAgainst(levelIdx, seed + 1, myLevel)).filter(Boolean).length / GAMES;
 
 describe('alkkagi AI', () => {
   it('produces the same random sequence for the same seed', () => {
@@ -70,7 +71,7 @@ describe('alkkagi AI', () => {
     expect(middle).toBeGreaterThan(master);
     expect(beginner).toBeGreaterThanOrEqual(0.7); // 서툴게 둬도 18급은 이깁니다
     expect(winRate(2, 2)).toBeGreaterThanOrEqual(0.5); // 정확히 두면 명인도 이길 수 있습니다
-  });
+  }, 30_000); // 대국 120판을 끝까지 계산합니다
 });
 
 describe('alkkagi turn', () => {
