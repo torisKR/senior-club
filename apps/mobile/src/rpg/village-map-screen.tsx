@@ -339,7 +339,7 @@ export function VillageMapScreen() {
         onVector={handleVector}
         onRelease={savePosition}
         onStep={handleStep}
-        disabled={modalOpen || !activities.active}
+        disabled={modalOpen || !activities.active || activities.playing}
         reduceMotion={reduceMotion}
         restLeft={Spacing.md}
         restBottom={insets.bottom + Spacing.md}
