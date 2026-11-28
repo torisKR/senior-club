@@ -86,7 +86,8 @@ vi.mock('react-native', () => ({
 vi.mock('expo-image', () => ({ Image: () => null }));
 vi.mock('expo-crypto', () => ({ randomUUID: () => mocks.makeAttemptId() }));
 vi.mock('@/components/ui', () => ({
-  Screen: ({ children }: { children?: ReactNode }) => createElement('main', null, children),
+  Screen: ({ children, scrollViewProps }: { children?: ReactNode; scrollViewProps?: { scrollEnabled?: boolean } }) =>
+    createElement('main', { 'data-scroll-enabled': String(scrollViewProps?.scrollEnabled ?? true) }, children),
   Card: ({ children }: { children?: ReactNode }) => createElement('section', null, children),
   AppText: ({ children, style, variant }: { children?: ReactNode; style?: unknown; variant?: string }) =>
     createElement('span', { 'data-style': JSON.stringify(style), 'data-variant': variant }, children),
@@ -391,12 +392,19 @@ describe('arcade screens', () => {
   it('plays a real button flick with the same physics, names knocked-out stones and announces 일석이조', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(4242);
     const round = alkkagiRound({ p1: [50, 44], a1: [50, 20], a2: [56, 14], a3: [12, 50] });
-    const expected = resolveAlkkagiTurn(round.stones, shotToward(round.stones[0], round.stones[5], 1), 0, createSeededRandom(4242));
-    expect(expected.knockedOutByMe).toEqual(expect.arrayContaining(['a1', 'a2']));
+    // 버튼 조작은 같은 난수로 ±3° 안에서 조금 흔들린 뒤 같은 물리로 계산됩니다.
+    const random = createSeededRandom(4242);
+    const straight = shotToward(round.stones[0], round.stones[5], 1);
+    const wobble = ((random() * 2 - 1) * 3 * Math.PI) / 180;
+    const shot = { ...straight, vx: straight.vx * Math.cos(wobble) - straight.vy * Math.sin(wobble), vy: straight.vx * Math.sin(wobble) + straight.vy * Math.cos(wobble) };
+    const expected = resolveAlkkagiTurn(round.stones, shot, 0, random);
+    expect([...expected.knockedOutByMe].sort()).toEqual(['a1', 'a2']);
     expect(expected.aiShooterId).toBe('a3');
     mocks.values.set('senior_club_alkkagi_round_v1', JSON.stringify(round));
     await render(screens.AlkkagiBoardScreen);
     expect(container.querySelector('[data-testid="alkkagi-aim-dot-0"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="alkkagi-aim-ghost"]')).not.toBeNull(); // 처음 부딪힐 자리
+    expect(container.querySelector('[data-testid="alkkagi-aim-push-2"]')).not.toBeNull(); // 맞은 돌이 밀릴 방향
     await press('btn-alkkagi-flick');
     expect(container.textContent).toContain('상대 돌 ◎1, ◎2 장외');
     expect(container.textContent).toContain('18급 박 회원이 ◎3을 튕겼어요');
@@ -413,11 +421,15 @@ describe('arcade screens', () => {
     expect(container.querySelector('[data-testid="btn-alkkagi-flick"]')).toBeNull();
     expect(container.querySelector('[data-testid="alkkagi-mode-drag"]')!.getAttribute('aria-pressed')).toBe('true');
     expect(mocks.gesture.handlers!.onStartShouldSetPanResponder({ nativeEvent: { locationX: 20, locationY: 20 } })).toBe(false);
+    const main = container.querySelector('main')!;
+    expect(main.getAttribute('data-scroll-enabled')).toBe('true');
     await dragStone([52, 62], [0, 36]);
+    expect(main.getAttribute('data-scroll-enabled')).toBe('false'); // 끄는 동안 화면이 같이 밀리지 않습니다
     expect(container.querySelector('[data-testid="alkkagi-drag-power"]')!.textContent).toBe('힘 100% · 놓으면 튕겨요');
     expect(container.querySelector('[data-testid="alkkagi-aim-dot-6"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="alkkagi-pull-handle"]')).not.toBeNull();
     await act(async () => mocks.gesture.handlers!.onPanResponderRelease());
+    expect(main.getAttribute('data-scroll-enabled')).toBe('true');
     expect(mocks.arcade.recordAlkkagiWin).toHaveBeenCalledWith(0);
     expect(container.textContent).toContain('대국 승리!');
     expect(container.textContent).toContain('상대 돌 ◎1 장외');
@@ -426,12 +438,22 @@ describe('arcade screens', () => {
     expect(container.querySelector('[data-testid="btn-alkkagi-flick"]')).not.toBeNull();
   });
 
-  it('cancels a pull that is too short', async () => {
+  it('only grabs a stone itself and cancels when the pull is short or returned', async () => {
     mocks.a11y.screenReader = false;
     await render(screens.AlkkagiBoardScreen);
-    await dragStone([50, 78], [0, 2]);
-    expect(container.querySelector('[data-testid="alkkagi-drag-power"]')!.textContent).toBe('조금 더 당기세요');
+    const unit = (mocks.textLayout.width - 32) / 100;
+    const startsAt = (x: number, y: number) => mocks.gesture.handlers!.onStartShouldSetPanResponder({ nativeEvent: { locationX: x * unit, locationY: y * unit } });
+    expect(startsAt(50, 66)).toBe(false); // 내 돌 줄 바로 위 빈 판: 화면 넘기기를 막지 않습니다
+    expect(startsAt(50, 90)).toBe(false); // 내 돌 줄 아래 빈 판
+    expect(startsAt(50, 22)).toBe(false); // 상대 돌은 잡지 않습니다
+    expect(startsAt(52, 80)).toBe(true);
+    await dragStone([50, 78], [0, 30]);
+    expect(container.querySelector('[data-testid="alkkagi-aim-dot-0"]')).not.toBeNull();
+    await act(async () => mocks.gesture.handlers!.onPanResponderMove(null, { dx: 0, dy: 7 * unit })); // 제자리 쪽으로 되돌림
+    expect(container.querySelector('[data-testid="alkkagi-drag-power"]')!.textContent).toBe('여기서 놓으면 취소 · 더 길게 당기면 튕겨요');
+    expect(container.querySelector('[data-testid="alkkagi-aim-dot-0"]')).toBeNull();
     await act(async () => mocks.gesture.handlers!.onPanResponderRelease());
+    expect(container.textContent).toContain('튕기기를 취소했어요');
     expect(saved('senior_club_alkkagi_round_v1').stones).toEqual(createInitialAlkkagiStones()); // 돌은 움직이지 않습니다
     expect(container.querySelector('[data-testid="alkkagi-drag-power"]')).toBeNull();
   });

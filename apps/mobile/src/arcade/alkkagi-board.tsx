@@ -10,16 +10,22 @@ import { PixelFx } from '@/fx/pixel-fx';
 
 import type { AlkkagiStone } from './arcade-logic';
 import {
-  ALKKAGI_BOARD_SIZE, ALKKAGI_FRAME_MS, ALKKAGI_MAX_PULL, ALKKAGI_MIN_POWER, ALKKAGI_RADIUS, pullPower, shotFromPull,
-  type AlkkagiHit, type AlkkagiShot,
+  ALKKAGI_BOARD_SIZE, ALKKAGI_FRAME_MS, ALKKAGI_MAX_PULL, ALKKAGI_MIN_PULL, ALKKAGI_RADIUS, assistAim, predictFirstHit,
+  pullPower, shotFromPull, type AlkkagiFirstHit, type AlkkagiHit, type AlkkagiShot,
 } from './alkkagi-physics';
 
 const MIN_TOUCH = 48;
-/** 돌 근처 이만큼(판 단위) 안을 누르면 그 돌을 잡습니다 — 손가락이 커도 잡히도록 넉넉하게. */
-const GRAB_RADIUS = ALKKAGI_RADIUS * 1.9;
-/** 힘 100%일 때 조준 점선 길이 (판 단위) */
-const AIM_LENGTH = 46;
-const AIM_DOTS = 7;
+/**
+ * 돌 중심에서 이만큼(판 단위) 안을 눌러야 그 돌을 잡습니다. 돌보다 살짝만 넉넉해(지름 약 56dp)
+ * 돌 위·아래 빈 판을 쓸어 넘기는 손가락은 돌을 잡지 않습니다.
+ */
+const GRAB_RADIUS = ALKKAGI_RADIUS * 1.1;
+/** 부딪힐 돌이 없을 때 조준 점선 길이 (판 단위) */
+const AIM_LENGTH = 60;
+const AIM_DOT_GAP = 6;
+const AIM_MIN_DOTS = 7;
+/** 맞은 돌이 밀려 나갈 방향을 보여 주는 점 */
+const TARGET_DOTS = 3;
 const FADE_FRAMES = 6;
 const IMPACT_SCALE = 0.85;
 const MAX_IMPACTS = 4;
@@ -47,24 +53,37 @@ export interface AlkkagiBoardProps {
   locked: boolean;
   shooterId?: string;
   targetId?: string;
-  /** 버튼 조작에서 고른 힘(0~1) — 조준 점선 길이 */
-  buttonPower: number;
   celadon: boolean;
   onSelectStone: (stone: AlkkagiStone) => void;
   onFlick: (shot: AlkkagiShot) => void;
+  /** 끌기 시작/끝 — 끄는 동안 화면 스크롤을 잠급니다. */
+  onDragChange: (dragging: boolean) => void;
+  /** 짧게 당겼다 놓아 튕기기를 취소했을 때 */
+  onDragCancel: () => void;
   onHit: () => void;
   onOpponentStart: () => void;
   onPlaybackDone: () => void;
 }
 
-interface Drag { id: string; x: number; y: number; pullX: number; pullY: number }
-interface Aim { x: number; y: number; dirX: number; dirY: number; power: number }
+interface Drag { stone: AlkkagiStone; pullX: number; pullY: number }
+interface Aim { x: number; y: number; dirX: number; dirY: number; hit: AlkkagiFirstHit | null }
 
+/** 조준 점선: 처음 부딪히는 자리까지(없으면 AIM_LENGTH) 점을 찍습니다. */
 function aimDots(aim: Aim, unit: number) {
-  const length = Math.max(ALKKAGI_RADIUS + 3, aim.power * AIM_LENGTH);
-  return Array.from({ length: AIM_DOTS }, (_, index) => {
-    const along = ALKKAGI_RADIUS + ((length - ALKKAGI_RADIUS) * (index + 1)) / AIM_DOTS;
+  const end = aim.hit ? Math.hypot(aim.hit.x - aim.x, aim.hit.y - aim.y) : AIM_LENGTH;
+  const count = Math.max(AIM_MIN_DOTS, Math.round(end / AIM_DOT_GAP));
+  return Array.from({ length: count }, (_, index) => {
+    const along = (end * (index + 1)) / (count + 1);
     return { key: index, left: (aim.x + aim.dirX * along) * unit, top: (aim.y + aim.dirY * along) * unit };
+  });
+}
+
+function targetDots(hit: AlkkagiFirstHit, stones: readonly AlkkagiStone[], unit: number) {
+  const target = stones.find((stone) => stone.id === hit.targetId);
+  if (!target) return [];
+  return Array.from({ length: TARGET_DOTS }, (_, index) => {
+    const along = ALKKAGI_RADIUS + (index + 1) * AIM_DOT_GAP;
+    return { key: index, left: (target.x + hit.targetDirX * along) * unit, top: (target.y + hit.targetDirY * along) * unit };
   });
 }
 
@@ -99,7 +118,7 @@ function StoneFace({ stone, diameter, celadon, art }: { stone: AlkkagiStone; dia
 }
 
 export function AlkkagiBoard(props: AlkkagiBoardProps) {
-  const { art, size, stones, playback, dragEnabled, locked, shooterId, targetId, buttonPower, celadon } = props;
+  const { art, size, stones, playback, dragEnabled, locked, shooterId, targetId, celadon } = props;
   const unit = size / ALKKAGI_BOARD_SIZE;
   const diameter = ALKKAGI_RADIUS * 2 * unit;
   const touch = Math.max(MIN_TOUCH, diameter);
@@ -148,7 +167,11 @@ export function AlkkagiBoard(props: AlkkagiBoardProps) {
         .sort((a, b) => a.distance - b.distance)[0];
       return near?.stone ?? null;
     };
-    const update = (next: Drag | null) => { dragRef.current = next; setDrag(next); };
+    const update = (next: Drag | null) => {
+      if ((next === null) !== (dragRef.current === null)) latest.current.onDragChange(next !== null);
+      dragRef.current = next;
+      setDrag(next);
+    };
     return PanResponder.create({
       onStartShouldSetPanResponder: (event) => grab(event) !== null,
       onPanResponderTerminationRequest: () => false,
@@ -156,7 +179,7 @@ export function AlkkagiBoard(props: AlkkagiBoardProps) {
         const stone = grab(event);
         if (!stone) return;
         latest.current.onSelectStone(stone);
-        update({ id: stone.id, x: stone.x, y: stone.y, pullX: 0, pullY: 0 });
+        update({ stone, pullX: 0, pullY: 0 });
       },
       onPanResponderMove: (_, gesture) => {
         const current = dragRef.current;
@@ -167,8 +190,10 @@ export function AlkkagiBoard(props: AlkkagiBoardProps) {
       onPanResponderRelease: () => {
         const current = dragRef.current;
         update(null);
-        const shot = current ? shotFromPull(current.id, current.pullX, current.pullY) : null;
+        if (!current) return;
+        const shot = shotFromPull(latest.current.stones, current.stone, current.pullX, current.pullY);
         if (shot) latest.current.onFlick(shot);
+        else latest.current.onDragCancel();
       },
       onPanResponderTerminate: () => update(null),
     });
@@ -178,20 +203,27 @@ export function AlkkagiBoard(props: AlkkagiBoardProps) {
   const target = stones.find((stone) => stone.id === targetId && stone.alive);
   const dragPower = drag ? pullPower(drag.pullX, drag.pullY) : 0;
   const pullLength = drag ? Math.hypot(drag.pullX, drag.pullY) : 0;
-  let aim: Aim | null = null;
-  if (drag && pullLength > 0) {
-    aim = { x: drag.x, y: drag.y, dirX: -drag.pullX / pullLength, dirY: -drag.pullY / pullLength, power: dragPower };
+  const armed = pullLength >= ALKKAGI_MIN_PULL;
+  let aimFrom: AlkkagiStone | null = null;
+  let aimDir: { dirX: number; dirY: number } | null = null;
+  if (drag && armed) {
+    aimFrom = drag.stone;
+    aimDir = assistAim(stones, drag.stone, -drag.pullX / pullLength, -drag.pullY / pullLength);
   } else if (!dragEnabled && !playback && !locked && shooter && target) {
     const distance = Math.hypot(target.x - shooter.x, target.y - shooter.y) || 1;
-    aim = { x: shooter.x, y: shooter.y, dirX: (target.x - shooter.x) / distance, dirY: (target.y - shooter.y) / distance, power: buttonPower };
+    aimFrom = shooter;
+    aimDir = { dirX: (target.x - shooter.x) / distance, dirY: (target.y - shooter.y) / distance };
   }
+  const aim: Aim | null = aimFrom && aimDir
+    ? { x: aimFrom.x, y: aimFrom.y, ...aimDir, hit: predictFirstHit(stones, aimFrom, aimDir.dirX, aimDir.dirY) }
+    : null;
   const pullScale = pullLength > ALKKAGI_MAX_PULL ? ALKKAGI_MAX_PULL / pullLength : 1;
 
   const stoneStyle = (stone: AlkkagiStone) => [
     { width: touch, height: touch, borderRadius: touch / 2 },
     styles.stoneBase,
     stone.owner === 'player' && celadon && styles.celadonStone,
-    (drag ? drag.id === stone.id : !dragEnabled && shooterId === stone.id) && styles.selectedShooterRing,
+    (drag ? drag.stone.id === stone.id : !dragEnabled && shooterId === stone.id) && styles.selectedShooterRing,
     !dragEnabled && !drag && targetId === stone.id && styles.selectedTargetRing,
   ];
   const stoneLabel = (stone: AlkkagiStone) => `${stone.owner === 'player' ? '내 흑석' : '상대 백석'} ${stone.id.slice(1)}번`;
@@ -214,11 +246,23 @@ export function AlkkagiBoard(props: AlkkagiBoardProps) {
         {aim ? aimDots(aim, unit).map((dot) => (
           <View key={`aim-${dot.key}`} testID={`alkkagi-aim-dot-${dot.key}`} pointerEvents="none" style={[styles.aimDot, { left: dot.left, top: dot.top }]} />
         )) : null}
+        {aim?.hit ? (
+          <>
+            <View
+              testID="alkkagi-aim-ghost"
+              pointerEvents="none"
+              style={[styles.aimGhost, { width: diameter, height: diameter, borderRadius: diameter / 2, left: aim.hit.x * unit - diameter / 2, top: aim.hit.y * unit - diameter / 2 }]}
+            />
+            {targetDots(aim.hit, stones, unit).map((dot) => (
+              <View key={`push-${dot.key}`} testID={`alkkagi-aim-push-${dot.key}`} pointerEvents="none" style={[styles.pushDot, { left: dot.left, top: dot.top }]} />
+            ))}
+          </>
+        ) : null}
         {drag && pullLength > 0 ? (
           <View
             testID="alkkagi-pull-handle"
             pointerEvents="none"
-            style={[styles.pullHandle, { left: (drag.x + drag.pullX * pullScale) * unit, top: (drag.y + drag.pullY * pullScale) * unit }]}
+            style={[styles.pullHandle, { left: (drag.stone.x + drag.pullX * pullScale) * unit, top: (drag.stone.y + drag.pullY * pullScale) * unit }]}
           />
         ) : null}
 
@@ -261,7 +305,7 @@ export function AlkkagiBoard(props: AlkkagiBoardProps) {
         {drag ? (
           <View testID="alkkagi-drag-power" style={styles.powerBadge} pointerEvents="none">
             <AppText variant="bodyStrong" style={styles.powerBadgeText}>
-              {dragPower < ALKKAGI_MIN_POWER ? '조금 더 당기세요' : `힘 ${Math.round(dragPower * 100)}% · 놓으면 튕겨요`}
+              {armed ? `힘 ${Math.round(dragPower * 100)}% · 놓으면 튕겨요` : '여기서 놓으면 취소 · 더 길게 당기면 튕겨요'}
             </AppText>
           </View>
         ) : null}
@@ -298,6 +342,11 @@ const styles = StyleSheet.create({
   aimDot: {
     position: 'absolute', width: 10, height: 10, marginLeft: -5, marginTop: -5, borderRadius: 5,
     backgroundColor: '#F0BF4F', borderWidth: 2, borderColor: '#182620',
+  },
+  aimGhost: { position: 'absolute', borderWidth: 2, borderStyle: 'dashed', borderColor: '#182620', backgroundColor: 'rgba(252, 249, 242, 0.35)' },
+  pushDot: {
+    position: 'absolute', width: 8, height: 8, marginLeft: -4, marginTop: -4,
+    backgroundColor: '#C2410C', borderWidth: 1, borderColor: '#FCF9F2', transform: [{ rotate: '45deg' }],
   },
   pullHandle: {
     position: 'absolute', width: 22, height: 22, marginLeft: -11, marginTop: -11, borderRadius: 11,

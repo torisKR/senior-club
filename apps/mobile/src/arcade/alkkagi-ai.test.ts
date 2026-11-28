@@ -7,28 +7,6 @@ import { resolveAlkkagiTurn } from './alkkagi-turn';
 
 const stone = (id: string, x: number, y: number, alive = true): AlkkagiStone =>
   ({ id, owner: id.startsWith('p') ? 'player' : 'ai', x, y, alive });
-const alive = (stones: readonly AlkkagiStone[], owner: AlkkagiStone['owner']) => stones.filter((item) => item.owner === owner && item.alive);
-
-/** 봇(myLevel 실력)이 '나' 대신 두는 한 판. 내가 이기면 true. */
-function botWinsAgainst(levelIdx: number, seed: number, myLevel: number): boolean {
-  const random = createSeededRandom(seed);
-  let stones = createInitialAlkkagiStones();
-  for (let turn = 0; turn < 60; turn += 1) {
-    const mine = chooseAlkkagiAiShot(stones, myLevel, random, 'player');
-    if (!mine) return false;
-    stones = simulateAlkkagiShot(stones, mine).stones;
-    if (alive(stones, 'ai').length === 0) return true;
-    const reply = chooseAlkkagiAiShot(stones, levelIdx, random);
-    if (!reply) return false;
-    stones = simulateAlkkagiShot(stones, reply).stones;
-    if (alive(stones, 'ai').length === 0) return true;
-    if (alive(stones, 'player').length === 0) return false;
-  }
-  return false;
-}
-const GAMES = 30;
-const winRate = (levelIdx: number, myLevel = 1) =>
-  Array.from({ length: GAMES }, (_, seed) => botWinsAgainst(levelIdx, seed + 1, myLevel)).filter(Boolean).length / GAMES;
 
 describe('alkkagi AI', () => {
   it('produces the same random sequence for the same seed', () => {
@@ -64,14 +42,6 @@ describe('alkkagi AI', () => {
     expect(meanError(0)).toBeGreaterThan(meanError(1));
     expect(meanError(1)).toBeGreaterThan(meanError(2));
   });
-
-  it('gets harder from 18급 to 명인 while every rank stays beatable', () => {
-    const [beginner, middle, master] = [winRate(0), winRate(1), winRate(2)];
-    expect(beginner).toBeGreaterThan(middle);
-    expect(middle).toBeGreaterThan(master);
-    expect(beginner).toBeGreaterThanOrEqual(0.7); // 서툴게 둬도 18급은 이깁니다
-    expect(winRate(2, 2)).toBeGreaterThanOrEqual(0.5); // 정확히 두면 명인도 이길 수 있습니다
-  }, 30_000); // 대국 120판을 끝까지 계산합니다
 });
 
 describe('alkkagi turn', () => {

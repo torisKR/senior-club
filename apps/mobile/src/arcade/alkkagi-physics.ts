@@ -11,13 +11,20 @@ export const ALKKAGI_RADIUS = 7;
 export const ALKKAGI_MAX_SPEED = 105;
 /** 이만큼(판 단위) 뒤로 당기면 힘 100% */
 export const ALKKAGI_MAX_PULL = 36;
-/** 이보다 약하게 당기면 튕기지 않고 취소합니다 */
-export const ALKKAGI_MIN_POWER = 0.12;
+/** 이보다 짧게(판 단위) 당기면 튕기지 않고 취소합니다 — 스치듯 닿은 손가락으로 돌이 나가지 않게. */
+export const ALKKAGI_MIN_PULL = 8;
+/** 조준 보조가 듣는 각도. 상대 돌 중심에서 이 안쪽으로 조준하면 중심 쪽으로 끌어당깁니다. */
+export const ALKKAGI_ASSIST_DEG = 12;
 /** 화면 재생용 프레임 간격 */
 export const ALKKAGI_FRAME_MS = 1000 / 30;
 
 const FRICTION = 60; // 감속 (판 단위/초²)
 const RESTITUTION = 0.92;
+/**
+ * 튕긴 돌은 손가락 힘이 실려 다른 돌보다 무겁게 칩니다.
+ * 맞은 돌은 더 멀리 나가고 내 돌은 속도가 남아 두 번째 돌까지 칠 수 있어 일석이조를 노릴 수 있습니다.
+ */
+const SHOOTER_MASS = 2;
 const STEP = 1 / 120;
 const STEPS_PER_FRAME = 4;
 const MAX_STEPS = 120 * 10;
@@ -36,7 +43,7 @@ export interface AlkkagiSimulation {
 }
 
 // 계산 중에만 쓰는 지역 상태입니다. 밖으로는 새 객체(snapshot)만 내보냅니다.
-interface Body { stone: AlkkagiStone; x: number; y: number; vx: number; vy: number; onBoard: boolean; moving: boolean }
+interface Body { stone: AlkkagiStone; mass: number; x: number; y: number; vx: number; vy: number; onBoard: boolean; moving: boolean }
 
 const round1 = (value: number) => Math.round(value * 10) / 10;
 const clampSaved = (value: number) => Math.max(-100, Math.min(200, value));
@@ -69,9 +76,9 @@ function collide(a: Body, b: Body, frame: number, hits: AlkkagiHit[]) {
   b.x += nx * overlap; b.y += ny * overlap;
   a.moving = true; b.moving = true;
   if (approach >= 0) return;
-  const impulse = (-(1 + RESTITUTION) * approach) / 2;
-  a.vx -= impulse * nx; a.vy -= impulse * ny;
-  b.vx += impulse * nx; b.vy += impulse * ny;
+  const impulse = (-(1 + RESTITUTION) * approach) / (1 / a.mass + 1 / b.mass);
+  a.vx -= (impulse / a.mass) * nx; a.vy -= (impulse / a.mass) * ny;
+  b.vx += (impulse / b.mass) * nx; b.vy += (impulse / b.mass) * ny;
   if (-approach >= HIT_MIN_SPEED) hits.push({ frame, x: round1(a.x + nx * ALKKAGI_RADIUS), y: round1(a.y + ny * ALKKAGI_RADIUS) });
 }
 
@@ -90,7 +97,7 @@ function stepWorld(bodies: Body[], frame: number, hits: AlkkagiHit[], knockedOut
 
 /** 돌 하나를 튕긴 뒤 모든 돌이 멈출 때까지 계산합니다. 입력 배열은 바꾸지 않습니다. */
 export function simulateAlkkagiShot(stones: readonly AlkkagiStone[], shot: AlkkagiShot): AlkkagiSimulation {
-  const bodies: Body[] = stones.map((stone) => ({ stone, x: stone.x, y: stone.y, vx: 0, vy: 0, onBoard: stone.alive, moving: false }));
+  const bodies: Body[] = stones.map((stone) => ({ stone, mass: stone.id === shot.stoneId ? SHOOTER_MASS : 1, x: stone.x, y: stone.y, vx: 0, vy: 0, onBoard: stone.alive, moving: false }));
   const frames = [snapshot(bodies)];
   const hits: AlkkagiHit[] = [];
   const knockedOut: string[] = [];
@@ -112,13 +119,64 @@ export function pullPower(pullX: number, pullY: number): number {
   return Math.min(1, Math.hypot(pullX, pullY) / ALKKAGI_MAX_PULL);
 }
 
-/** 새총처럼: 당긴 방향의 반대로 날아갑니다. 너무 짧게 당기면 null(취소). */
-export function shotFromPull(stoneId: string, pullX: number, pullY: number): AlkkagiShot | null {
+/**
+ * 조준 보조(약한 자석): 조준이 상대 돌 중심 방향에 가까울수록 중심 쪽으로 더 당겨 줍니다.
+ * 어긋남이 작으면 거의 사라지고, ALKKAGI_ASSIST_DEG 를 넘으면 그대로라 비껴 치기도 할 수 있습니다.
+ */
+export function assistAim(stones: readonly AlkkagiStone[], shooter: AlkkagiStone, dirX: number, dirY: number): { dirX: number; dirY: number } {
+  const aim = Math.atan2(dirY, dirX);
+  const limit = (ALKKAGI_ASSIST_DEG * Math.PI) / 180;
+  let nearest = limit;
+  for (const stone of stones) {
+    if (!stone.alive || stone.owner === shooter.owner) continue;
+    const raw = aim - Math.atan2(stone.y - shooter.y, stone.x - shooter.x);
+    const diff = Math.atan2(Math.sin(raw), Math.cos(raw));
+    if (Math.abs(diff) < Math.abs(nearest)) nearest = diff;
+  }
+  if (Math.abs(nearest) >= limit) return { dirX, dirY };
+  const assisted = aim - nearest + (nearest * Math.abs(nearest)) / limit;
+  return { dirX: Math.cos(assisted), dirY: Math.sin(assisted) };
+}
+
+/** 새총처럼: 당긴 방향의 반대로 날아갑니다(조준 보조 적용). 너무 짧게 당기면 null(취소). */
+export function shotFromPull(stones: readonly AlkkagiStone[], shooter: AlkkagiStone, pullX: number, pullY: number): AlkkagiShot | null {
   const length = Math.hypot(pullX, pullY);
-  const power = pullPower(pullX, pullY);
-  if (power < ALKKAGI_MIN_POWER) return null;
-  const speed = power * ALKKAGI_MAX_SPEED;
-  return { stoneId, vx: (-pullX / length) * speed, vy: (-pullY / length) * speed };
+  if (length < ALKKAGI_MIN_PULL) return null;
+  const { dirX, dirY } = assistAim(stones, shooter, -pullX / length, -pullY / length);
+  const speed = pullPower(pullX, pullY) * ALKKAGI_MAX_SPEED;
+  return { stoneId: shooter.id, vx: dirX * speed, vy: dirY * speed };
+}
+
+export interface AlkkagiFirstHit {
+  /** 처음 부딪히는 순간 내 돌의 중심 */
+  x: number;
+  y: number;
+  targetId: string;
+  /** 맞은 돌이 밀려 나가는 방향 */
+  targetDirX: number;
+  targetDirY: number;
+}
+
+/** 조준선 미리 보기: 이 방향으로 튕기면 처음 부딪히는 돌과 그 돌이 밀려 나갈 방향. 없으면 null. */
+export function predictFirstHit(stones: readonly AlkkagiStone[], shooter: AlkkagiStone, dirX: number, dirY: number): AlkkagiFirstHit | null {
+  let best: (AlkkagiFirstHit & { along: number }) | null = null;
+  for (const stone of stones) {
+    if (!stone.alive || stone.id === shooter.id) continue;
+    const relX = stone.x - shooter.x;
+    const relY = stone.y - shooter.y;
+    const along = relX * dirX + relY * dirY;
+    const offSq = relX * relX + relY * relY - along * along;
+    const reachSq = (ALKKAGI_RADIUS * 2) ** 2;
+    if (along <= 0 || offSq >= reachSq) continue;
+    const travel = along - Math.sqrt(reachSq - offSq);
+    if (travel < 0 || (best && travel >= best.along)) continue;
+    const x = shooter.x + dirX * travel;
+    const y = shooter.y + dirY * travel;
+    best = { along: travel, x, y, targetId: stone.id, targetDirX: (stone.x - x) / (ALKKAGI_RADIUS * 2), targetDirY: (stone.y - y) / (ALKKAGI_RADIUS * 2) };
+  }
+  if (!best) return null;
+  const { along: _along, ...hit } = best;
+  return hit;
 }
 
 /** 버튼 조작: 목표 돌을 향해 힘(0~1)만큼 튕깁니다. */

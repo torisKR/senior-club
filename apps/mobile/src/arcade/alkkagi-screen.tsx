@@ -40,6 +40,9 @@ const BOARD_ART = {
 };
 const ROUND_KEY = 'senior_club_alkkagi_round_v1';
 const MAX_BOARD_SIZE = 420;
+/** 버튼으로 튕길 때 손끝처럼 조금 흔들리는 각도(±). 어렵게 하려는 것이 아니라 끌기와 너무 벌어지지 않게 하는 정도입니다. */
+const BUTTON_WOBBLE_DEG = 3;
+const CANCEL_BANNER = '튕기기를 취소했어요. 튕기려면 내 돌을 누른 채 더 길게 당겼다 놓으세요.';
 const START_BANNER = '내 흑석(★)을 튕겨 상대 백석(◎)을 판 밖으로 밀어내세요. 내 돌도 판 밖으로 나갈 수 있어요.';
 
 const AI_OPPONENTS = [
@@ -177,6 +180,7 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
   // 돌이 굴러가는 동안의 재생 정보. 결과(stones)는 튕긴 즉시 저장하고, 화면은 재생이 끝난 뒤 결과를 보여 줍니다.
   const [playback, setPlayback] = useState<AlkkagiPlayback | null>(null);
   const [opponentMoving, setOpponentMoving] = useState(false);
+  const [dragging, setDragging] = useState(false);
   // 조작 방법: 고르기 전에는 TalkBack 이 켜져 있으면 버튼, 아니면 끌기.
   const [screenReader, setScreenReader] = useState(false);
   const [chosenDrag, setChosenDrag] = useState<boolean | null>(null);
@@ -281,13 +285,18 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
   };
 
   const handleButtonFlick = () => {
-    if (activeShooter && activeTarget) handleShot(shotToward(activeShooter, activeTarget, buttonPower));
+    if (!activeShooter || !activeTarget) return;
+    const straight = shotToward(activeShooter, activeTarget, buttonPower);
+    const wobble = ((random() * 2 - 1) * BUTTON_WOBBLE_DEG * Math.PI) / 180;
+    const cos = Math.cos(wobble);
+    const sin = Math.sin(wobble);
+    handleShot({ ...straight, vx: straight.vx * cos - straight.vy * sin, vy: straight.vx * sin + straight.vy * cos });
   };
 
   const liveBanner = !moving ? bannerText : opponentMoving ? `${opponent.name}이 돌을 튕겼습니다…` : '돌이 굴러갑니다…';
 
   return (
-    <Screen testID="alkkagi-screen" contentContainerStyle={styles.container}>
+    <Screen testID="alkkagi-screen" contentContainerStyle={styles.container} scrollViewProps={{ scrollEnabled: !dragging }}>
       <FocusedBackgroundAudio source={BGM_CLUB_LOUNGE} enabled={state.soundEnabled} />
       <ArcadeSaveNotice />
       <ArcadeQuickSettings />
@@ -369,7 +378,7 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
 
       <AppText variant="caption" style={styles.selectionGuide}>
         {dragMode
-          ? '내 흑석(★)을 누른 채 뒤로 당겼다 놓으면 반대쪽으로 날아갑니다. 길게 당길수록 세게 나가요.'
+          ? '내 흑석(★)을 누른 채 뒤로 당겼다 놓으면 반대쪽으로 날아갑니다. 길게 당길수록 세게 나가고, 제자리로 되돌려 놓으면 취소됩니다.'
           : '돌을 직접 누르거나 아래 버튼으로 내 돌과 목표 돌을 고른 뒤 [알 튕기기]를 누르세요.'}
       </AppText>
       <AlkkagiBoard
@@ -381,10 +390,11 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
         locked={matchOver || pendingOpponent !== null}
         shooterId={activeShooter?.id}
         targetId={activeTarget?.id}
-        buttonPower={buttonPower}
         celadon={appearance.stone === 'celadon'}
         onSelectStone={selectStone}
         onFlick={handleShot}
+        onDragChange={setDragging}
+        onDragCancel={() => { if (!matchOver) setBannerText(CANCEL_BANNER); }}
         onHit={() => { playSfx('stoneClack', state.soundEnabled); triggerHaptic('light'); }}
         onOpponentStart={() => setOpponentMoving(true)}
         onPlaybackDone={() => { setPlayback(null); setOpponentMoving(false); }}
@@ -420,7 +430,7 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
           {dragMode ? null : (
             <>
               <AppText variant="caption" accessibilityLiveRegion="polite" style={styles.selectionGuide}>
-                내 돌 ★{activeShooter?.id.slice(1)} · 목표 돌 ◎{activeTarget?.id.slice(1)} 선택 중. 점선이 날아갈 방향과 힘을 보여 줍니다.
+                내 돌 ★{activeShooter?.id.slice(1)} · 목표 돌 ◎{activeTarget?.id.slice(1)} 선택 중. 점선이 날아갈 방향을 보여 줍니다. 손끝처럼 조금 흔들릴 수 있어요.
               </AppText>
               <ButtonControls
                 stacked={stackControls}
