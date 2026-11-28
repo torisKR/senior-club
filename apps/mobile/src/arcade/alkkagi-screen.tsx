@@ -15,6 +15,10 @@ import { createSeededRandom } from './alkkagi-ai';
 import { AlkkagiBoard, type AlkkagiPlayback } from './alkkagi-board';
 import { shotToward, type AlkkagiShot } from './alkkagi-physics';
 import { resolveAlkkagiTurn, type AlkkagiTurn } from './alkkagi-turn';
+import {
+  ALKKAGI_BUTTON_POWERS as BUTTON_POWERS, ALKKAGI_DEFAULT_POWER_MODE, ALKKAGI_TRIAL_AI_LEVEL, ALKKAGI_WEAK_POWER_NOTE,
+  createTrialAlkkagiStones, isDoubleKnockoutAim, isDoubleKnockoutTrial, type AlkkagiPowerMode as PowerMode,
+} from './alkkagi-tuning';
 import { useArcade } from './arcade-store';
 import { alkkagiStars } from './round-stars';
 import { RoundStarsView } from './round-stars-view';
@@ -24,7 +28,7 @@ import { CompanionCoach } from '@/rpg/companion-coach';
 import { GAME_COACH } from '@/rpg/companion-lines';
 import { useRpg } from '@/rpg/rpg-store';
 import { getRpgStorage } from '@/rpg/rpg-db';
-import { isAlkkagiRound, loadRoundState, type AlkkagiRound } from './round-save';
+import { isAlkkagiRound, loadRoundState } from './round-save';
 import { RoundSaveNotice, useRoundSave } from './round-save-notice';
 import { ChangeConfirmation } from './change-confirmation';
 import { PixelFx } from '@/fx/pixel-fx';
@@ -51,13 +55,7 @@ const AI_OPPONENTS = [
   { id: 'master', name: '명인 김 사범', title: '명인 초청전' },
 ] as const;
 
-type PowerMode = AlkkagiRound['powerMode'];
-/** 버튼으로 튕길 때의 힘. 저장 형식(powerMode)은 그대로 씁니다. */
-const BUTTON_POWERS: readonly { id: PowerMode; label: string; sub: string; power: number }[] = [
-  { id: 'precision', label: '살살', sub: '힘 60% · 내 돌이 덜 나가요', power: 0.6 },
-  { id: 'strong', label: '보통', sub: '힘 80% · 가까운 돌 밀기', power: 0.8 },
-  { id: 'double', label: '세게', sub: '힘 100% · 멀리 밀어내기', power: 1 },
-];
+const TRIAL_START_BANNER = `${START_BANNER} 붙어 있는 상대 돌 두 개를 한 번에 밀어내면 일석이조예요. 길게 당기다 ‘일석이조 각!’ 글자가 보이면 놓으세요.`;
 
 const mark = (id: string) => `${id.startsWith('p') ? '★' : '◎'}${id.slice(1)}`;
 const marks = (ids: readonly string[]) => [...ids].sort().map(mark).join(', ');
@@ -164,15 +162,18 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
   const [opponentIdx, setOpponentIdx] = useState(savedRound?.opponentIdx ?? (story?.id === 'chapter_2' ? 1 : story ? 2 : 0));
   const opponent = story ? { name: story.climaxTrial.opponentName } : AI_OPPONENTS[opponentIdx] ?? AI_OPPONENTS[0];
 
-  const [stones, setStones] = useState<AlkkagiStone[]>(() => savedRound?.stones ?? createInitialAlkkagiStones());
+  // 일석이조까지 필요한 시련(5막)에서만 돕습니다: 붙은 돌 배치 · "일석이조 각" 안내 · 조금 덜 정확한 상대. 자유 대국은 그대로입니다.
+  const doubleTrial = isDoubleKnockoutTrial(story?.id);
+  const freshStones = doubleTrial ? createTrialAlkkagiStones : createInitialAlkkagiStones;
+  const [stones, setStones] = useState<AlkkagiStone[]>(() => savedRound?.stones ?? freshStones());
   const flickPending = useRef(false);
   useEffect(() => { flickPending.current = false; }, [stones]);
   const [random] = useState(() => createSeededRandom(Date.now()));
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>(savedRound?.selectedPlayerId ?? 'p2');
   const [selectedTargetId, setSelectedTargetId] = useState<string>(savedRound?.selectedTargetId ?? 'a2');
-  const [powerMode, setPowerMode] = useState<PowerMode>(savedRound?.powerMode ?? 'double');
+  const [powerMode, setPowerMode] = useState<PowerMode>(savedRound?.powerMode ?? ALKKAGI_DEFAULT_POWER_MODE);
   const [matchDoubleKnockouts, setMatchDoubleKnockouts] = useState(savedRound?.matchDoubleKnockouts ?? 0);
-  const [bannerText, setBannerText] = useState<string>(savedRound?.bannerText ?? START_BANNER);
+  const [bannerText, setBannerText] = useState<string>(savedRound?.bannerText ?? (doubleTrial ? TRIAL_START_BANNER : START_BANNER));
   const [storyAttemptId, setStoryAttemptId] = useState(() => story ? savedRound?.storyAttemptId ?? randomUUID() : undefined);
   const roundSave = useRoundSave(storage, roundKey, loadedRound, { opponentIdx, stones, selectedPlayerId, selectedTargetId, powerMode, matchDoubleKnockouts, bannerText, storyAttemptId });
   const [pendingOpponent, setPendingOpponent] = useState<number | null>(null);
@@ -210,7 +211,7 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
   const resetMatch = (nextOppIdx = opponentIdx) => {
     triggerHaptic('light');
     setOpponentIdx(nextOppIdx);
-    setStones(createInitialAlkkagiStones());
+    setStones(freshStones());
     setSelectedPlayerId('p2');
     setSelectedTargetId('a2');
     setMatchDoubleKnockouts(0);
@@ -265,7 +266,7 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
     triggerHaptic('medium');
     playSfx('stoneClack', state.soundEnabled);
 
-    const turn = resolveAlkkagiTurn(stones, shot, opponentIdx, random);
+    const turn = resolveAlkkagiTurn(stones, shot, opponentIdx, random, doubleTrial ? ALKKAGI_TRIAL_AI_LEVEL : undefined);
     const doubles = matchDoubleKnockouts + (turn.doubleKnockout ? 1 : 0);
     const detail = describeTurn(turn, opponent.name);
     setStones(turn.stones);
@@ -292,6 +293,13 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
     const sin = Math.sin(wobble);
     handleShot({ ...straight, vx: straight.vx * cos - straight.vy * sin, vy: straight.vx * sin + straight.vy * cos });
   };
+
+  // 버튼 조작에서는 고른 돌·힘으로 일석이조가 나오는지 글로도(낭독기 포함) 알려 줍니다.
+  const buttonDoubleAngle = useMemo(() => {
+    if (!doubleTrial || dragMode || !activeShooter || !activeTarget) return false;
+    const distance = Math.hypot(activeTarget.x - activeShooter.x, activeTarget.y - activeShooter.y) || 1;
+    return isDoubleKnockoutAim(stones, activeShooter.id, (activeTarget.x - activeShooter.x) / distance, (activeTarget.y - activeShooter.y) / distance, buttonPower);
+  }, [doubleTrial, dragMode, stones, activeShooter, activeTarget, buttonPower]);
 
   const liveBanner = !moving ? bannerText : opponentMoving ? `${opponent.name}이 돌을 튕겼습니다…` : '돌이 굴러갑니다…';
 
@@ -326,7 +334,7 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
           }) : <AppText variant="bodyStrong" style={{ color: '#FCF9F2' }}>{opponent.name}과 이야기 대국</AppText>}
         </View>
         <AppText variant="caption" style={{ color: '#E4EDDA' }}>
-          {story ? '번갈아 한 번씩 튕깁니다. 여유롭게 조준해 보세요.' : '번갈아 한 번씩 튕깁니다. 급수가 높을수록 상대가 더 정확하게 튕겨요.'}
+          {doubleTrial ? '번갈아 한 번씩 튕깁니다. 붙어 있는 상대 돌 두 개를 한 번에 밀어내 보세요.' : story ? '번갈아 한 번씩 튕깁니다. 여유롭게 조준해 보세요.' : '번갈아 한 번씩 튕깁니다. 급수가 높을수록 상대가 더 정확하게 튕겨요.'}
         </AppText>
 
         <View style={[styles.versusRow, stackControls && styles.stackedRow]}>
@@ -391,6 +399,8 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
         shooterId={activeShooter?.id}
         targetId={activeTarget?.id}
         celadon={appearance.stone === 'celadon'}
+        doubleHint={doubleTrial}
+        buttonPower={buttonPower}
         onSelectStone={selectStone}
         onFlick={handleShot}
         onDragChange={setDragging}
@@ -431,6 +441,8 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
             <>
               <AppText variant="caption" accessibilityLiveRegion="polite" style={styles.selectionGuide}>
                 내 돌 ★{activeShooter?.id.slice(1)} · 목표 돌 ◎{activeTarget?.id.slice(1)} 선택 중. 점선이 날아갈 방향을 보여 줍니다. 손끝처럼 조금 흔들릴 수 있어요.
+                {buttonDoubleAngle ? ' ★ 일석이조 각이에요! 지금 튕기면 두 개를 함께 밀어낼 수 있어요.' : doubleTrial ? ' 내 돌·목표 돌·힘을 바꾸다 ‘일석이조 각’ 글자가 나오면 튕기세요.' : ''}
+                {powerMode === 'precision' ? ` ${ALKKAGI_WEAK_POWER_NOTE}` : ''}
               </AppText>
               <ButtonControls
                 stacked={stackControls}

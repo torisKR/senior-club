@@ -164,6 +164,11 @@ async function pressLabel(label: string) {
 }
 const saved = (key: string) => JSON.parse(mocks.values.get(key) ?? 'null');
 
+const stonePlace = (id: string): { left: number; top: number } => Object.assign({}, ...JSON.parse(
+  container.querySelector(`[data-testid="alkkagi-stone-${id}"]`)!.getAttribute('data-style')!).flat(Infinity).filter(Boolean));
+const stoneLeft = (id: string) => stonePlace(id).left;
+const stoneTop = (id: string) => stonePlace(id).top;
+
 function contrastRatio(a: string, b: string) {
   const luminance = (hex: string) => {
     const channels = [1, 3, 5].map((offset) => {
@@ -193,7 +198,7 @@ describe('arcade screens', () => {
   });
   it.each([
     ['golf', 'ParkGolfArcadeScreen', 'parkgolf-power-2', '가까운 그린 정밀 퍼팅', '현재 홀'],
-    ['alkkagi', 'AlkkagiBoardScreen', 'alkkagi-power-double', '힘 100% · 멀리 밀어내기', '나 (흑석 ★)'],
+    ['alkkagi', 'AlkkagiBoardScreen', 'alkkagi-power-strong', '힘 80% · 가까운 돌 밀어내기', '나 (흑석 ★)'],
   ] as const)('keeps %s power descriptions readable and stacks controls for larger text', async (_, screen, selectedId, description, scoreLabel) => {
     Object.assign(mocks.textLayout, { width: 320, fontScale: 2, large: true });
     await render(screens[screen]);
@@ -482,6 +487,26 @@ describe('arcade screens', () => {
     await act(async () => mocks.gesture.handlers!.onPanResponderRelease());
     expect(mocks.rpg.recordStoryResult).toHaveBeenCalledWith({ type: 'alkkagi', outcome: 'failure', chapterId: 'chapter_2', attemptId: 'story-try' });
     expect(mocks.arcade.recordAlkkagiWin).not.toHaveBeenCalled();
+  });
+
+  it('helps only the 일석이조 story trial: touching stones, a worded hint, and a clear weak-power warning', async () => {
+    await render(() => createElement<{ storyChapter?: string }>(screens.AlkkagiBoardScreen, { storyChapter: 'chapter_5' }));
+    expect(stoneLeft('a1')).toBe(stoneLeft('a2')); // 위아래로 붙어 있는 한 쌍
+    const fifteenUnits = stoneLeft('p2') - stoneLeft('p1'); // ★1(x=20)과 ★2(x=35) 사이 = 판 단위 15
+    expect(Math.abs(stoneTop('a1') - stoneTop('a2'))).toBeLessThanOrEqual(fifteenUnits);
+    expect(container.querySelector('[data-testid="alkkagi-power-strong"]')!.getAttribute('aria-pressed')).toBe('true');
+    expect(container.querySelector('[data-testid="alkkagi-double-hint"]')!.textContent).toContain('일석이조 각');
+    expect(container.textContent).toContain('일석이조 각이에요!');
+    await press('alkkagi-power-precision');
+    expect(container.querySelector('[data-testid="alkkagi-double-hint"]')).toBeNull();
+    expect(container.textContent).toContain('살살은 상대 돌을 판 밖으로 밀어내기엔 약해요');
+    expect(container.textContent).toContain('힘 60% · 상대 돌을 밀어내기엔 약해요');
+  });
+
+  it('keeps free play and the win-only 2막 trial on the usual layout without the hint', async () => {
+    await render(() => createElement<{ storyChapter?: string }>(screens.AlkkagiBoardScreen, { storyChapter: 'chapter_2' }));
+    expect(stoneLeft('a1')).not.toBe(stoneLeft('a2'));
+    expect(container.textContent).not.toContain('일석이조 각');
   });
 
   it('saves the result at once but reveals it only after the stones stop rolling', async () => {
