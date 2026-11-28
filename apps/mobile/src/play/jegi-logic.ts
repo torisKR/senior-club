@@ -33,6 +33,8 @@ export interface JegiState {
   cooldownMs: number;
   /** 이번에 떠 있는 동안 헛발한 횟수. 거듭할수록 쉬는 시간이 길어집니다. */
   flightWhiffs: number;
+  /** 목표 횟수를 다 채워 '명인'으로 마무리함 */
+  mastered: boolean;
   seed: number;
   options: JegiOptions;
 }
@@ -47,6 +49,8 @@ export interface JegiWindow {
 
 export const JEGI = {
   width: 180,
+  /** 이만큼 차면 '명인'으로 판을 마무리합니다(끝없이 이어지지 않게). */
+  goal: 50,
   /** 발등에서 마당 위 끝까지의 높이 */
   top: 200,
   minX: 22,
@@ -84,7 +88,7 @@ export function createJegi(seed: number, options: JegiOptions): JegiState {
   const centre = JEGI.width / 2;
   return {
     phase: 'ready', x: centre, h: 0, vx: 0, vh: 0, footX: centre, count: 0, lastGrade: null,
-    kickSeq: 0, whiffSeq: 0, cooldownMs: 0, flightWhiffs: 0, seed: seed >>> 0, options,
+    kickSeq: 0, whiffSeq: 0, cooldownMs: 0, flightWhiffs: 0, mastered: false, seed: seed >>> 0, options,
   };
 }
 
@@ -144,14 +148,17 @@ function launch(state: JegiState, grade: JegiGrade, scored: boolean): JegiState 
   const roll = nextRandom(state.seed);
   const h = Math.max(state.h, 0);
   const drift = Math.min(DRIFT.max, DRIFT.base + state.count * DRIFT.perKick) * DRIFT_BY_GRADE[grade];
+  const count = scored ? state.count + 1 : state.count;
+  const mastered = count >= JEGI.goal;
   return {
     ...state,
-    phase: 'playing',
+    phase: mastered ? 'over' : 'playing',
+    mastered,
     h,
     // 높은 데서 일찍 맞혀도 마당 위로 넘치지 않을 만큼만 뜹니다.
     vh: Math.min(JEGI.kickSpeed[grade], Math.sqrt(2 * JEGI.gravity * (JEGI.top - APEX_MARGIN - h))),
     vx: (roll.value * 2 - 1) * drift + (state.x - state.footX) * DRIFT.push,
-    count: scored ? state.count + 1 : state.count,
+    count,
     lastGrade: scored ? grade : null,
     kickSeq: scored ? state.kickSeq + 1 : state.kickSeq,
     cooldownMs: 0,
@@ -178,6 +185,11 @@ export function kickJegi(state: JegiState): JegiState {
   const grade = state.vh < 0 ? judgeKick(state.h, state.x - state.footX, state.options.slow) : null;
   if (!grade) return { ...state, whiffSeq: state.whiffSeq + 1, flightWhiffs: state.flightWhiffs + 1, cooldownMs: whiffCooldown(state.flightWhiffs) };
   return launch(state, grade, true);
+}
+
+/** 놀이 도중 화면을 떠날 때 정산해야 할 횟수. 정산할 것이 없으면 null. */
+export function unsettledJegiScore(state: JegiState): number | null {
+  return state.phase === 'playing' && state.count > 0 ? state.count : null;
 }
 
 /** 한 프레임 진행: 중력, 좌우 벽, 땅에 닿으면 끝. */

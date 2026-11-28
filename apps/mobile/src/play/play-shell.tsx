@@ -110,6 +110,22 @@ export function useEasyMode(): [boolean, () => void] {
   return [easy, toggle];
 }
 
+/**
+ * 놀이 도중 뒤로가기 등으로 화면을 떠나면 그때까지의 점수로 정산합니다
+ * (보상 기준을 넘겼으면 보상도, 최고 기록이면 기록도 남습니다).
+ */
+export function useSettleOnLeave(unsettled: () => number | null, finish: (score: number) => unknown) {
+  const latest = useRef({ unsettled, finish });
+  useEffect(() => {
+    latest.current = { unsettled, finish };
+  });
+  useEffect(() => () => {
+    const leaving = latest.current;
+    const score = leaving.unsettled();
+    if (score !== null) leaving.finish(score);
+  }, []);
+}
+
 /** 놀이 중에 앱이 뒤로 가면 멈추고, 돌아와서 '이어서 하기'를 눌러야 다시 움직입니다. */
 export function useBackgroundPause(running: boolean): [boolean, () => void] {
   const [paused, setPaused] = useState(false);
@@ -138,6 +154,8 @@ export interface PlayShellProps {
   onToggleEasy: () => void;
   actionLabel: string;
   actionHint: string;
+  /** 지금은 행동 버튼을 누를 수 없음(헛발 뒤 숨 고르기 등). 이유는 actionLabel과 status 글자로도 알립니다. */
+  actionDisabled?: boolean;
   onAction: () => void;
   /** 놀이판을 누른 자리(원화 픽셀 x) */
   onFieldPress: (x: number) => void;
@@ -146,6 +164,8 @@ export interface PlayShellProps {
   paused: boolean;
   onResume: () => void;
   outcome: PlayOutcome | null;
+  /** 목표를 다 채워 '명인'으로 마무리한 판 */
+  mastered: boolean;
   resultTitle: string;
   unit: string;
   onRetry: () => void;
@@ -169,7 +189,7 @@ function PlayHud(props: Pick<PlayShellProps, 'scoreLabel' | 'bestLabel' | 'statu
 }
 
 /** 느린 모드 스위치와, 놀이판을 누르기 어려운 분을 위한 큰 행동 버튼(72dp). */
-function PlayControls(props: Pick<PlayShellProps, 'testID' | 'easy' | 'onToggleEasy' | 'actionLabel' | 'actionHint' | 'onAction' | 'outcome' | 'paused'>) {
+function PlayControls(props: Pick<PlayShellProps, 'testID' | 'easy' | 'onToggleEasy' | 'actionLabel' | 'actionHint' | 'actionDisabled' | 'onAction' | 'outcome' | 'paused'>) {
   return (
     <View style={styles.controls}>
       <SeniorButton
@@ -190,7 +210,7 @@ function PlayControls(props: Pick<PlayShellProps, 'testID' | 'easy' | 'onToggleE
         variant="accent"
         fullWidth={false}
         accessibilityHint={props.actionHint}
-        disabled={props.outcome !== null || props.paused}
+        disabled={props.outcome !== null || props.paused || props.actionDisabled}
         onPress={props.onAction}
         style={styles.actionButton}
       />
@@ -279,9 +299,9 @@ function PlayPaused({ testID, onResume }: { testID: string; onResume: () => void
   );
 }
 
-type PlayResultProps = Pick<PlayShellProps, 'testID' | 'resultTitle' | 'unit' | 'onRetry' | 'easy' | 'onToggleEasy'> & { outcome: PlayOutcome };
+type PlayResultProps = Pick<PlayShellProps, 'testID' | 'resultTitle' | 'unit' | 'onRetry' | 'easy' | 'onToggleEasy' | 'mastered'> & { outcome: PlayOutcome };
 
-function PlayResult({ outcome, resultTitle: title, unit, onRetry, testID, easy, onToggleEasy }: PlayResultProps) {
+function PlayResult({ outcome, resultTitle: title, unit, onRetry, testID, easy, onToggleEasy, mastered }: PlayResultProps) {
   const note = rewardNote(outcome, unit);
   const suggestEasy = shouldSuggestEasy(outcome.lowStreak, easy);
   const retryEasy = () => {
@@ -294,6 +314,9 @@ function PlayResult({ outcome, resultTitle: title, unit, onRetry, testID, easy, 
       <ScrollView contentContainerStyle={styles.resultScroll} showsVerticalScrollIndicator={false}>
         <PixelPanel style={styles.result}>
           <RoundStarsView stars={outcome.stars} title={title} />
+          {mastered ? (
+            <AppText variant="sectionTitle" color={PixelPalette.ink} align="center">축하해요! 목표를 다 채워 명인이 됐어요.</AppText>
+          ) : null}
           <AppText variant="key" color={PixelPalette.ink} align="center">
             {outcome.isNewBest ? `새 최고 기록! ${outcome.score}${unit}` : `이번 판 ${outcome.score}${unit} · 최고 ${outcome.best}${unit}`}
           </AppText>

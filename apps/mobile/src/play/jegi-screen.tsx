@@ -9,8 +9,8 @@ import { playSfx } from '@/audio/sound-manager';
 import { PixelPalette } from '@/components/game/pixel-theme';
 import { useReduceMotion } from '@/fx/use-reduce-motion';
 
-import { JEGI, createJegi, jegiCue, kickJegi, moveFoot, stepJegi, type JegiGrade, type JegiState } from './jegi-logic';
-import { PlayFlash, PlayShell, useBackgroundPause, useEasyMode, useFrameLoop, usePlayRecords, type PlayOutcome } from './play-shell';
+import { JEGI, createJegi, jegiCue, kickJegi, moveFoot, stepJegi, unsettledJegiScore, type JegiGrade, type JegiState } from './jegi-logic';
+import { PlayFlash, PlayShell, useBackgroundPause, useEasyMode, useSettleOnLeave, useFrameLoop, usePlayRecords, type PlayOutcome } from './play-shell';
 
 const BACKGROUND = require('../../assets/game/rpg/pixel/play/jegi_bg.png');
 const JEGI_SPRITE = require('../../assets/game/rpg/pixel/play/jegi.png');
@@ -32,19 +32,24 @@ interface JegiView {
   whiffSeq: number;
   /** 마지막으로 값이 바뀐 순간의 발 자리(판정 글자를 띄울 곳) */
   footX: number;
+  /** 헛발 뒤 숨 고르는 중(아직 다시 찰 수 없음) */
+  resting: boolean;
+  mastered: boolean;
 }
 
 const toView = (state: JegiState): JegiView => ({
   phase: state.phase, count: state.count, grade: state.lastGrade, kickSeq: state.kickSeq, whiffSeq: state.whiffSeq, footX: state.footX,
+  resting: state.cooldownMs > 0, mastered: state.mastered,
 });
 const sameView = (a: JegiView, b: JegiView) =>
-  a.phase === b.phase && a.count === b.count && a.kickSeq === b.kickSeq && a.whiffSeq === b.whiffSeq;
+  a.phase === b.phase && a.count === b.count && a.kickSeq === b.kickSeq && a.whiffSeq === b.whiffSeq && a.resting === b.resting;
 const newSeed = () => Date.now() >>> 0;
 
 function statusText(view: JegiView, missed: boolean, easy: boolean): string {
   if (view.phase === 'ready' && easy) return "제기를 띄운 뒤 '준비' 신호 다음 '지금' 신호가 울리면 차세요. 발은 저절로 따라갑니다.";
   if (view.phase === 'ready') return '놀이판을 누르면 제기를 띄웁니다. 떨어지는 제기 밑을 눌러 차 올리세요.';
-  if (view.phase === 'over') return '제기가 땅에 떨어졌어요.';
+  if (view.phase === 'over') return view.mastered ? `명인이에요! ${JEGI.goal}번을 다 채웠어요.` : '제기가 땅에 떨어졌어요.';
+  if (view.resting) return '헛발! 잠깐 숨 고르기… 곧 다시 찰 수 있어요.';
   if (missed) return '헛발! 제기가 발 가까이 왔을 때 누르세요.';
   return view.grade ? GRADE_LABEL[view.grade] : '제기가 내려오면 그 밑을 누르세요.';
 }
@@ -125,7 +130,7 @@ function useJegiGame(easy: boolean, reduceMotion: boolean) {
     sync(next);
   });
 
-  /** 지금 상태에 순수 함수 하나를 적용합니다(발 옮기기·차기). */
+  useSettleOnLeave(() => unsettledJegiScore(game.current), finish);
   const act = (change: (state: JegiState) => JegiState) => sync(change(game.current));
   const retry = () => sync(createJegi(newSeed(), { slow: easy, assist: easy }));
   return { view, missed, outcome, best, motion, act, retry, paused, resume };
@@ -144,7 +149,8 @@ export function JegiScreen() {
       status={statusText(view, missed, easy)}
       easy={easy}
       onToggleEasy={toggleEasy}
-      actionLabel={view.phase === 'ready' ? '제기 띄우기' : '차기'}
+      actionLabel={view.phase === 'ready' ? '제기 띄우기' : view.resting ? '숨 고르는 중' : '차기'}
+      actionDisabled={view.resting}
       actionHint={easy ? "발이 제기 밑을 따라갑니다. '준비' 신호 다음 '지금' 신호가 울리면 누르세요" : '발이 있는 자리에서 찹니다. 놀이판을 누르면 누른 자리로 발이 옮겨 갑니다'}
       onAction={() => act(kickJegi)}
       onFieldPress={(touchX) => act((state) => kickJegi(moveFoot(state, touchX)))}
@@ -152,7 +158,8 @@ export function JegiScreen() {
       paused={paused}
       onResume={resume}
       outcome={outcome}
-      resultTitle={`제기차기 ${view.count}번`}
+      mastered={view.mastered}
+      resultTitle={view.mastered ? `제기차기 명인 ${view.count}번` : `제기차기 ${view.count}번`}
       unit="번"
       onRetry={retry}>
       {(scale) => (

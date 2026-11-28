@@ -46,12 +46,16 @@ export interface StonesState {
   /** 기운 정도(-1~1 사이면 버팀, 부호는 방향) */
   lean: number;
   collapse: { from: number; dir: -1 | 1; ms: number } | null;
+  /** 목표 층수를 다 쌓아 '명인'으로 마무리함 */
+  mastered: boolean;
   seed: number;
   slow: boolean;
 }
 
 export const STONES = {
   width: 180,
+  /** 이만큼 쌓으면 '명인'으로 판을 마무리합니다(끝없이 이어지지 않게). */
+  goal: 30,
   /** 둥근 모서리는 받치지 못하므로 닿는 폭을 조금 줄입니다. */
   edge: 2,
   /** 위 돌이 아래 돌에 살짝 내려앉는 깊이 */
@@ -95,7 +99,7 @@ export function createStones(seed: number, options: { slow: boolean }): StonesSt
   return {
     phase: 'aiming', tower: [{ kind: 'a', x: STONES.width / 2 }], current: first.kind, next: second.kind,
     swingRad: -Math.PI / 2, windRad: 0, dwellMs: 0, dropX: STONES.width / 2, dropGap: STONES.hoverGap,
-    score: 0, lastGrade: null, landSeq: 0, lean: 0, collapse: null, seed: second.seed, slow: options.slow,
+    score: 0, lastGrade: null, landSeq: 0, lean: 0, collapse: null, mastered: false, seed: second.seed, slow: options.slow,
   };
 }
 
@@ -169,6 +173,12 @@ function land(state: StonesState): StonesState {
     const dir = balance.lean > 0 ? 1 : -1;
     return { ...state, phase: 'collapsing', tower, dropGap: 0, lean: dir, lastGrade: null, collapse: { from: balance.pivot + 1, dir, ms: 0 } };
   }
+  if (state.score + 1 >= STONES.goal) {
+    return {
+      ...state, phase: 'over', mastered: true, tower, dropGap: 0, score: state.score + 1,
+      lastGrade: isPerfect ? 'perfect' : 'good', landSeq: state.landSeq + 1, lean: balance.lean,
+    };
+  }
   const upcoming = pickStone(state.seed);
   const side = nextRandom(upcoming.seed);
   return {
@@ -176,6 +186,11 @@ function land(state: StonesState): StonesState {
     swingRad: side.value < 0.5 ? -Math.PI / 2 : Math.PI / 2, windRad: 0, dwellMs: 0, dropGap: STONES.hoverGap,
     score: state.score + 1, lastGrade: isPerfect ? 'perfect' : 'good', landSeq: state.landSeq + 1, lean: balance.lean,
   };
+}
+
+/** 놀이 도중 화면을 떠날 때 정산해야 할 층수. 정산할 것이 없으면 null. */
+export function unsettledStonesScore(state: StonesState): number | null {
+  return state.phase !== 'over' && state.score > 0 ? state.score : null;
 }
 
 /** 돌이 탑 바로 위에 오기까지 남은 시간(ms). 바람은 셈에 넣지 않습니다. 멈춰 있는 동안은 0. */

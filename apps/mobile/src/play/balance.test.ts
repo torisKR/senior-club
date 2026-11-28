@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { JEGI } from './jegi-logic';
+import { STONES } from './stones-logic';
 import { SIM_SEEDS, playJegiByCue, playJegiByMashing, playJegiByRhythm, playStonesByCue, playStonesByRhythm, summarize } from './sim-players';
 
 /**
@@ -48,5 +50,20 @@ describe('mashing', () => {
     for (const slow of [false, true]) {
       expect(summarize('jegi', SEEDS.map((seed) => playJegiByMashing(seed, intervalMs, slow))).noReward).toBe(1);
     }
+  });
+});
+
+describe('rounds always end', () => {
+  it('a slow-mode player who never misses stops at the master goal', () => {
+    const seeds = SEEDS.slice(0, 20);
+    for (const reactionMs of [250, 450, 750]) {
+      expect(new Set(seeds.map((seed) => playJegiByCue(seed, 'now', reactionMs, 60, 999)))).toEqual(new Set([JEGI.goal]));
+      expect(new Set(seeds.map((seed) => playStonesByCue(seed, 'now', reactionMs, 60, 999)))).toEqual(new Set([STONES.goal]));
+    }
+  });
+
+  it.each([1200, 1500, 2000])('pressing every %ims in slow mode never goes past the goal', (intervalMs) => {
+    const scores = SEEDS.slice(0, 40).map((seed) => playJegiByMashing(seed, intervalMs, true, 999));
+    expect(Math.max(...scores)).toBeLessThanOrEqual(JEGI.goal);
   });
 });

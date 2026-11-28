@@ -10,9 +10,9 @@ import { PixelPalette } from '@/components/game/pixel-theme';
 import { AppText } from '@/components/ui';
 import { useReduceMotion } from '@/fx/use-reduce-motion';
 
-import { FIELD, PlayFlash, PlayShell, useBackgroundPause, useEasyMode, useFrameLoop, usePlayRecords, type PlayOutcome } from './play-shell';
+import { FIELD, PlayFlash, PlayShell, useBackgroundPause, useEasyMode, useSettleOnLeave, useFrameLoop, usePlayRecords, type PlayOutcome } from './play-shell';
 import {
-  STONES, STONE_SHAPES, createStones, dropStone, hoverX, isWindyFloor, stepStones, stonesCue, towerHeight,
+  STONES, STONE_SHAPES, createStones, dropStone, hoverX, isWindyFloor, stepStones, stonesCue, towerHeight, unsettledStonesScore,
   type PlacedStone, type StoneKind, type StonesState,
 } from './stones-logic';
 
@@ -30,7 +30,7 @@ const ART = { spriteHeight: 24, bodyBottom: 23, ground: 206, cameraStart: 118, m
 const LEAN_WARNING = 0.7;
 const CAMERA_MS = 300;
 
-type TowerView = Pick<StonesState, 'phase' | 'tower' | 'current' | 'next' | 'score' | 'lastGrade' | 'landSeq' | 'lean' | 'collapse'>;
+type TowerView = Pick<StonesState, 'mastered' | 'phase' | 'tower' | 'current' | 'next' | 'score' | 'lastGrade' | 'landSeq' | 'lean' | 'collapse'>;
 const toView = (state: StonesState): TowerView => state;
 const sameView = (a: TowerView, b: TowerView) => a.phase === b.phase && a.tower === b.tower && a.landSeq === b.landSeq;
 const newSeed = () => Date.now() >>> 0;
@@ -45,6 +45,7 @@ function stoneBottoms(tower: readonly PlacedStone[]): number[] {
 }
 
 function statusText(view: TowerView, slow: boolean): string {
+  if (view.mastered) return `명인이에요! ${STONES.goal}층을 다 쌓았어요.`;
   if (view.phase === 'over' || view.phase === 'collapsing') return view.score > 0 ? '탑이 기울어 무너졌어요.' : '돌이 떨어졌어요.';
   if (isWindyFloor(view.score, slow)) return '바람이 붑니다. 돌이 흔들려요.';
   if (Math.abs(view.lean) >= LEAN_WARNING) return `탑이 ${view.lean > 0 ? '오른쪽' : '왼쪽'}으로 기울었어요. 가운데에 올리세요.`;
@@ -120,13 +121,12 @@ function useStonesGame(easy: boolean, reduceMotion: boolean) {
     const next = stepStones(previous, dtMs);
     // 느린 모드: 돌이 탑 위에 오기 조금 전 "준비", 탑 위에 멈춘 순간 "지금"을 진동과 소리로 알립니다.
     const cue = easy ? stonesCue(previous, next) : null;
-    if (cue) {
-      triggerHaptic(cue === 'now' ? 'medium' : 'light');
-      playSfx(cue === 'now' ? 'tileMatch' : 'putt', arcade.soundEnabled);
-    }
+    if (cue) triggerHaptic(cue === 'now' ? 'medium' : 'light');
+    if (cue) playSfx(cue === 'now' ? 'tileMatch' : 'putt', arcade.soundEnabled);
     sync(next);
   });
 
+  useSettleOnLeave(() => unsettledStonesScore(game.current), finish);
   const drop = () => sync(dropStone(game.current));
   const retry = () => sync(createStones(newSeed(), { slow: easy }));
   return { view, outcome, best, motion, drop, retry, paused, resume };
@@ -153,7 +153,8 @@ export function StonesScreen() {
       paused={paused}
       onResume={resume}
       outcome={outcome}
-      resultTitle={`돌탑 ${view.score}층`}
+      mastered={view.mastered}
+      resultTitle={view.mastered ? `돌탑 명인 ${view.score}층` : `돌탑 ${view.score}층`}
       unit="층"
       onRetry={retry}
       fieldColor={ART.skyColor}>

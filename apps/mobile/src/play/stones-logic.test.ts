@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { playStonesByRhythm } from './sim-players';
 import {
-  STONES, STONE_KINDS, STONE_SHAPES, createStones, dropStone, hoverPeriodMs, hoverX, isWindyFloor, msUntilOverTower, stepStones, stonesCue, towerHeight, towerLean,
+  STONES, STONE_KINDS, STONE_SHAPES, createStones, dropStone, hoverPeriodMs, hoverX, isWindyFloor, msUntilOverTower, stepStones, stonesCue, towerHeight, towerLean, unsettledStonesScore,
   type PlacedStone, type StonesState,
 } from './stones-logic';
 
@@ -166,5 +166,30 @@ describe('stone tower slow mode', () => {
 
   it('accepts a wider "perfect" in slow mode', () => {
     expect(STONES.slowPerfect).toBeGreaterThan(STONES.perfect);
+  });
+});
+
+describe('stone tower goal and leaving', () => {
+  it('finishes the round as a master at the goal instead of going on forever', () => {
+    const almost = { ...createStones(1, { slow: true }), score: STONES.goal - 1 };
+    const done = placeAt(almost, CENTRE);
+    expect(done.score).toBe(STONES.goal);
+    expect(done.phase).toBe('over');
+    expect(done.mastered).toBe(true);
+    expect(done.collapse).toBeNull();
+  });
+
+  it('a collapsed tower is not a master finish', () => {
+    const over = run(placeAt(createStones(1, { slow: false }), CENTRE - 46), (s) => s.phase === 'over');
+    expect(over.mastered).toBe(false);
+  });
+
+  it('settles the floors so far when leaving mid-round, and nothing otherwise', () => {
+    const start = createStones(1, { slow: false });
+    const one = placeAt(start, CENTRE);
+    expect(unsettledStonesScore(start)).toBeNull();
+    expect(unsettledStonesScore(one)).toBe(1);
+    expect(unsettledStonesScore(dropStone(one))).toBe(1);
+    expect(unsettledStonesScore(run(placeAt(one, CENTRE - 46), (s) => s.phase === 'over'))).toBeNull();
   });
 });

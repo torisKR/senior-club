@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  JEGI, createJegi, inKickWindow, jegiCue, jegiSpeed, jegiWindow, judgeKick, kickJegi, moveFoot, msUntilHeight, msUntilKickWindow, stepJegi, whiffCooldown,
+  JEGI, createJegi, inKickWindow, jegiCue, jegiSpeed, jegiWindow, judgeKick, kickJegi, moveFoot, msUntilHeight, msUntilKickWindow, stepJegi, unsettledJegiScore, whiffCooldown,
   type JegiCue, type JegiState,
 } from './jegi-logic';
 import { playJegiByRhythm } from './sim-players';
@@ -184,5 +184,32 @@ describe('jegi cues', () => {
     const { cues, closed } = flight(SLOW);
     expect(closed - cues[1].at).toBeGreaterThanOrEqual(600);
     expect(closed - cues[0].at).toBeGreaterThanOrEqual(950);
+  });
+});
+
+describe('jegi goal and leaving', () => {
+  const atFoot = (state: JegiState) => fallUntil(state, (s) => s.vh < 0 && s.h <= 2);
+
+  it('finishes the round as a master at the goal instead of going on forever', () => {
+    const almost = atFoot({ ...kickJegi(createJegi(3, SLOW)), count: JEGI.goal - 1 });
+    const done = kickJegi(almost);
+    expect(done.count).toBe(JEGI.goal);
+    expect(done.phase).toBe('over');
+    expect(done.mastered).toBe(true);
+    expect(stepJegi(done, 16)).toBe(done);
+  });
+
+  it('a dropped jegi is not a master finish', () => {
+    expect(fallUntil(kickJegi(createJegi(3, NORMAL)), () => false).mastered).toBe(false);
+  });
+
+  it('settles the kicks so far when leaving mid-round, and nothing otherwise', () => {
+    const ready = createJegi(3, NORMAL);
+    const served = kickJegi(ready);
+    const one = kickJegi(atFoot(served));
+    expect(unsettledJegiScore(ready)).toBeNull();
+    expect(unsettledJegiScore(served)).toBeNull();
+    expect(unsettledJegiScore(one)).toBe(1);
+    expect(unsettledJegiScore(fallUntil(one, () => false))).toBeNull();
   });
 });
