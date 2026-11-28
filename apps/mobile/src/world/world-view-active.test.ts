@@ -44,8 +44,9 @@ vi.mock('@/fx/use-reduce-motion', () => ({ useReduceMotion: () => mocks.reduceMo
 vi.mock('@/hooks/use-app-state', () => ({ useAppState: () => ({ largeTextEnabled: false }) }));
 vi.mock('@/fx/pixel-fx', () => ({ PixelFx: () => null }));
 vi.mock('@/rpg/rpg-logic', () => ({ FARM_PLOTS: [] }));
+vi.mock('./play/play-sprites', () => ({ PLAY_SPRITES: { bush: 'bush' } }));
 vi.mock('@/rpg/rpg-sprites', () => ({
-  BUILDING_SPRITES: {}, CROP_SPRITES: {}, FORAGE_SPRITES: { pebble: 'pebble' }, PLAYER_POSE_SPRITES: {},
+  BUILDING_SPRITES: {}, CROP_SPRITES: {}, PLAYER_POSE_SPRITES: {},
   playerSpriteForTier: () => 1, playerTierForCp: () => 0,
 }));
 vi.mock('@/rpg/rpg-store', () => ({ useRpg: () => ({ state: {
@@ -91,7 +92,9 @@ it('stops frame work and clears movement when hidden, then resumes it on return'
   expect(container.querySelector('[data-testid="photo-marker-near"]')).not.toBeNull();
   expect(container.querySelector('[data-testid="photo-marker-far"]')).toBeNull();
   expect(container.querySelector('[data-testid="photo-marker-other"]')).toBeNull();
-  expect(container.querySelectorAll('[data-source="pebble"]')).toHaveLength(1);
+  // 채집물은 풀숲에 숨어 있어 지도에는 덤불로만 보입니다.
+  expect(container.querySelectorAll('[data-source="bush"]')).toHaveLength(1);
+  expect(container.querySelectorAll('[data-source="pebble"]')).toHaveLength(0);
   const firstDay = mocks.forageDays.at(-1);
   await act(async () => root.render(createElement(WorldView, { ...props, nowMs: 86_400_000 } as never)));
   expect(mocks.forageDays.at(-1)).not.toBe(firstDay);

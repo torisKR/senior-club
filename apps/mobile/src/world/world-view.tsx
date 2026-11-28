@@ -22,7 +22,6 @@ import { FARM_PLOTS } from '@/rpg/rpg-logic';
 import {
   BUILDING_SPRITES,
   CROP_SPRITES,
-  FORAGE_SPRITES,
   LIFE_PROP_SPRITES,
   PLAYER_POSE_SPRITES,
   playerSpriteForTier,
@@ -34,6 +33,7 @@ import { useRpg } from '@/rpg/rpg-store';
 import { todayKey } from '@/rpg/daily-reset';
 
 import { forageSpawns, PHOTO_SPOTS } from './explore';
+import { PLAY_SPRITES } from './play/play-sprites';
 import { cropStage, type GardenPlot, type LifeState } from './life';
 import type { MapDef, MapId } from './maps/map-types';
 import { buildPassGrid, isWalkable, mapHeight, mapWidth, tileAt } from './maps/tiles';
@@ -335,15 +335,15 @@ const FishingMarker = React.memo(function FishingMarker({ map, player, markerFon
   </View>;
 });
 
-/** 오늘의 채집물 — 줍거나 날이 바뀔 때만 다시 그립니다. */
+/** 오늘의 채집물은 풀숲에 숨어 있습니다 — 헤치거나 날이 바뀔 때만 다시 그립니다. */
 const ForageLayer = React.memo(function ForageLayer({ map, foraged, chunks, day }: { map: MapDef; foraged: LifeState['foraged']; chunks: readonly { cx: number; cy: number }[]; day: string }) {
   return (
     <>
       {forageSpawns(map, day)
         .filter((spawn) => isNearVisibleChunks(spawn.x, spawn.y, chunks) && !(foraged.day === day && foraged.keys.includes(`${map.id}:${spawn.key}`)))
         .map((spawn) => (
-          <Image key={`forage-${spawn.key}`} source={FORAGE_SPRITES[spawn.itemId]}
-            style={[styles.forage, { left: spawn.x * TILE_DP + 6, top: spawn.y * TILE_DP + 6 }]} contentFit="contain" accessibilityIgnoresInvertColors />
+          <Image key={`forage-${spawn.key}`} source={PLAY_SPRITES.bush}
+            style={[styles.forage, { left: spawn.x * TILE_DP + 2, top: spawn.y * TILE_DP + 2 }]} contentFit="contain" accessibilityIgnoresInvertColors />
         ))}
     </>
   );
@@ -396,11 +396,7 @@ const styles = StyleSheet.create({
   viewport: { flex: 1, width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#356347' },
   mapLayer: { position: 'absolute', left: 0, top: 0 },
   tile: { position: 'absolute', width: TILE_DP, height: TILE_DP },
-  forage: {
-    position: 'absolute', width: TILE_DP - 12, height: TILE_DP - 12,
-    borderRadius: 14, borderWidth: 1, borderColor: 'rgba(110, 78, 35, 0.55)',
-    backgroundColor: 'rgba(255, 246, 216, 0.72)',
-  },
+  forage: { position: 'absolute', width: TILE_DP - 4, height: TILE_DP - 4 },
   photoMarker: { position: 'absolute', minWidth: 44, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: '#76542D', backgroundColor: '#FFF4D7', alignItems: 'center' },
   photoMarkerText: { color: '#573A1F', fontWeight: '700' },
   fishingMarker: { position: 'absolute', minWidth: 44, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: '#1E6F94', backgroundColor: '#E7F5F6', alignItems: 'center' },
