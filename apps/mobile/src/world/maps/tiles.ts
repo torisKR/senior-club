@@ -9,6 +9,8 @@ type TileInfo = Omit<VillageTile, 'x' | 'y'>;
  *  . 잔디  = 길  ~ 물  K 선착장  S 돌다리  f 숲 바닥  y/v 꽃밭(걸을 수 있음)  d 모래
  *  # 돌담  P 소나무  C 매화나무  u 덤불  o 바위  * 꽃 화단  L 석등  F 텃밭  b 벤치
  *  W 약수터  T 평상  w 장작  g 이정표  B 건물(실제 판정은 건물 데이터)
+ *  솔숲 산길: m 솔잎 흙길  s 돌계단  r 계곡물  H 통나무 다리  R 바위 절벽  Q 산 약수터  c 돌탑  M 버섯 통나무  A 큰 소나무
+ *  오일장터: p 돌 포장  Y 윷놀이 멍석(걸을 수 있음)  l 청사초롱  x 과일 상자  j 항아리  n 만국기
  */
 export const LEGEND: Record<string, TileInfo> = {
   '.': { type: 'grass', name: '푸른 잔디' },
@@ -34,10 +36,28 @@ export const LEGEND: Record<string, TileInfo> = {
   T: { type: 'table', name: '평상' },
   w: { type: 'firewood', name: '장작더미' },
   g: { type: 'signpost', name: '이정표' },
+  m: { type: 'path', name: '솔잎 흙길', variant: 'dirt' },
+  s: { type: 'path', name: '돌계단', variant: 'steps' },
+  r: { type: 'water', name: '계곡물', variant: 'stream' },
+  H: { type: 'bridge', name: '통나무 다리', variant: 'logbridge' },
+  R: { type: 'rock', name: '바위 절벽', variant: 'cliff' },
+  Q: { type: 'well', name: '산 약수터', variant: 'spring' },
+  c: { type: 'rock', name: '돌탑', variant: 'cairn' },
+  M: { type: 'firewood', name: '버섯 난 통나무', variant: 'mushroomlog' },
+  A: { type: 'tree', name: '큰 소나무', variant: 'bigpine' },
+  p: { type: 'path', name: '장터 돌 포장', variant: 'paving' },
+  Y: { type: 'path', name: '윷놀이 멍석', variant: 'yut' },
+  l: { type: 'lantern', name: '청사초롱', variant: 'cheongsa' },
+  x: { type: 'prop', name: '과일 상자', variant: 'crates' },
+  j: { type: 'prop', name: '장터 항아리', variant: 'jars' },
+  n: { type: 'prop', name: '만국기', variant: 'flags' },
 };
 
 /** 걸을 수 있는 바닥 */
 const WALKABLE = new Set<VillageTile['type']>(['grass', 'path', 'dock', 'bridge', 'forest', 'flowerfield']);
+
+/** 물 글자: 연못·강·바다(~)와 계곡물(r) */
+export const isWaterSymbol = (symbol: string | undefined) => symbol === '~' || symbol === 'r';
 
 export const mapWidth = (map: MapDef) => map.layout[0]?.length ?? 0;
 export const mapHeight = (map: MapDef) => map.layout.length;

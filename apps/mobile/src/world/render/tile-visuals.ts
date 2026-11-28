@@ -1,13 +1,15 @@
-import type { VillageTile } from '@/rpg/rpg-types';
+import type { TileVariant, VillageTile } from '@/rpg/rpg-types';
 
 import type { MapDef } from '../maps/map-types';
-import { isDoorTile, mapHeight, mapWidth, tileAt } from '../maps/tiles';
+import { isDoorTile, LEGEND, mapHeight, mapWidth, tileAt } from '../maps/tiles';
 
 /** TILE_SPRITES 의 키 */
 export type TileSpriteKey =
   | 'grass' | 'path' | 'water' | 'fence' | 'pine' | 'cherry' | 'lantern' | 'flower'
   | 'dock' | 'farm' | 'bench' | 'forest' | 'bush' | 'bridge' | 'flowersYellow' | 'flowersPurple'
-  | 'rock' | 'well' | 'table' | 'firewood' | 'signpost';
+  | 'rock' | 'well' | 'table' | 'firewood' | 'signpost'
+  | 'mtGround' | 'mtRock' | 'mtStream' | 'mtBridge' | 'mtSteps' | 'mtSpring' | 'mtCairn' | 'mtMushroomLog' | 'mtPineBig'
+  | 'mkPaving' | 'mkLantern' | 'mkCrates' | 'mkJarStack' | 'mkFlagLine' | 'mkYutMat';
 
 export interface TileVisual {
   base: TileSpriteKey;
@@ -19,12 +21,29 @@ const DECOR: Partial<Record<VillageTile['type'], TileSpriteKey>> = {
   bush: 'bush', rock: 'rock', well: 'well', table: 'table', firewood: 'firewood', signpost: 'signpost',
 };
 
+/** 솔숲 산길·오일장터 타일: variant 가 바닥과 장식을 정합니다. */
+const VARIANT_BASE: Partial<Record<TileVariant, TileSpriteKey>> = {
+  dirt: 'mtGround', steps: 'mtSteps', stream: 'mtStream', cliff: 'mtRock', logbridge: 'mtStream', paving: 'mkPaving', yut: 'mkPaving',
+};
+const VARIANT_DECOR: Partial<Record<TileVariant, TileSpriteKey>> = {
+  logbridge: 'mtBridge', spring: 'mtSpring', cairn: 'mtCairn', mushroomlog: 'mtMushroomLog', bigpine: 'mtPineBig',
+  cheongsa: 'mkLantern', crates: 'mkCrates', jars: 'mkJarStack', flags: 'mkFlagLine', yut: 'mkYutMat',
+};
+/** 물 바닥: 이웃 장식 칸이 따라 깔지 않습니다. */
+const WATER_BASES: readonly TileSpriteKey[] = ['water', 'mtStream'];
+
 function decorFor(tile: VillageTile): TileSpriteKey | null {
+  const byVariant = tile.variant ? VARIANT_DECOR[tile.variant] : undefined;
+  if (byVariant) return byVariant;
+  // 절벽처럼 바닥 그림만 있는 칸에는 종류 기본 장식(바위)을 겹치지 않습니다.
+  if (tile.variant && VARIANT_BASE[tile.variant]) return null;
   if (tile.type === 'tree') return tile.variant === 'cherry' ? 'cherry' : 'pine';
   return DECOR[tile.type] ?? null;
 }
 
 function ownBase(tile: VillageTile): TileSpriteKey | null {
+  const byVariant = tile.variant ? VARIANT_BASE[tile.variant] : undefined;
+  if (byVariant) return byVariant;
   switch (tile.type) {
     case 'path': return 'path';
     case 'water':
@@ -47,19 +66,30 @@ export function computeTileVisuals(map: MapDef): TileVisual[] {
   const tiles: VillageTile[] = [];
   for (let y = 0; y < height; y += 1) for (let x = 0; x < width; x += 1) tiles.push(tileAt(map, x, y));
   const at = (x: number, y: number) => (x < 0 || y < 0 || x >= width || y >= height ? null : tiles[y * width + x]);
+  const symbolAt = (tile: VillageTile) => map.layout[tile.y]?.[tile.x] ?? '.';
+  // 건물 출입 칸 아래 바닥: 글자 지도에 흙길·돌 포장이 깔려 있으면 그 바닥, 아니면 null(기본 길).
+  const doorFloor = (tile: VillageTile): TileSpriteKey | null => {
+    if (tile.type !== 'building' || !isDoorTile(map, tile.x, tile.y)) return null;
+    const under = ownBase({ x: tile.x, y: tile.y, ...(LEGEND[symbolAt(tile)] ?? LEGEND['.']) });
+    return under && under !== 'grass' ? under : null;
+  };
+  const neighbourBases = (tile: VillageTile) => [[1, 0], [-1, 0], [0, 1], [0, -1]].flatMap(([dx, dy]) => {
+    const neighbour = at(tile.x + dx, tile.y + dy);
+    const base = neighbour ? ownBase(neighbour) ?? doorFloor(neighbour) : null;
+    return base ? [base] : [];
+  });
   return tiles.map((tile) => {
     // 건물 출입 칸은 충돌 격자에서 열려 있으므로 바닥도 길로 보여 줍니다.
-    if (tile.type === 'building' && isDoorTile(map, tile.x, tile.y)) return { base: 'path', decor: null };
+    if (tile.type === 'building' && isDoorTile(map, tile.x, tile.y)) return { base: doorFloor(tile) ?? 'path', decor: null };
+    const around = neighbourBases(tile);
+    // 계곡에 놓인 낚시 자리는 계곡물 위에 그립니다.
+    if (tile.type === 'dock' && around.includes('mtStream')) return { base: 'mtStream', decor: decorFor(tile) };
     const own = ownBase(tile);
     if (own) return { base: own, decor: decorFor(tile) };
     // 바닥이 없는 칸(나무·바위·벤치 등)은 이웃 바닥 중 가장 많은 것을 깝니다(물은 제외).
     const counts = new Map<TileSpriteKey, number>();
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const neighbour = at(tile.x + dx, tile.y + dy);
-      const base = neighbour ? ownBase(neighbour) : null;
-      if (base && base !== 'water') counts.set(base, (counts.get(base) ?? 0) + 1);
-    }
-    let base: TileSpriteKey = 'grass';
+    for (const base of around) if (!WATER_BASES.includes(base)) counts.set(base, (counts.get(base) ?? 0) + 1);
+    let base: TileSpriteKey = map.wildFloor ?? 'grass';
     let best = 0;
     for (const [key, count] of counts) if (count > best || (count === best && key === 'grass')) { best = count; base = key; }
     return { base, decor: decorFor(tile) };

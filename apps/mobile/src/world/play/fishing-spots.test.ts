@@ -41,3 +41,22 @@ describe('낚시 표식 자리', () => {
     expect(fishingSpots(dry)).toEqual([]);
   });
 });
+
+describe('새 지도의 낚시', () => {
+  it('opens fishing on the mountain dock and on the stream banks', () => {
+    const map = getMap('mountain');
+    expect(tileAt(map, 37, 30).type).toBe('dock');
+    expect(canFishAt('dock', neighborTypes(map, 37, 30))).toBe(true);
+    expect(tileAt(map, 36, 20).type).toBe('water'); // 계곡물도 물로 셉니다
+    expect(canFishAt(tileAt(map, 36, 35).type, neighborTypes(map, 36, 35))).toBe(true); // 통나무 다리 위
+    expect(canFishAt(tileAt(map, 39, 31).type, neighborTypes(map, 39, 31))).toBe(true); // 소 옆 물가
+    expect(canFishAt(tileAt(map, 21, 20).type, neighborTypes(map, 21, 20))).toBe(false); // 쉼터 한가운데
+  });
+
+  it('opens fishing beside the market backyard pond only', () => {
+    const map = getMap('market');
+    expect(canFishAt(tileAt(map, 15, 28).type, neighborTypes(map, 15, 28))).toBe(true);
+    expect(canFishAt(tileAt(map, 19, 19).type, neighborTypes(map, 19, 19))).toBe(false);
+    for (const spot of fishingSpots(map)) expect(spot.y).toBeGreaterThanOrEqual(24);
+  });
+});

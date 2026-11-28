@@ -672,6 +672,8 @@ export function VillageMapScreen() {
                   onPress={() => enterPlace(dialogueNpc.facilityRoute!)}
                 />
               ) : null}
+              {/* 새 지도의 주민은 유대·동행 대상이 아닙니다. */}
+              {(NPC_IDS as readonly string[]).includes(dialogueNpc.id) ? (
               <SeniorButton
                 testID="btn-walk-together"
                 label={companionId === dialogueNpc.id ? '산책 마치기 · 헤어지기' : '같이 걸을까요?'}
@@ -689,6 +691,7 @@ export function VillageMapScreen() {
                   } else setActionNotice('산책을 시작하지 못했어요. 잠시 뒤 다시 시도해 주세요.');
                 }}
               />
+              ) : null}
               {companionId === dialogueNpc.id ? (
                 <SeniorButton testID="btn-claim-daily-walk" label={walkClaimAvailable ? '오늘의 산책 마치기 (유대 +15)' : '오늘 산책 기록 완료 ✔'} variant={walkClaimAvailable ? 'primary' : 'secondary'} disabled={!walkClaimAvailable} onPress={handleClaimDailyWalk} />
               ) : null}

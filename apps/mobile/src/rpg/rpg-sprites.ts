@@ -37,6 +37,21 @@ export const TILE_SPRITES = {
   table: require('../../assets/game/rpg/pixel/world/picnic_table.png'),
   firewood: require('../../assets/game/rpg/pixel/world/firewood.png'),
   signpost: require('../../assets/game/rpg/pixel/world/signpost.png'),
+  mtGround: require('../../assets/game/rpg/pixel/maps2/mt_ground.png'),
+  mtRock: require('../../assets/game/rpg/pixel/maps2/mt_rock.png'),
+  mtStream: require('../../assets/game/rpg/pixel/maps2/mt_stream.png'),
+  mtBridge: require('../../assets/game/rpg/pixel/maps2/mt_bridge.png'),
+  mtSteps: require('../../assets/game/rpg/pixel/maps2/mt_steps.png'),
+  mtSpring: require('../../assets/game/rpg/pixel/maps2/mt_spring.png'),
+  mtCairn: require('../../assets/game/rpg/pixel/maps2/mt_cairn.png'),
+  mtMushroomLog: require('../../assets/game/rpg/pixel/maps2/mt_mushroom_log.png'),
+  mtPineBig: require('../../assets/game/rpg/pixel/maps2/mt_pine_big.png'),
+  mkPaving: require('../../assets/game/rpg/pixel/maps2/mk_paving.png'),
+  mkLantern: require('../../assets/game/rpg/pixel/maps2/mk_lantern.png'),
+  mkCrates: require('../../assets/game/rpg/pixel/maps2/mk_crates.png'),
+  mkJarStack: require('../../assets/game/rpg/pixel/maps2/mk_jar_stack.png'),
+  mkFlagLine: require('../../assets/game/rpg/pixel/maps2/mk_flag_line.png'),
+  mkYutMat: require('../../assets/game/rpg/pixel/maps2/mk_yut_mat.png'),
 } as const satisfies Record<string, SpriteSource>;
 
 /** 시설 건물 에셋 (3 x 2 타일 풋프린트 기준) */
@@ -53,6 +68,9 @@ export const BUILDING_SPRITES = {
   stall_fish: require('../../assets/game/rpg/pixel/buildings/stall_fish.png'),
   bus_stop: require('../../assets/game/rpg/pixel/buildings/bus_stop.png'),
   observatory: require('../../assets/game/rpg/pixel/buildings/observatory.png'),
+  mt_pavilion: require('../../assets/game/rpg/pixel/maps2/b_mt_pavilion.png'),
+  mk_rice_cake: require('../../assets/game/rpg/pixel/maps2/b_mk_rice_cake.png'),
+  mk_toy: require('../../assets/game/rpg/pixel/maps2/b_mk_toy.png'),
 } as const satisfies Record<VillageBuildingId, SpriteSource>;
 
 /** 주인공 어르신 4방향 스프라이트 (idle / walk 4프레임) */
@@ -223,6 +241,11 @@ export const NPC_SPRITES: Record<string, SpriteSource> = {
   baduk_master: require('../../assets/game/rpg/pixel/npc/npc_choi.png'),
   tea_manager: require('../../assets/game/rpg/pixel/npc/npc_tea.png'),
   herbalist: require('../../assets/game/rpg/pixel/npc/npc_herbalist.png'),
+  // 솔숲 산길·오일장터 주민은 기존 그림을 다시 씁니다.
+  mt_herb_gatherer: require('../../assets/game/rpg/pixel/npc/npc_herbalist.png'),
+  mt_stone_keeper: require('../../assets/game/rpg/pixel/npc/npc_captain.png'),
+  mk_ricecake_lady: require('../../assets/game/rpg/pixel/npc/npc_tea.png'),
+  mk_toy_keeper: require('../../assets/game/rpg/pixel/npc/npc_choi.png'),
 };
 
 /** 대화창 초상화 (npc id -> portrait PNG) */
@@ -232,6 +255,10 @@ export const NPC_PORTRAITS: Record<string, SpriteSource> = {
   baduk_master: require('../../assets/game/rpg/pixel/portraits/choi.png'),
   tea_manager: require('../../assets/game/rpg/pixel/portraits/tea.png'),
   herbalist: require('../../assets/game/rpg/pixel/portraits/herbalist.png'),
+  mt_herb_gatherer: require('../../assets/game/rpg/pixel/portraits/herbalist.png'),
+  mt_stone_keeper: require('../../assets/game/rpg/pixel/portraits/captain.png'),
+  mk_ricecake_lady: require('../../assets/game/rpg/pixel/portraits/tea.png'),
+  mk_toy_keeper: require('../../assets/game/rpg/pixel/portraits/choi.png'),
 };
 
 export function npcSpriteFor(npcId: string): SpriteSource {
@@ -337,6 +364,8 @@ export const POSTCARDS: Record<string, SpriteSource> = {
   plaza: require('../../assets/game/rpg/postcards/plaza.jpg'),
   pond: require('../../assets/game/rpg/postcards/pond.jpg'),
   sea: require('../../assets/game/rpg/postcards/sea.jpg'),
+  valley: require('../../assets/game/rpg/postcards/valley.jpg'),
+  fair: require('../../assets/game/rpg/postcards/fair.jpg'),
 };
 
 /** 가방·도감 아이콘: 물고기 · 다 자란 작물 · 채집물 */
