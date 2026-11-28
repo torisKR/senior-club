@@ -10,9 +10,9 @@ import { PixelPalette } from '@/components/game/pixel-theme';
 import { AppText } from '@/components/ui';
 import { useReduceMotion } from '@/fx/use-reduce-motion';
 
-import { FIELD, PlayFlash, PlayShell, useEasyMode, useFrameLoop, usePlayRecords, type PlayOutcome } from './play-shell';
+import { FIELD, PlayFlash, PlayShell, useBackgroundPause, useEasyMode, useFrameLoop, usePlayRecords, type PlayOutcome } from './play-shell';
 import {
-  STONES, STONE_SHAPES, createStones, dropStone, hoverX, isWindyFloor, stepStones, towerHeight,
+  STONES, STONE_SHAPES, createStones, dropStone, hoverX, isWindyFloor, stepStones, stonesCue, towerHeight,
   type PlacedStone, type StoneKind, type StonesState,
 } from './stones-logic';
 
@@ -29,7 +29,6 @@ const SPRITE_WIDTH: Record<StoneKind, number> = { a: 48, b: 44, c: 38, d: 46, e:
 const ART = { spriteHeight: 24, bodyBottom: 23, ground: 206, cameraStart: 118, maxTiltDeg: 3, skyColor: '#2F5D3A' } as const;
 const LEAN_WARNING = 0.7;
 const CAMERA_MS = 300;
-const CUE_RANGE = STONES.perfect * 1.5;
 
 type TowerView = Pick<StonesState, 'phase' | 'tower' | 'current' | 'next' | 'score' | 'lastGrade' | 'landSeq' | 'lean' | 'collapse'>;
 const toView = (state: StonesState): TowerView => state;
@@ -51,6 +50,7 @@ function statusText(view: TowerView, slow: boolean): string {
   if (Math.abs(view.lean) >= LEAN_WARNING) return `탑이 ${view.lean > 0 ? '오른쪽' : '왼쪽'}으로 기울었어요. 가운데에 올리세요.`;
   if (view.lastGrade === 'perfect') return '딱 맞았어요!';
   if (view.score > 0) return '잘 올렸어요. 다음 돌도 탑 위에서 놓으세요.';
+  if (slow) return "돌이 탑 위에 잠시 멈춥니다. '준비' 신호 다음 '지금' 신호가 울리면 놓으세요.";
   return '돌이 탑 위에 왔을 때 놀이판을 눌러 놓으세요.';
 }
 
@@ -114,27 +114,28 @@ function useStonesGame(easy: boolean, reduceMotion: boolean) {
     setView((current) => (sameView(current, nextView) ? current : nextView));
   };
 
-  useFrameLoop(view.phase !== 'over', (dtMs) => {
+  const [paused, resume] = useBackgroundPause(view.phase !== 'over');
+  useFrameLoop(view.phase !== 'over' && !paused, (dtMs) => {
     const previous = game.current;
     const next = stepStones(previous, dtMs);
-    const wasOver = Math.abs(hoverX(previous) - topX(previous)) <= CUE_RANGE;
-    if (easy && next.phase === 'aiming' && !wasOver && Math.abs(hoverX(next) - topX(next)) <= CUE_RANGE) {
-      // 느린 모드: 돌이 탑 바로 위에 왔다는 신호를 진동과 소리로 줍니다.
-      triggerHaptic('light');
-      playSfx('tileMatch', arcade.soundEnabled);
+    // 느린 모드: 돌이 탑 위에 오기 조금 전 "준비", 탑 위에 멈춘 순간 "지금"을 진동과 소리로 알립니다.
+    const cue = easy ? stonesCue(previous, next) : null;
+    if (cue) {
+      triggerHaptic(cue === 'now' ? 'medium' : 'light');
+      playSfx(cue === 'now' ? 'tileMatch' : 'putt', arcade.soundEnabled);
     }
     sync(next);
   });
 
   const drop = () => sync(dropStone(game.current));
   const retry = () => sync(createStones(newSeed(), { slow: easy }));
-  return { view, outcome, best, motion, drop, retry };
+  return { view, outcome, best, motion, drop, retry, paused, resume };
 }
 
 export function StonesScreen() {
   const reduceMotion = useReduceMotion() !== false;
   const [easy, toggleEasy] = useEasyMode();
-  const { view, outcome, best, motion, drop, retry } = useStonesGame(easy, reduceMotion);
+  const { view, outcome, best, motion, drop, retry, paused, resume } = useStonesGame(easy, reduceMotion);
 
   return (
     <PlayShell
@@ -146,9 +147,11 @@ export function StonesScreen() {
       easy={easy}
       onToggleEasy={toggleEasy}
       actionLabel="놓기"
-      actionHint={easy ? '돌이 탑 위에 오면 신호가 울립니다. 그때 누르세요' : '좌우로 오가는 돌을 지금 자리에서 떨어뜨립니다'}
+      actionHint={easy ? "돌이 탑 위에 잠시 멈춥니다. '준비' 신호 다음 '지금' 신호가 울리면 누르세요" : '좌우로 오가는 돌을 지금 자리에서 떨어뜨립니다'}
       onAction={drop}
       onFieldPress={drop}
+      paused={paused}
+      onResume={resume}
       outcome={outcome}
       resultTitle={`돌탑 ${view.score}층`}
       unit="층"

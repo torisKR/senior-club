@@ -1,41 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
-import { JEGI, createJegi, inKickWindow, jegiSpeed, judgeKick, kickJegi, moveFoot, stepJegi, type JegiState } from './jegi-logic';
-import { nextRandom } from './rng';
+import {
+  JEGI, createJegi, inKickWindow, jegiCue, jegiSpeed, jegiWindow, judgeKick, kickJegi, moveFoot, msUntilHeight, msUntilKickWindow, stepJegi, whiffCooldown,
+  type JegiCue, type JegiState,
+} from './jegi-logic';
+import { playJegiByRhythm } from './sim-players';
 
 const NORMAL = { slow: false, assist: false };
+const SLOW = { slow: true, assist: true };
 const STEP_MS = 8;
 
 function fallUntil(state: JegiState, done: (s: JegiState) => boolean): JegiState {
   let current = state;
   for (let i = 0; i < 5000 && !done(current) && current.phase === 'playing'; i += 1) current = stepJegi(current, STEP_MS);
   return current;
-}
-
-/** 사람처럼 치는 봇: 박자 오차(ms)와 위치 오차를 두고 제기 밑을 눌러 찹니다. */
-function botRun(seed: number, timingErrMs: number, posErr: number, maxKicks = 40): number {
-  let state = kickJegi(createJegi(seed, NORMAL));
-  let botSeed = seed ^ 0x9e3779b9;
-  let targetH = 0;
-  let aimOffset = 0;
-  let armed = false;
-  for (let i = 0; i < 200000 && state.phase === 'playing' && state.count < maxKicks; i += 1) {
-    state = stepJegi(state, STEP_MS);
-    if (state.vh >= 0) { armed = false; continue; }
-    if (!armed) {
-      const a = nextRandom(botSeed);
-      const b = nextRandom(a.seed);
-      botSeed = b.seed;
-      targetH = (a.value * 2 - 1) * (timingErrMs / 1000) * JEGI.kickSpeed.perfect * jegiSpeed(state.count, false);
-      aimOffset = (b.value * 2 - 1) * posErr;
-      armed = true;
-    }
-    if (state.h <= targetH) {
-      // 화면을 누른 자리로 발이 옮겨 가며 찹니다.
-      state = kickJegi(moveFoot(state, state.x + aimOffset));
-    }
-  }
-  return state.count;
 }
 
 describe('jegi physics', () => {
@@ -64,7 +42,7 @@ describe('jegi physics', () => {
   });
 
   it('is deterministic for a seed and differs across seeds', () => {
-    expect(botRun(7, 30, 4, 12)).toBe(botRun(7, 30, 4, 12));
+    expect(playJegiByRhythm(7, 150, 20)).toBe(playJegiByRhythm(7, 150, 20));
     const kick = (seed: number) => kickJegi(fallUntil(kickJegi(createJegi(seed, NORMAL)), (s) => s.vh < 0 && s.h <= 5)).vx;
     expect(kick(1)).not.toBe(kick(2));
   });
@@ -106,10 +84,35 @@ describe('jegi judgement', () => {
   it('a whiff costs nothing but a short pause before the next swing', () => {
     const served = kickJegi(createJegi(3, NORMAL));
     const whiffed = kickJegi(stepJegi(served, 16));
-    expect(kickJegi(whiffed)).toBe(whiffed);
-    const rested = stepJegi(whiffed, JEGI.whiffCooldownMs + 1);
+    expect(whiffed.count).toBe(0);
+    expect(whiffed.cooldownMs).toBe(JEGI.whiffCooldownMs);
+    const rested = stepJegi(stepJegi(whiffed, JEGI.whiffCooldownMs / 2), JEGI.whiffCooldownMs / 2 + 1);
     expect(rested.cooldownMs).toBe(0);
     expect(rested.phase).toBe('playing');
+  });
+
+  it('pressing again while resting restarts the rest, so mashing never connects', () => {
+    const whiffed = kickJegi(stepJegi(kickJegi(createJegi(3, NORMAL)), 16));
+    const impatient = kickJegi(stepJegi(whiffed, JEGI.whiffCooldownMs - 20));
+    expect(impatient.cooldownMs).toBe(JEGI.whiffCooldownMs);
+    expect(impatient.whiffSeq).toBe(whiffed.whiffSeq);
+  });
+
+  it('repeated whiffs in one flight rest longer each time, and a clean kick clears it', () => {
+    expect(whiffCooldown(1)).toBe(JEGI.whiffCooldownMs * 2);
+    expect(whiffCooldown(99)).toBe(whiffCooldown(4));
+    let state = kickJegi(stepJegi(kickJegi(createJegi(3, NORMAL)), 16));
+    state = kickJegi(stepJegi(state, JEGI.whiffCooldownMs + 1));
+    expect(state.cooldownMs).toBe(JEGI.whiffCooldownMs * 2);
+    const atFoot = fallUntil({ ...state, cooldownMs: 0 }, (s) => s.vh < 0 && s.h <= 2);
+    expect(kickJegi(atFoot).flightWhiffs).toBe(0);
+  });
+
+  it('an early kick high above the foot still stays inside the yard', () => {
+    const high = fallUntil(kickJegi(createJegi(3, SLOW)), (s) => s.vh < 0 && s.h <= jegiWindow(true).early - 1);
+    const peak = fallUntil(kickJegi(high), (s) => s.vh <= 0);
+    expect(peak.count).toBe(1);
+    expect(peak.h).toBeLessThan(JEGI.top);
   });
 
   it('keeps the foot inside the yard', () => {
@@ -135,20 +138,51 @@ describe('jegi pacing', () => {
     expect(state.footX).toBeCloseTo(state.x, 5);
   });
 
-  it('a careful player can reach three stars, sloppy timing drops it early', () => {
-    const seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    const median = (values: number[]) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
-    expect(median(seeds.map((seed) => botRun(seed, 60, 8)))).toBeGreaterThanOrEqual(15);
-    expect(median(seeds.map((seed) => botRun(seed, 260, 8)))).toBeLessThan(15);
+  it('slow mode opens the kick window earlier than normal mode', () => {
+    expect(jegiWindow(true).early).toBeGreaterThan(jegiWindow(false).early);
+    expect(judgeKick(jegiWindow(false).early + 5, 0, false)).toBeNull();
+    expect(judgeKick(jegiWindow(false).early + 5, 0, true)).not.toBeNull();
+  });
+});
+
+describe('jegi cues', () => {
+  /** 한 번 떠서 떨어지는 동안 울린 신호와 그 시각, 판정 창이 열리고 닫힌 시각 */
+  function flight(options: JegiState['options']) {
+    let state = kickJegi(createJegi(9, options));
+    const cues: { cue: JegiCue; at: number }[] = [];
+    let opened = -1;
+    let closed = -1;
+    for (let clock = 0; state.phase === 'playing'; clock += 4) {
+      const previous = state;
+      state = stepJegi(state, 4);
+      const cue = jegiCue(previous, state);
+      if (cue) cues.push({ cue, at: clock });
+      if (opened < 0 && inKickWindow(state)) opened = clock;
+      if (opened >= 0 && closed < 0 && !inKickWindow(state)) closed = clock;
+    }
+    return { cues, opened, closed };
+  }
+
+  it('predicts when the jegi reaches a height', () => {
+    const served = stepJegi(kickJegi(createJegi(9, SLOW)), 4);
+    const predicted = msUntilHeight(served, 0);
+    let state = served;
+    let clock = 0;
+    while (state.h > 0 || state.vh > 0) { state = stepJegi(state, 4); clock += 4; }
+    expect(Math.abs(clock - predicted)).toBeLessThan(30);
+    expect(msUntilKickWindow(state)).toBe(0);
   });
 
-  it('standing still and mashing does not keep the jegi up', () => {
-    let state = kickJegi(createJegi(11, NORMAL));
-    for (let i = 0; i < 20000 && state.phase === 'playing'; i += 1) {
-      state = stepJegi(state, STEP_MS);
-      if (i % 12 === 0) state = kickJegi(state);
-    }
-    expect(state.phase).toBe('over');
-    expect(state.count).toBeLessThan(15);
+  it('sounds "soon" ahead of the window and "now" as it opens, once each', () => {
+    const { cues, opened } = flight(SLOW);
+    expect(cues.map((entry) => entry.cue)).toEqual(['soon', 'now']);
+    expect(opened - cues[0].at).toBeGreaterThanOrEqual(JEGI.cueLeadMs - 20);
+    expect(Math.abs(opened - cues[1].at)).toBeLessThanOrEqual(8);
+  });
+
+  it('leaves a slow-mode player at least 600ms after "now" and 950ms after "soon"', () => {
+    const { cues, closed } = flight(SLOW);
+    expect(closed - cues[1].at).toBeGreaterThanOrEqual(600);
+    expect(closed - cues[0].at).toBeGreaterThanOrEqual(950);
   });
 });

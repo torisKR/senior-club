@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  DAILY_ACORN_CAP, DAILY_WARMTH_CAP, EMPTY_PLAY_RECORDS, MIN_REWARD_SCORE, STAR_SCORES, normalizePlayRecords, playStars, settlePlayRound, withoutReward,
+  DAILY_ACORN_CAP, DAILY_WARMTH_CAP, EMPTY_PLAY_RECORDS, MIN_REWARD_SCORE, STAR_SCORES, commitPlayRound, nextLowStreak, normalizePlayRecords, playStars,
+  settlePlayRound, shouldSuggestEasy, withoutReward, type PlayRecords,
 } from './play-rewards';
 
 const TODAY = '2026-11-28';
@@ -84,5 +85,61 @@ describe('play rewards', () => {
   it('can keep the best score without counting a reward that failed to save', () => {
     const result = settlePlayRound(EMPTY_PLAY_RECORDS, 'jegi', 20, TODAY);
     expect(withoutReward(result, EMPTY_PLAY_RECORDS)).toEqual({ ...EMPTY_PLAY_RECORDS, best: { jegi: 20, stones: 0 } });
+  });
+});
+
+describe('saving a round', () => {
+  const result = settlePlayRound(EMPTY_PLAY_RECORDS, 'jegi', 20, TODAY);
+  const disk = () => {
+    const saved: PlayRecords[] = [];
+    return { saved, save: (records: PlayRecords) => { saved.push(records); } };
+  };
+
+  it('writes what was earned today before paying the reward', () => {
+    const order: string[] = [];
+    const commit = commitPlayRound(EMPTY_PLAY_RECORDS, result, {
+      save: () => { order.push('save'); },
+      pay: () => { order.push('pay'); return true; },
+    });
+    expect(order).toEqual(['save', 'pay']);
+    expect(commit).toEqual({ records: result.records, acorns: result.acorns, warmth: result.warmth, saveFailed: false });
+  });
+
+  it('pays nothing when the record cannot be saved, so the daily cap cannot be exceeded', () => {
+    let paid = false;
+    const commit = commitPlayRound(EMPTY_PLAY_RECORDS, result, {
+      save: () => { throw new Error('disk full'); },
+      pay: () => { paid = true; return true; },
+    });
+    expect(paid).toBe(false);
+    expect(commit).toEqual({ records: EMPTY_PLAY_RECORDS, acorns: 0, warmth: 0, saveFailed: true });
+  });
+
+  it('takes the reward back out of today\'s total when paying fails, keeping the best score', () => {
+    const { saved, save } = disk();
+    const commit = commitPlayRound(EMPTY_PLAY_RECORDS, result, { save, pay: () => false });
+    expect(commit.saveFailed).toBe(true);
+    expect(commit.acorns).toBe(0);
+    expect(saved[saved.length - 1]).toEqual({ ...EMPTY_PLAY_RECORDS, best: { jegi: 20, stones: 0 } });
+  });
+
+  it('does not call pay for a round without a reward', () => {
+    const none = settlePlayRound(EMPTY_PLAY_RECORDS, 'jegi', 1, TODAY);
+    const commit = commitPlayRound(EMPTY_PLAY_RECORDS, none, { save: () => undefined, pay: () => { throw new Error('should not pay'); } });
+    expect(commit.saveFailed).toBe(false);
+  });
+});
+
+describe('suggesting slow mode', () => {
+  it('suggests it after three rounds in a row below the reward score', () => {
+    const streak = [1, 2, 0].reduce(nextLowStreak, 0);
+    expect(streak).toBe(3);
+    expect(shouldSuggestEasy(streak, false)).toBe(true);
+    expect(shouldSuggestEasy(2, false)).toBe(false);
+    expect(shouldSuggestEasy(streak, true)).toBe(false);
+  });
+
+  it('starts counting again after a rewarded round', () => {
+    expect(nextLowStreak(2, MIN_REWARD_SCORE)).toBe(0);
   });
 });

@@ -7,6 +7,8 @@ import { nextRandom } from './rng';
 export type StoneKind = 'a' | 'b' | 'c' | 'd' | 'e';
 export type StonesPhase = 'aiming' | 'falling' | 'collapsing' | 'over';
 export type StoneGrade = 'perfect' | 'good';
+/** 느린 모드 신호: soon은 "준비", now는 "지금 놓으세요" */
+export type StonesCue = 'soon' | 'now';
 
 /** 돌 몸통 크기(원화 픽셀). 무게는 너비×높이에 비례합니다. */
 export const STONE_SHAPES: Record<StoneKind, { name: string; width: number; height: number }> = {
@@ -32,6 +34,8 @@ export interface StonesState {
   /** 좌우로 오가는 위상과 바람 흔들림 위상(라디안) */
   swingRad: number;
   windRad: number;
+  /** 느린 모드: 탑 바로 위에서 멈춰 기다리는 남은 시간 */
+  dwellMs: number;
   dropX: number;
   /** 떨어지는 돌과 탑 꼭대기 사이에 남은 거리 */
   dropGap: number;
@@ -49,17 +53,23 @@ export interface StonesState {
 export const STONES = {
   width: 180,
   /** 둥근 모서리는 받치지 못하므로 닿는 폭을 조금 줄입니다. */
-  edge: 4,
+  edge: 2,
   /** 위 돌이 아래 돌에 살짝 내려앉는 깊이 */
   sink: 2,
   hoverGap: 34,
   fallSpeed: 260,
-  swingRange: 55,
-  basePeriodMs: 3600,
-  periodPerFloorMs: 80,
-  minPeriodMs: 2200,
-  slowFactor: 1.6,
-  perfect: 3,
+  swingRange: 48,
+  basePeriodMs: 4200,
+  periodPerFloorMs: 100,
+  minPeriodMs: 2600,
+  slowFactor: 1.5,
+  /** 아래 돌과 이만큼 안으로 맞으면 반듯하게 놓입니다(느린 모드는 더 넓게). */
+  perfect: 4,
+  slowPerfect: 8,
+  /** 느린 모드: 돌이 탑 바로 위에서 이만큼 멈췄다 갑니다. */
+  dwellMs: 900,
+  /** "준비" 신호는 돌이 탑 위에 오기 이만큼 전에 울립니다. */
+  cueLeadMs: 350,
   windEvery: 5,
   windPeriodMs: 1100,
   windBase: 4,
@@ -84,7 +94,7 @@ export function createStones(seed: number, options: { slow: boolean }): StonesSt
   const second = pickStone(first.seed);
   return {
     phase: 'aiming', tower: [{ kind: 'a', x: STONES.width / 2 }], current: first.kind, next: second.kind,
-    swingRad: -Math.PI / 2, windRad: 0, dropX: STONES.width / 2, dropGap: STONES.hoverGap,
+    swingRad: -Math.PI / 2, windRad: 0, dwellMs: 0, dropX: STONES.width / 2, dropGap: STONES.hoverGap,
     score: 0, lastGrade: null, landSeq: 0, lean: 0, collapse: null, seed: second.seed, slow: options.slow,
   };
 }
@@ -109,9 +119,12 @@ function windAmplitude(score: number, slow: boolean): number {
   return isWindyFloor(score, slow) ? Math.min(STONES.windMax, STONES.windBase + score * STONES.windPerFloor) : 0;
 }
 
+const topX = (state: StonesState) => state.tower[state.tower.length - 1].x;
+
 /** 지금 손에 든 돌의 가운데 x */
 export function hoverX(state: StonesState): number {
   if (state.phase !== 'aiming') return state.dropX;
+  if (state.dwellMs > 0) return topX(state);
   const half = STONE_SHAPES[state.current].width / 2;
   const x = STONES.width / 2 + STONES.swingRange * Math.sin(state.swingRad) + windAmplitude(state.score, state.slow) * Math.sin(state.windRad);
   return clamp(x, half, STONES.width - half);
@@ -149,7 +162,7 @@ export function dropStone(state: StonesState): StonesState {
 function land(state: StonesState): StonesState {
   const below = state.tower[state.tower.length - 1];
   const offset = state.dropX - below.x;
-  const isPerfect = Math.abs(offset) <= STONES.perfect;
+  const isPerfect = Math.abs(offset) <= (state.slow ? STONES.slowPerfect : STONES.perfect);
   const tower = [...state.tower, { kind: state.current, x: isPerfect ? below.x : state.dropX }];
   const balance = towerLean(tower);
   if (Math.abs(balance.lean) >= 1) {
@@ -160,21 +173,45 @@ function land(state: StonesState): StonesState {
   const side = nextRandom(upcoming.seed);
   return {
     ...state, phase: 'aiming', tower, current: state.next, next: upcoming.kind, seed: side.seed,
-    swingRad: side.value < 0.5 ? -Math.PI / 2 : Math.PI / 2, windRad: 0, dropGap: STONES.hoverGap,
+    swingRad: side.value < 0.5 ? -Math.PI / 2 : Math.PI / 2, windRad: 0, dwellMs: 0, dropGap: STONES.hoverGap,
     score: state.score + 1, lastGrade: isPerfect ? 'perfect' : 'good', landSeq: state.landSeq + 1, lean: balance.lean,
   };
+}
+
+/** 돌이 탑 바로 위에 오기까지 남은 시간(ms). 바람은 셈에 넣지 않습니다. 멈춰 있는 동안은 0. */
+export function msUntilOverTower(state: StonesState): number {
+  if (state.phase !== 'aiming' || state.dwellMs > 0) return 0;
+  const reach = clamp((topX(state) - STONES.width / 2) / STONES.swingRange, -1, 1);
+  const first = Math.asin(reach);
+  const turn = (target: number) => (((target - state.swingRad) % TAU) + TAU) % TAU;
+  return (Math.min(turn(first), turn(Math.PI - first)) / TAU) * hoverPeriodMs(state.score, state.slow);
+}
+
+/** 한 프레임 사이에 울려야 할 신호: 탑 위에 오기 조금 전 "준비", 탑 위에 멈춘 순간 "지금". */
+export function stonesCue(previous: StonesState, next: StonesState): StonesCue | null {
+  if (next.phase !== 'aiming' || previous.phase !== 'aiming' || next.landSeq !== previous.landSeq) return null;
+  if (previous.dwellMs === 0 && next.dwellMs > 0) return 'now';
+  const before = msUntilOverTower(previous);
+  return before > STONES.cueLeadMs && msUntilOverTower(next) <= STONES.cueLeadMs && next.dwellMs === 0 ? 'soon' : null;
+}
+
+/** 좌우로 오가기. 느린 모드에서는 탑 바로 위를 지날 때 잠시 멈춰 기다립니다. */
+function swing(state: StonesState, frameMs: number): StonesState {
+  if (state.dwellMs > 0) return { ...state, dwellMs: Math.max(0, state.dwellMs - frameMs) };
+  const moved = {
+    ...state,
+    swingRad: state.swingRad + (TAU * frameMs) / hoverPeriodMs(state.score, state.slow),
+    windRad: state.windRad + (TAU * frameMs) / STONES.windPeriodMs,
+  };
+  const top = topX(state);
+  const crossed = (hoverX(state) - top) * (hoverX(moved) - top) <= 0 && hoverX(state) !== top;
+  return state.slow && crossed ? { ...moved, dwellMs: STONES.dwellMs } : moved;
 }
 
 /** 한 프레임 진행: 좌우 오가기 → 떨어지기 → 내려앉기/무너지기. */
 export function stepStones(state: StonesState, dtMs: number): StonesState {
   const frameMs = clamp(dtMs, 0, STONES.maxFrameMs);
-  if (state.phase === 'aiming') {
-    return {
-      ...state,
-      swingRad: state.swingRad + (TAU * frameMs) / hoverPeriodMs(state.score, state.slow),
-      windRad: state.windRad + (TAU * frameMs) / STONES.windPeriodMs,
-    };
-  }
+  if (state.phase === 'aiming') return swing(state, frameMs);
   if (state.phase === 'falling') {
     const dropGap = state.dropGap - (STONES.fallSpeed * frameMs) / 1000;
     return dropGap > 0 ? { ...state, dropGap } : land({ ...state, dropGap: 0 });

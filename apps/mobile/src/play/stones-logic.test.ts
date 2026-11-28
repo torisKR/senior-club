@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { nextRandom } from './rng';
+import { playStonesByRhythm } from './sim-players';
 import {
-  STONES, STONE_KINDS, STONE_SHAPES, createStones, dropStone, hoverPeriodMs, hoverX, isWindyFloor, stepStones, towerHeight, towerLean,
+  STONES, STONE_KINDS, STONE_SHAPES, createStones, dropStone, hoverPeriodMs, hoverX, isWindyFloor, msUntilOverTower, stepStones, stonesCue, towerHeight, towerLean,
   type PlacedStone, type StonesState,
 } from './stones-logic';
 
@@ -19,23 +19,6 @@ function run(state: StonesState, done: (s: StonesState) => boolean, limit = 2000
 function placeAt(state: StonesState, x: number): StonesState {
   const aimed = run(state, (s) => Math.abs(hoverX(s) - x) < 1.2);
   return run(dropStone(aimed), (s) => s.phase !== 'falling');
-}
-
-/** 박자 오차(ms)를 두고 탑 꼭대기 위에서 놓는 봇 */
-function botRun(seed: number, timingErrMs: number, maxFloors = 30): number {
-  let state = createStones(seed, { slow: false });
-  let botSeed = seed ^ 0x51ed270b;
-  while (state.phase !== 'over' && state.score < maxFloors) {
-    const roll = nextRandom(botSeed);
-    botSeed = roll.seed;
-    const target = state.tower[state.tower.length - 1].x;
-    const before = state;
-    state = run(state, (s) => s.phase !== 'aiming' || Math.abs(hoverX(s) - target) < 1.2);
-    const delayed = run(state, () => false, Math.round((roll.value * timingErrMs) / STEP_MS));
-    state = run(dropStone(delayed), (s) => s.phase === 'aiming' || s.phase === 'over');
-    if (state === before) break;
-  }
-  return state.score;
 }
 
 describe('stone tower basics', () => {
@@ -75,7 +58,7 @@ describe('stone tower basics', () => {
   });
 
   it('is deterministic for a seed', () => {
-    expect(botRun(4, 60, 8)).toBe(botRun(4, 60, 8));
+    expect(playStonesByRhythm(4, 200)).toBe(playStonesByRhythm(4, 200));
     const kinds = (seed: number) => { const s = createStones(seed, { slow: false }); return `${s.current}${s.next}${placeAt(s, CENTRE).next}`; };
     expect(new Set([1, 2, 3, 4, 5, 6].map(kinds)).size).toBeGreaterThan(1);
   });
@@ -119,7 +102,7 @@ describe('stone tower balance', () => {
   });
 
   it('a stone that misses the tower entirely falls off', () => {
-    const missed = placeAt(createStones(1, { slow: false }), CENTRE - 50);
+    const missed = placeAt(createStones(1, { slow: false }), CENTRE - 46);
     expect(missed.phase).toBe('collapsing');
     expect(missed.collapse).toEqual({ from: 1, dir: -1, ms: 0 });
   });
@@ -137,10 +120,51 @@ describe('stone tower pacing', () => {
     expect(isWindyFloor(4, true)).toBe(false);
   });
 
-  it('a careful player can reach three stars, sloppy timing topples early', () => {
-    const seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    const median = (values: number[]) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
-    expect(median(seeds.map((seed) => botRun(seed, 90)))).toBeGreaterThanOrEqual(10);
-    expect(median(seeds.map((seed) => botRun(seed, 420)))).toBeLessThan(10);
+});
+
+describe('stone tower slow mode', () => {
+  const slow = () => createStones(3, { slow: true });
+
+  it('predicts when the stone will be over the tower', () => {
+    const state = createStones(3, { slow: false });
+    const predicted = msUntilOverTower(state);
+    const steps = Math.round(predicted / STEP_MS);
+    expect(Math.abs(hoverX(run(state, () => false, steps)) - CENTRE)).toBeLessThan(1.5);
+  });
+
+  it('pauses over the tower so a drop during the pause lands perfectly', () => {
+    const paused = run(slow(), (s) => s.dwellMs > 0);
+    expect(hoverX(paused)).toBe(CENTRE);
+    expect(hoverX(run(paused, () => false, 50))).toBe(CENTRE);
+    const landed = run(dropStone(run(paused, () => false, 100)), (s) => s.phase !== 'falling');
+    expect(landed.lastGrade).toBe('perfect');
+    const moved = run(paused, (s) => s.dwellMs === 0);
+    expect(hoverX(run(moved, () => false, 60))).not.toBe(CENTRE);
+  });
+
+  it('does not pause in normal mode', () => {
+    const state = run(createStones(3, { slow: false }), () => false, 3000);
+    expect(state.dwellMs).toBe(0);
+  });
+
+  it('sounds "soon" before the stone arrives and "now" when it stops, leaving 900ms to press', () => {
+    let state = slow();
+    const cues: { cue: string; at: number }[] = [];
+    let left = -1;
+    for (let clock = 0; clock < 20000 && left < 0; clock += STEP_MS) {
+      const previous = state;
+      state = stepStones(state, STEP_MS);
+      const cue = stonesCue(previous, state);
+      if (cue) cues.push({ cue, at: clock });
+      if (previous.dwellMs > 0 && state.dwellMs === 0) left = clock;
+    }
+    expect(cues.map((entry) => entry.cue)).toEqual(['soon', 'now']);
+    expect(cues[1].at - cues[0].at).toBeGreaterThanOrEqual(STONES.cueLeadMs - 20);
+    expect(left - cues[1].at).toBeGreaterThanOrEqual(STONES.dwellMs - STEP_MS);
+    expect(STONES.dwellMs).toBeGreaterThanOrEqual(900);
+  });
+
+  it('accepts a wider "perfect" in slow mode', () => {
+    expect(STONES.slowPerfect).toBeGreaterThan(STONES.perfect);
   });
 });

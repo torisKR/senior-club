@@ -4,7 +4,7 @@
  */
 import { Image } from 'expo-image';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, ScrollView, StyleSheet, View, type GestureResponderEvent, type LayoutChangeEvent } from 'react-native';
+import { AccessibilityInfo, AppState, ScrollView, StyleSheet, View, type GestureResponderEvent, type LayoutChangeEvent } from 'react-native';
 
 import { RoundStarsView } from '@/arcade/round-stars-view';
 import { GameIcon } from '@/components/game/game-icon';
@@ -17,7 +17,8 @@ import { useRpg } from '@/rpg/rpg-store';
 import { storage } from '@/utils/storage';
 
 import {
-  MIN_REWARD_SCORE, PLAY_RECORDS_KEY, normalizePlayRecords, settlePlayRound, withoutReward, type PlayGameId, type PlayRoundResult,
+  MIN_REWARD_SCORE, PLAY_RECORDS_KEY, commitPlayRound, nextLowStreak, normalizePlayRecords, settlePlayRound, shouldSuggestEasy,
+  type PlayGameId, type PlayRoundResult,
 } from './play-rewards';
 
 export const FIELD = { width: 180, height: 240 } as const;
@@ -32,6 +33,8 @@ export interface PlayOutcome extends PlayRoundResult {
   best: number;
   /** 보상이나 기록을 저장하지 못함 */
   saveFailed: boolean;
+  /** 보상 기준에 못 미친 판이 이어진 횟수 */
+  lowStreak: number;
 }
 
 /** 화면이 그려질 때마다 한 번씩 부릅니다(requestAnimationFrame). 멈춰 있던 시간은 한 프레임으로 칩니다. */
@@ -61,24 +64,19 @@ function readRecords() {
 export function usePlayRecords(game: PlayGameId) {
   const { applyLife } = useRpg();
   const [best, setBest] = useState(() => readRecords().best[game]);
+  const lowStreak = useRef(0);
 
   const finish = useCallback((score: number): PlayOutcome => {
     const previous = readRecords();
     const result = settlePlayRound(previous, game, score, todayKey());
-    const hasReward = result.acorns > 0 || result.warmth > 0;
-    const paid = !hasReward || applyLife(({ life }) => ({ life, acorns: result.acorns, warmth: result.warmth }));
-    const next = paid ? result.records : withoutReward(result, previous);
-    let stored = true;
-    try {
-      storage.set(PLAY_RECORDS_KEY, next);
-    } catch {
-      stored = false;
-    }
-    setBest(next.best[game]);
-    return {
-      ...result, score, best: next.best[game],
-      acorns: paid ? result.acorns : 0, warmth: paid ? result.warmth : 0, saveFailed: !paid || !stored,
-    };
+    // 오늘 받은 양을 먼저 저장한 뒤 보상을 줍니다(저장 실패로 상한을 넘기지 않게).
+    const commit = commitPlayRound(previous, result, {
+      save: (records) => storage.set(PLAY_RECORDS_KEY, records),
+      pay: (acorns, warmth) => applyLife(({ life }) => ({ life, acorns, warmth })),
+    });
+    lowStreak.current = nextLowStreak(lowStreak.current, score);
+    setBest(commit.records.best[game]);
+    return { ...result, ...commit, score, best: commit.records.best[game], lowStreak: lowStreak.current };
   }, [applyLife, game]);
 
   return { best, finish };
@@ -112,6 +110,22 @@ export function useEasyMode(): [boolean, () => void] {
   return [easy, toggle];
 }
 
+/** 놀이 중에 앱이 뒤로 가면 멈추고, 돌아와서 '이어서 하기'를 눌러야 다시 움직입니다. */
+export function useBackgroundPause(running: boolean): [boolean, () => void] {
+  const [paused, setPaused] = useState(false);
+  const isRunning = useRef(running);
+  useEffect(() => {
+    isRunning.current = running;
+  });
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active' && isRunning.current) setPaused(true);
+    });
+    return () => subscription.remove();
+  }, []);
+  return [paused && running, useCallback(() => setPaused(false), [])];
+}
+
 export interface PlayShellProps {
   testID: string;
   scoreLabel: string;
@@ -128,6 +142,9 @@ export interface PlayShellProps {
   /** 놀이판을 누른 자리(원화 픽셀 x) */
   onFieldPress: (x: number) => void;
   onFieldMove?: (x: number) => void;
+  /** 앱이 뒤로 갔다 와서 멈춰 있는 상태 */
+  paused: boolean;
+  onResume: () => void;
   outcome: PlayOutcome | null;
   resultTitle: string;
   unit: string;
@@ -152,7 +169,7 @@ function PlayHud(props: Pick<PlayShellProps, 'scoreLabel' | 'bestLabel' | 'statu
 }
 
 /** 느린 모드 스위치와, 놀이판을 누르기 어려운 분을 위한 큰 행동 버튼(72dp). */
-function PlayControls(props: Pick<PlayShellProps, 'testID' | 'easy' | 'onToggleEasy' | 'actionLabel' | 'actionHint' | 'onAction' | 'outcome'>) {
+function PlayControls(props: Pick<PlayShellProps, 'testID' | 'easy' | 'onToggleEasy' | 'actionLabel' | 'actionHint' | 'onAction' | 'outcome' | 'paused'>) {
   return (
     <View style={styles.controls}>
       <SeniorButton
@@ -162,7 +179,7 @@ function PlayControls(props: Pick<PlayShellProps, 'testID' | 'easy' | 'onToggleE
         fullWidth={false}
         accessibilityRole="switch"
         accessibilityLabel="느린 모드"
-        accessibilityHint="천천히 움직이고, 맞출 때를 진동과 소리로 알려 줍니다"
+        accessibilityHint="천천히 움직이고, 누를 때를 '준비'와 '지금' 두 번의 진동과 소리로 알려 줍니다"
         accessibilityState={{ checked: props.easy }}
         onPress={props.onToggleEasy}
         style={styles.easyButton}
@@ -173,7 +190,7 @@ function PlayControls(props: Pick<PlayShellProps, 'testID' | 'easy' | 'onToggleE
         variant="accent"
         fullWidth={false}
         accessibilityHint={props.actionHint}
-        disabled={props.outcome !== null}
+        disabled={props.outcome !== null || props.paused}
         onPress={props.onAction}
         style={styles.actionButton}
       />
@@ -189,7 +206,7 @@ export function PlayShell(props: PlayShellProps) {
     setArea({ width, height });
   };
   const toX = (event: GestureResponderEvent) => event.nativeEvent.locationX / scale;
-  const playing = props.outcome === null;
+  const playing = props.outcome === null && !props.paused;
 
   return (
     <Screen testID={props.testID} scroll={false} contentContainerStyle={styles.screen}>
@@ -216,7 +233,8 @@ export function PlayShell(props: PlayShellProps) {
 
       <PlayControls {...props} />
 
-      {props.outcome ? <PlayResult outcome={props.outcome} title={props.resultTitle} unit={props.unit} onRetry={props.onRetry} testID={props.testID} /> : null}
+      {props.outcome ? <PlayResult {...props} outcome={props.outcome} /> : null}
+      {props.paused && !props.outcome ? <PlayPaused testID={props.testID} onResume={props.onResume} /> : null}
     </Screen>
   );
 }
@@ -241,14 +259,35 @@ export function PlayFlash({ label, sparkle, x, y, scale }: { label: string; spar
 }
 
 function rewardNote(outcome: PlayOutcome, unit: string): string | null {
-  if (outcome.saveFailed) return '이번 판 보상이나 기록을 저장하지 못했어요. 다시 해 보세요.';
+  if (outcome.saveFailed) return '기록을 저장하지 못해 이번 판 보상을 드리지 못했어요. 다시 해 보세요.';
   if (outcome.score < MIN_REWARD_SCORE) return `${MIN_REWARD_SCORE}${unit} 이상이면 도토리를 받아요.`;
   if (outcome.capReached) return '오늘 놀이 보상은 다 받았어요. 기록은 계속 남아요.';
   return null;
 }
 
-function PlayResult({ outcome, title, unit, onRetry, testID }: { outcome: PlayOutcome; title: string; unit: string; onRetry: () => void; testID: string }) {
+function PlayPaused({ testID, onResume }: { testID: string; onResume: () => void }) {
+  return (
+    <View style={styles.resultScrim} testID={`${testID}-paused`} accessibilityViewIsModal>
+      <View style={styles.resultScroll}>
+        <PixelPanel style={styles.result}>
+          <AppText variant="sectionTitle" color={PixelPalette.ink} align="center">잠시 멈췄어요</AppText>
+          <AppText variant="body" color={PixelPalette.inkSoft} align="center">준비되면 눌러서 이어 가세요. 점수는 그대로예요.</AppText>
+          <SeniorButton testID={`${testID}-resume`} label="이어서 하기" onPress={onResume} />
+        </PixelPanel>
+      </View>
+    </View>
+  );
+}
+
+type PlayResultProps = Pick<PlayShellProps, 'testID' | 'resultTitle' | 'unit' | 'onRetry' | 'easy' | 'onToggleEasy'> & { outcome: PlayOutcome };
+
+function PlayResult({ outcome, resultTitle: title, unit, onRetry, testID, easy, onToggleEasy }: PlayResultProps) {
   const note = rewardNote(outcome, unit);
+  const suggestEasy = shouldSuggestEasy(outcome.lowStreak, easy);
+  const retryEasy = () => {
+    onToggleEasy();
+    onRetry();
+  };
   const hasReward = outcome.acorns > 0 || outcome.warmth > 0;
   return (
     <View style={styles.resultScrim} testID={`${testID}-result`} accessibilityViewIsModal>
@@ -267,7 +306,15 @@ function PlayResult({ outcome, title, unit, onRetry, testID }: { outcome: PlayOu
             </View>
           ) : null}
           {note ? <AppText variant="body" color={PixelPalette.inkSoft} align="center">{note}</AppText> : null}
-          <SeniorButton testID={`${testID}-retry`} label="다시 하기" onPress={onRetry} />
+          {suggestEasy ? (
+            <>
+              <AppText variant="body" color={PixelPalette.ink} align="center">
+                느린 모드로 해 보시겠어요? 천천히 움직이고, 누를 때를 진동과 소리로 알려 줘요.
+              </AppText>
+              <SeniorButton testID={`${testID}-retry-easy`} label="느린 모드로 다시 하기" variant="accent" onPress={retryEasy} />
+            </>
+          ) : null}
+          <SeniorButton testID={`${testID}-retry`} label="다시 하기" variant={suggestEasy ? 'secondary' : 'primary'} onPress={onRetry} />
         </PixelPanel>
       </ScrollView>
     </View>
