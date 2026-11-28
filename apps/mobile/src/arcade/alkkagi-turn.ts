@@ -1,5 +1,5 @@
 import type { AlkkagiStone } from './arcade-logic';
-import { chooseAlkkagiAiShot } from './alkkagi-ai';
+import { chooseAlkkagiAiShot, chooseAlkkagiShot, type AlkkagiAiLevel } from './alkkagi-ai';
 import { simulateAlkkagiShot, type AlkkagiHit, type AlkkagiShot } from './alkkagi-physics';
 
 /** 내 돌이 멈춘 뒤 상대가 튕기기까지 쉬는 프레임 수 (30fps 기준 약 0.7초) */
@@ -32,12 +32,16 @@ const ownedBy = (ids: readonly string[], prefix: 'p' | 'a') => ids.filter((id) =
 const judge = (stones: readonly AlkkagiStone[]): AlkkagiTurn['result'] =>
   countAlive(stones, 'ai') === 0 ? 'win' : countAlive(stones, 'player') === 0 ? 'lose' : 'continue';
 
-/** 내 튕기기 한 번과, 대국이 이어지면 상대의 응수까지 계산합니다. */
+/**
+ * 내 튕기기 한 번과, 대국이 이어지면 상대의 응수까지 계산합니다.
+ * levelOverride 를 주면 급수(levelIdx) 대신 그 실력으로 응수합니다(이야기 시련용).
+ */
 export function resolveAlkkagiTurn(
   stones: readonly AlkkagiStone[],
   shot: AlkkagiShot,
   levelIdx: number,
   random: () => number,
+  levelOverride?: AlkkagiAiLevel,
 ): AlkkagiTurn {
   const mine = simulateAlkkagiShot(stones, shot);
   const knockedOutByMe = ownedBy(mine.knockedOut, 'a');
@@ -47,7 +51,8 @@ export function resolveAlkkagiTurn(
     doubleKnockout: knockedOutByMe.length >= 2,
   };
   const afterMine = judge(mine.stones);
-  const reply = afterMine === 'continue' ? chooseAlkkagiAiShot(mine.stones, levelIdx, random) : null;
+  const reply = afterMine !== 'continue' ? null
+    : levelOverride ? chooseAlkkagiShot(mine.stones, levelOverride, random) : chooseAlkkagiAiShot(mine.stones, levelIdx, random);
   if (!reply) {
     return {
       ...base, stones: mine.stones, frames: mine.frames, hits: mine.hits, aiStartFrame: null, aiShooterId: null,

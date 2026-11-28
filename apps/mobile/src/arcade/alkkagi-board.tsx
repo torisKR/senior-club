@@ -13,6 +13,7 @@ import {
   ALKKAGI_BOARD_SIZE, ALKKAGI_FRAME_MS, ALKKAGI_MAX_PULL, ALKKAGI_MIN_PULL, ALKKAGI_RADIUS, assistAim, predictFirstHit,
   pullPower, shotFromPull, type AlkkagiFirstHit, type AlkkagiHit, type AlkkagiShot,
 } from './alkkagi-physics';
+import { isDoubleKnockoutAim } from './alkkagi-tuning';
 
 const MIN_TOUCH = 48;
 /**
@@ -54,6 +55,10 @@ export interface AlkkagiBoardProps {
   shooterId?: string;
   targetId?: string;
   celadon: boolean;
+  /** 이야기 시련 돕기: 지금 조준으로 일석이조가 나오면 "일석이조 각"을 글자로 알려 줍니다. */
+  doubleHint?: boolean;
+  /** 버튼으로 튕길 때의 힘(0~1). 일석이조 각 안내에 씁니다. */
+  buttonPower?: number;
   onSelectStone: (stone: AlkkagiStone) => void;
   onFlick: (shot: AlkkagiShot) => void;
   /** 끌기 시작/끝 — 끄는 동안 화면 스크롤을 잠급니다. */
@@ -118,7 +123,7 @@ function StoneFace({ stone, diameter, celadon, art }: { stone: AlkkagiStone; dia
 }
 
 export function AlkkagiBoard(props: AlkkagiBoardProps) {
-  const { art, size, stones, playback, dragEnabled, locked, shooterId, targetId, celadon } = props;
+  const { art, size, stones, playback, dragEnabled, locked, shooterId, targetId, celadon, doubleHint = false, buttonPower = 1 } = props;
   const unit = size / ALKKAGI_BOARD_SIZE;
   const diameter = ALKKAGI_RADIUS * 2 * unit;
   const touch = Math.max(MIN_TOUCH, diameter);
@@ -217,6 +222,9 @@ export function AlkkagiBoard(props: AlkkagiBoardProps) {
   const aim: Aim | null = aimFrom && aimDir
     ? { x: aimFrom.x, y: aimFrom.y, ...aimDir, hit: predictFirstHit(stones, aimFrom, aimDir.dirX, aimDir.dirY) }
     : null;
+  // 시련에서만 미리 굴려 봅니다(한 번에 세 번 계산). 자유 대국에서는 계산하지 않습니다.
+  const doubleAngle = doubleHint && aim !== null && aimFrom !== null
+    && isDoubleKnockoutAim(stones, aimFrom.id, aim.dirX, aim.dirY, drag ? dragPower : buttonPower);
   const pullScale = pullLength > ALKKAGI_MAX_PULL ? ALKKAGI_MAX_PULL / pullLength : 1;
 
   const stoneStyle = (stone: AlkkagiStone) => [
@@ -305,8 +313,14 @@ export function AlkkagiBoard(props: AlkkagiBoardProps) {
         {drag ? (
           <View testID="alkkagi-drag-power" style={styles.powerBadge} pointerEvents="none">
             <AppText variant="bodyStrong" style={styles.powerBadgeText}>
-              {armed ? `힘 ${Math.round(dragPower * 100)}% · 놓으면 튕겨요` : '여기서 놓으면 취소 · 더 길게 당기면 튕겨요'}
+              {!armed ? '여기서 놓으면 취소 · 더 길게 당기면 튕겨요'
+                : doubleAngle ? `★ 일석이조 각! 힘 ${Math.round(dragPower * 100)}% · 지금 놓으세요`
+                  : `힘 ${Math.round(dragPower * 100)}% · 놓으면 튕겨요`}
             </AppText>
+          </View>
+        ) : doubleAngle ? (
+          <View testID="alkkagi-double-hint" style={styles.powerBadge} pointerEvents="none">
+            <AppText variant="bodyStrong" style={styles.powerBadgeText}>★ 일석이조 각!</AppText>
           </View>
         ) : null}
       </View>
