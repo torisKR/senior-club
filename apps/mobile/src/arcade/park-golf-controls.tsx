@@ -9,7 +9,7 @@ import type { ParkGolfMode } from './park-golf-board';
 import { PARK_GOLF_BUTTON_ANGLES } from './park-golf-physics';
 
 const POWER_PRESETS: readonly { step: 1 | 2 | 3; label: string; desc: string }[] = [
-  { step: 1, label: '1단 (완만)', desc: '가까운 그린 정밀 퍼팅' },
+  { step: 1, label: '1단 (톡 치기)', desc: '가까운 그린 정밀 퍼팅' },
   { step: 2, label: '2단 (표준)', desc: '중거리 페어웨이 샷' },
   { step: 3, label: '3단 (강타)', desc: '장거리 홀인원 노리기' },
 ];
@@ -49,7 +49,7 @@ export function ParkGolfControls({ mode, onModeChange, aimAngle, powerStep, onAi
     return (
       <>
         <AppText variant="body" style={styles.help}>
-          코스를 누른 채 뒤로 당겼다 놓으세요. 당긴 반대쪽으로 굴러가고, 길게 당길수록 세게 갑니다.
+          공 주변(점선 원)을 누른 채 뒤로 당겼다 놓으세요. 당긴 반대쪽으로 굴러가고, 길게 당길수록 세게 갑니다. 공 쪽으로 되돌려 놓으면 취소됩니다.
         </AppText>
         <SeniorButton testID="btn-parkgolf-mode" label="버튼으로 치기 (끌기가 어려울 때)" variant="secondary"
           disabled={busy} onPress={() => onModeChange('button')} />

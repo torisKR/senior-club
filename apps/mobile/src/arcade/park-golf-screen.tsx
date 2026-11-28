@@ -15,7 +15,7 @@ import { useWorldActive } from '@/world/use-world-active';
 import { PARK_GOLF_HOLES } from './arcade-logic';
 import { ParkGolfBoard, powerLabel, type ParkGolfMode } from './park-golf-board';
 import { ParkGolfControls, useScreenReaderEnabled } from './park-golf-controls';
-import { buttonShot, rollParkGolfShot, type ParkGolfRoll, type ParkGolfShot, type ParkGolfStepEvents, type Point } from './park-golf-physics';
+import { buttonShot, isParkGolfStrokeLimit, rollParkGolfShot, type ParkGolfRoll, type ParkGolfShot, type ParkGolfStepEvents, type Point } from './park-golf-physics';
 import { useParkGolfRoll } from './park-golf-roll';
 import { useArcade } from './arcade-store';
 import { parkGolfStars } from './round-stars';
@@ -41,7 +41,7 @@ const PUTTER_NAMES = {
   master_gold: '명인 금장 퍼터', nacre: '매화 나전 퍼터',
 } as const;
 
-const DRAG_HELP = '코스를 누른 채 뒤로 당겼다 놓으면 공이 굴러갑니다.';
+const DRAG_HELP = '공 주변을 누른 채 뒤로 당겼다 놓으면 공이 굴러갑니다.';
 
 /** 홀인하지 못한 샷이 멈춘 뒤의 안내 문구. */
 function missNote(result: ParkGolfRoll, cupRadius: number): string {
@@ -136,13 +136,24 @@ export function ParkGolfArcadeScreen({ storyChapter, onLeaveStory }: { storyChap
     else startHole(idx);
   };
 
-  const finishShot = (result: ParkGolfRoll) => {
+  /** 파+7타까지 못 넣으면 그 홀을 처음 자리에서 다시 시작합니다. 이야기 도전은 실패로 남기고 새 시도가 됩니다. */
+  const restartAfterLimit = (played: number) => {
+    if (story && storyAttemptId) {
+      recordStoryResult({ type: 'parkgolf', hole: hole.holeNumber, outcome: 'failure', chapterId: story.id, attemptId: storyAttemptId });
+      setStoryAttemptId(randomUUID());
+    }
+    placeBall(hole.tee);
+    setBallPos(hole.tee);
+    setStrokes(0);
+    setLastShotNote(`${played}타까지 쳤어요. 이번 홀은 여기까지! 처음 자리에서 다시 도전해 보세요.`);
+  };
+
+  /** 공이 멈춘 뒤의 안내·보상. 타수와 공 위치는 치는 순간 이미 저장돼 있습니다. */
+  const finishShot = (result: ParkGolfRoll, nextStrokes: number) => {
     placeBall(result.finalPos);
-    const nextStrokes = strokes + 1;
-    setStrokes(nextStrokes);
-    setBallPos(result.finalPos);
     if (!result.holed) {
-      setLastShotNote(missNote(result, hole.cup.radius));
+      if (isParkGolfStrokeLimit(nextStrokes, hole.par)) restartAfterLimit(nextStrokes);
+      else setLastShotNote(missNote(result, hole.cup.radius));
       return;
     }
     const delta = nextStrokes - hole.par;
@@ -164,15 +175,23 @@ export function ParkGolfArcadeScreen({ storyChapter, onLeaveStory }: { storyChap
     recordGameWithNpc(coach);
   };
 
-  /** 끌기·버튼 두 방식 모두 같은 물리로 공을 굴립니다. 타수와 결과는 공이 멈춘 뒤에 기록합니다. */
+  /**
+   * 끌기·버튼 두 방식 모두 같은 물리로 공을 굴립니다. 물리가 결정적이라 치는 순간 타수와
+   * 멈출 자리를 저장하고(굴리는 중 앱이 꺼져도 타가 남음), 안내·보상은 공이 멈춘 뒤에 줍니다.
+   */
   const takeShot = (shot: ParkGolfShot) => {
     if (shotPending.current || rolling || holedBanner || blocked) return;
     shotPending.current = true;
     const result = rollParkGolfShot(hole, ballPos, shot);
+    // 홀인 직후 앱이 꺼져 공만 홀컵에 저장된 판은 타수를 더하지 않고 마무리합니다.
+    const finishingSavedHoleIn = ballPos.x === hole.cup.x && ballPos.y === hole.cup.y;
+    const nextStrokes = strokes + (finishingSavedHoleIn ? 0 : 1);
+    setStrokes(nextStrokes);
+    setBallPos(result.finalPos);
     triggerHaptic('medium');
     playSfx('putt', state.soundEnabled);
     if (reduceMotion !== false || !screenActive) {
-      finishShot(result);
+      finishShot(result, nextStrokes);
       return;
     }
     let inSand = false;
@@ -184,12 +203,12 @@ export function ParkGolfArcadeScreen({ storyChapter, onLeaveStory }: { storyChap
       if (events.inBunker && !inSand) triggerHaptic('light');
       inSand = events.inBunker;
     };
-    roller.start({ hole, from: ballPos, shot, onFrame: placeBall, onEvents, onRest: () => finishShot(result) });
+    roller.start({ hole, from: ballPos, shot, onFrame: placeBall, onEvents, onRest: () => finishShot(result, nextStrokes) });
   };
 
   const handleDragShot = (shot: ParkGolfShot | null) => {
     if (shot) takeShot(shot);
-    else if (!blocked) setLastShotNote('너무 짧게 당겼어요. 조금 더 길게 당겼다 놓으세요.');
+    else if (!blocked) setLastShotNote('치기를 취소했어요. 치려면 공 주변을 누른 채 더 길게 당겼다 놓으세요.');
   };
 
   React.useEffect(() => {

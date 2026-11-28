@@ -25,6 +25,8 @@ const PUTTER_PULL = 7;
 const PATH_DOT_EVERY = 6;
 /** 당기는 동안 힘이 이 칸을 넘을 때마다 짧게 진동합니다. */
 const POWER_TICKS = 4;
+/** 공에서 이 거리(보드 %) 안을 눌러야 조준이 시작됩니다. 그 밖을 쓸면 화면이 평소처럼 스크롤됩니다. */
+export const PARK_GOLF_GRAB_RADIUS = 20;
 
 export type ParkGolfMode = 'drag' | 'button';
 export const powerLabel = (power: number) => (power < 0.4 ? '약하게' : power < 0.75 ? '알맞게' : '세게');
@@ -56,7 +58,7 @@ export function ParkGolfBoard(props: ParkGolfBoardProps) {
   const size = useRef({ width: 0, height: 0 });
   const tick = useRef(0);
   const canDrag = canAim && mode === 'drag';
-  const handlers = { canDrag, onShot: props.onShot, onPowerTick: props.onPowerTick, onAimingChange: props.onAimingChange };
+  const handlers = { canDrag, ballPos, onShot: props.onShot, onPowerTick: props.onPowerTick, onAimingChange: props.onAimingChange };
   const live = useRef(handlers);
   useEffect(() => { live.current = handlers; });
 
@@ -67,8 +69,13 @@ export function ParkGolfBoard(props: ParkGolfBoardProps) {
       y: size.current.height > 0 ? (gesture.dy / size.current.height) * 100 : 0,
     });
     return PanResponder.create({
-      onStartShouldSetPanResponder: () => live.current.canDrag,
-      onMoveShouldSetPanResponder: () => live.current.canDrag,
+      // 공 근처에서 누르기 시작했을 때만 조준합니다. 움직이는 도중에는 가로채지 않습니다.
+      onStartShouldSetPanResponder: ({ nativeEvent }) => {
+        const { width, height } = size.current;
+        if (!live.current.canDrag || width <= 0 || height <= 0) return false;
+        const ball = live.current.ballPos;
+        return Math.hypot((nativeEvent.locationX / width) * 100 - ball.x, (nativeEvent.locationY / height) * 100 - ball.y) <= PARK_GOLF_GRAB_RADIUS;
+      },
       // 당기는 동안 화면 스크롤이 손가락을 가져가지 않게 합니다.
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => {
@@ -106,7 +113,9 @@ export function ParkGolfBoard(props: ParkGolfBoardProps) {
     <View
       style={styles.boardFrame}
       accessible
-      accessibilityLabel={`${hole.title} 코스. ${mode === 'drag' ? '화면을 누른 채 뒤로 당겼다 놓으면 공을 칩니다. 끌기가 어려우면 아래의 버튼으로 치기를 사용하세요.' : '아래 버튼으로 방향과 힘을 골라 칩니다.'}`}
+      // 누른 좌표를 항상 코스 기준으로 받기 위해 안쪽 그림은 터치를 받지 않습니다.
+      pointerEvents="box-only"
+      accessibilityLabel={`${hole.title} 코스. ${mode === 'drag' ? '공 주변을 누른 채 뒤로 당겼다 놓으면 공을 칩니다. 끌기가 어려우면 아래의 버튼으로 치기를 사용하세요.' : '아래 버튼으로 방향과 힘을 골라 칩니다.'}`}
       onLayout={({ nativeEvent }) => {
         const { width, height } = nativeEvent.layout;
         size.current = { width, height };
@@ -163,6 +172,11 @@ export function ParkGolfBoard(props: ParkGolfBoardProps) {
         style={[styles.holeFlag, { left: `${hole.cup.x}%`, top: `${hole.cup.y}%` }]}
       />
 
+      {/* 누를 자리 표시: 공 주변의 점선 원 */}
+      {showAim && canDrag ? (
+        <View testID="parkgolf-grab-ring" pointerEvents="none" style={[styles.grabRing, { left: `${ballPos.x}%`, top: `${ballPos.y}%` }]} />
+      ) : null}
+
       {/* 공 뒤의 퍼터: 조준 방향을 따라 돌고, 당기는 만큼 뒤로 물러납니다. */}
       {showAim ? (
         <View
@@ -192,7 +206,7 @@ export function ParkGolfBoard(props: ParkGolfBoardProps) {
       {canDrag && drag ? (
         <View testID="parkgolf-power-gauge" pointerEvents="none" style={styles.gauge}>
           <AppText variant="bodyStrong" style={styles.gaugeText}>
-            {dragShot ? `힘 ${percent}% · ${powerLabel(dragShot.power)}` : '조금 더 길게 당기세요'}
+            {dragShot ? `힘 ${percent}% · ${powerLabel(dragShot.power)}` : '여기서 놓으면 취소 · 더 길게 당기면 칩니다'}
           </AppText>
           <View style={styles.gaugeTrack}>
             <View style={[styles.gaugeFill, { width: `${percent}%` }]} />
@@ -231,6 +245,10 @@ const styles = StyleSheet.create({
     borderRadius: 5, borderWidth: 2, borderColor: '#FCF9F2',
   },
   cupRing: { position: 'absolute', zIndex: 2 },
+  grabRing: {
+    position: 'absolute', zIndex: 1, width: 96, height: 96, marginLeft: -48, marginTop: -48,
+    borderRadius: 48, borderWidth: 2, borderStyle: 'dashed', borderColor: '#FCF9F2',
+  },
   putterGuide: {
     position: 'absolute', zIndex: 2, width: 58, height: 52, marginLeft: -29, marginTop: -26,
     alignItems: 'center', justifyContent: 'center', opacity: 0.94,

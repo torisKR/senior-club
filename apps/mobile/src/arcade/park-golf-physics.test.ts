@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { PARK_GOLF_BOUNDS, PARK_GOLF_HOLES, type ParkGolfHoleSpec } from './arcade-logic';
 import {
-  PARK_GOLF_BUTTON_ANGLES, PARK_GOLF_MAX_DRAG, PARK_GOLF_MIN_DRAG, PARK_GOLF_STEP_SECONDS,
-  buttonShot, launchParkGolfBall, previewParkGolfPath, rollParkGolfShot, shotFromDrag, stepParkGolfBall,
+  PARK_GOLF_BUTTON_ANGLES, PARK_GOLF_MAX_DRAG, PARK_GOLF_MAX_OVER_PAR, PARK_GOLF_MIN_DRAG, PARK_GOLF_STEP_SECONDS,
+  buttonShot, isParkGolfStrokeLimit, launchParkGolfBall, previewParkGolfPath, rollParkGolfShot, shotFromDrag, stepParkGolfBall,
 } from './park-golf-physics';
 
 const flat = (hole: ParkGolfHoleSpec): ParkGolfHoleSpec => ({ ...hole, slope: { ...hole.slope, dx: 0, dy: 0 } });
@@ -111,6 +111,27 @@ describe('park golf rolling physics', () => {
     const roll = rollParkGolfShot(HOLE_1, { x: HOLE_1.cup.x + 1, y: HOLE_1.cup.y }, { angleDeg: 0, power: 0.7 });
     expect(roll.holed).toBe(true);
     expect(roll.finalPos).toEqual({ x: HOLE_1.cup.x, y: HOLE_1.cup.y });
+  });
+
+  it('lets the weakest button tap in from every close spot around each cup', () => {
+    for (const hole of PARK_GOLF_HOLES) {
+      for (const distance of [7, 9, 12, 15, 18]) {
+        for (let deg = 0; deg < 360; deg += 30) {
+          const from = { x: hole.cup.x + Math.cos((deg * Math.PI) / 180) * distance, y: hole.cup.y + Math.sin((deg * Math.PI) / 180) * distance };
+          const offCourse = from.x < PARK_GOLF_BOUNDS.left || from.x > PARK_GOLF_BOUNDS.right || from.y < PARK_GOLF_BOUNDS.top || from.y > PARK_GOLF_BOUNDS.bottom;
+          if (offCourse) continue;
+          const roll = rollParkGolfShot(hole, from, buttonShot(hole, from, 0, 1));
+          expect(roll.holed, `${hole.title} ${distance}m ${deg}deg`).toBe(true);
+        }
+      }
+      // 멀리서는 1단이 그대로 약한 샷입니다.
+      expect(buttonShot(hole, hole.tee, 0, 1).power).toBeCloseTo(0.4);
+    }
+  });
+
+  it('ends a hole at par plus the stroke limit', () => {
+    expect(isParkGolfStrokeLimit(3 + PARK_GOLF_MAX_OVER_PAR - 1, 3)).toBe(false);
+    expect(isParkGolfStrokeLimit(3 + PARK_GOLF_MAX_OVER_PAR, 3)).toBe(true);
   });
 
   it('aims button shots at the cup so every hole can be finished within par using only the buttons', () => {

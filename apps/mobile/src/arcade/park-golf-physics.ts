@@ -17,6 +17,9 @@ export const PARK_GOLF_BUTTON_ANGLES = [-15, -5, 0, 5, 15] as const;
 /** 끌기 길이(보드 %) — 이보다 짧으면 취소, 이 이상은 최대 힘. */
 export const PARK_GOLF_MIN_DRAG = 5;
 export const PARK_GOLF_MAX_DRAG = 38;
+/** 파보다 이만큼 더 치면 그 홀은 처음부터 다시 시작합니다(끝나지 않는 홀 방지). */
+export const PARK_GOLF_MAX_OVER_PAR = 7;
+export const isParkGolfStrokeLimit = (strokes: number, par: number) => strokes >= par + PARK_GOLF_MAX_OVER_PAR;
 
 const MAX_SPEED = 95;
 const GRASS_DECEL = 40;
@@ -47,10 +50,16 @@ export function shotFromDrag(drag: Point): ParkGolfShot | null {
   return { angleDeg: Object.is(angleDeg, -0) ? 0 : angleDeg, power: Math.min(1, length / PARK_GOLF_MAX_DRAG) };
 }
 
-/** 버튼 모드: '정면'은 홀컵 방향입니다. 어디서든 버튼만으로 홀컵을 노릴 수 있습니다. */
+/**
+ * 버튼 모드: '정면'은 홀컵 방향입니다. 어디서든 버튼만으로 홀컵을 노릴 수 있습니다.
+ * 1단은 가까운 거리에서 홀컵 중심까지만 굴러갈 힘으로 줄여 '톡 치기'가 됩니다(멀면 1단 그대로).
+ */
 export function buttonShot(hole: ParkGolfHoleSpec, from: Point, aimOffsetDeg: number, powerStep: 1 | 2 | 3): ParkGolfShot {
   const toCup = (Math.atan2(hole.cup.x - from.x, from.y - hole.cup.y) * 180) / Math.PI;
-  return { angleDeg: toCup + aimOffsetDeg, power: BUTTON_POWER[powerStep] };
+  const distance = Math.hypot(hole.cup.x - from.x, hole.cup.y - from.y);
+  const tapIn = Math.sqrt(2 * GRASS_DECEL * distance) / MAX_SPEED;
+  const power = powerStep === 1 ? Math.min(BUTTON_POWER[1], tapIn) : BUTTON_POWER[powerStep];
+  return { angleDeg: toCup + aimOffsetDeg, power };
 }
 
 export function launchParkGolfBall(hole: ParkGolfHoleSpec, from: Point, shot: ParkGolfShot): ParkGolfBall {

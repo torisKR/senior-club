@@ -27,7 +27,7 @@ const mocks = vi.hoisted(() => {
   const textLayout = { width: 393, fontScale: 1, large: false };
   const animation = { reduceMotion: true, values: [] as { value: number }[], stop: vi.fn(), layout: null as null | ((event: { nativeEvent: { layout: { width: number; height: number } } }) => void) };
   // 파크골프: 낭독기가 켜져 있으면 버튼 방식이 기본입니다. pan에는 보드의 끌기 처리기가 담깁니다.
-  type Pan = Record<string, (event: unknown, gesture: { dx: number; dy: number }) => unknown>;
+  type Pan = Record<string, (event: { nativeEvent: { locationX: number; locationY: number } }, gesture: { dx: number; dy: number }) => unknown>;
   const golf = { screenReader: true, pan: null as null | Pan };
   return { values, storage, rpg, arcade, textLayout, animation, golf, makeAttemptId: () => `attempt-${++nextAttempt}` };
 });
@@ -250,11 +250,12 @@ describe('arcade screens', () => {
     expect(mocks.animation.layout).not.toBeNull();
     await act(async () => mocks.animation.layout!({ nativeEvent: { layout: { width: 300, height: 200 } } }));
     await press('btn-parkgolf-shoot');
-    // 공이 구르는 동안에는 타수도 결과도 아직 기록되지 않습니다.
-    expect(mocks.values.has('senior_club_golf_round_v1')).toBe(false);
-    expect(container.textContent).toContain('공이 굴러가고 있어요');
+    // 치는 순간 타수와 멈출 자리가 저장됩니다(굴리는 중 앱이 꺼져도 타가 남음). 화면의 공은 아직 구르는 중입니다.
     const hole = PARK_GOLF_HOLES[0];
     const result = rollParkGolfShot(hole, hole.tee, buttonShot(hole, hole.tee, 0, 2)).finalPos;
+    expect(saved('senior_club_golf_round_v1')).toMatchObject({ ballPos: result, strokes: 1 });
+    expect(container.textContent).toContain('공이 굴러가고 있어요');
+    expect(mocks.animation.values[1].value).not.toBeCloseTo(result.y * 2);
     mocks.animation.reduceMotion = true;
     await render(screens.ParkGolfArcadeScreen);
     expect(saved('senior_club_golf_round_v1').ballPos).toEqual(result);
@@ -269,19 +270,30 @@ describe('arcade screens', () => {
     expect(container.querySelector('[data-testid="btn-parkgolf-shoot"]')).toBeNull();
     await act(async () => mocks.animation.layout!({ nativeEvent: { layout: { width: 300, height: 200 } } }));
     const pan = mocks.golf.pan!;
-    expect(pan.onStartShouldSetPanResponder(null, { dx: 0, dy: 0 })).toBe(true);
-    await act(async () => { pan.onPanResponderGrant(null, { dx: 0, dy: 0 }); pan.onPanResponderMove(null, { dx: 0, dy: 4 }); });
-    expect(container.querySelector('[data-testid="parkgolf-power-gauge"]')!.textContent).toContain('조금 더 길게');
-    await act(async () => pan.onPanResponderRelease(null, { dx: 0, dy: 4 }));
-    expect(container.textContent).toContain('너무 짧게 당겼어요');
-    expect(mocks.values.get('senior_club_golf_round_v1') ?? '').not.toContain('"strokes":1');
+    // 보드 300x200에서 1홀 티(50%, 84%)는 (150, 168)입니다.
+    const onBall = { nativeEvent: { locationX: 150, locationY: 160 } };
+    const farFromBall = { nativeEvent: { locationX: 150, locationY: 60 } };
+    // 공에서 먼 곳을 쓸면(화면 스크롤) 조준이 시작되지 않고, 움직이는 도중에 가로채지도 않습니다.
+    expect(pan.onStartShouldSetPanResponder(farFromBall, { dx: 0, dy: 0 })).toBe(false);
+    expect(pan.onMoveShouldSetPanResponder).toBeUndefined();
+    expect(pan.onStartShouldSetPanResponder(onBall, { dx: 0, dy: 0 })).toBe(true);
+    expect(container.querySelector('[data-testid="parkgolf-grab-ring"]')).not.toBeNull();
+
+    // 길게 당겼다가 공 쪽으로 되돌려 놓으면 취소되고 타수가 늘지 않습니다.
+    await act(async () => { pan.onPanResponderGrant(onBall, { dx: 0, dy: 0 }); pan.onPanResponderMove(onBall, { dx: 0, dy: 60 }); });
+    expect(container.querySelector('[data-testid="parkgolf-power-gauge"]')!.textContent).toContain('힘');
+    await act(async () => pan.onPanResponderMove(onBall, { dx: 0, dy: 4 }));
+    expect(container.querySelector('[data-testid="parkgolf-power-gauge"]')!.textContent).toContain('놓으면 취소');
+    await act(async () => pan.onPanResponderRelease(onBall, { dx: 0, dy: 4 }));
+    expect(container.textContent).toContain('치기를 취소했어요');
+    expect(saved('senior_club_golf_round_v1').strokes).toBe(0);
 
     // 아래로 40dp(보드 높이의 20%), 오른쪽으로 6dp(2%) 당기면 왼쪽 위로 굴러갑니다.
-    await act(async () => { pan.onPanResponderGrant(null, { dx: 0, dy: 0 }); pan.onPanResponderMove(null, { dx: 6, dy: 40 }); });
+    await act(async () => { pan.onPanResponderGrant(onBall, { dx: 0, dy: 0 }); pan.onPanResponderMove(onBall, { dx: 6, dy: 40 }); });
     expect(container.querySelector('[data-testid="parkgolf-power-gauge"]')!.textContent).toMatch(/힘 \d+% · /);
     expect(container.querySelectorAll('[data-testid="parkgolf-aim-dot"]').length).toBeGreaterThan(2);
     expect(mocks.arcade.triggerHaptic).toHaveBeenCalledWith('light');
-    await act(async () => pan.onPanResponderRelease(null, { dx: 6, dy: 40 }));
+    await act(async () => pan.onPanResponderRelease(onBall, { dx: 6, dy: 40 }));
     const hole = PARK_GOLF_HOLES[0];
     const expected = rollParkGolfShot(hole, hole.tee, shotFromDrag({ x: 2, y: 20 })!);
     expect(expected.finalPos.x).toBeLessThan(hole.tee.x);
@@ -290,7 +302,28 @@ describe('arcade screens', () => {
 
     await press('btn-parkgolf-mode');
     expect(container.querySelector('[data-testid="btn-parkgolf-shoot"]')).not.toBeNull();
-    expect(pan.onStartShouldSetPanResponder(null, { dx: 0, dy: 0 })).toBe(false);
+    expect(pan.onStartShouldSetPanResponder(onBall, { dx: 0, dy: 0 })).toBe(false);
+  });
+
+  it('taps in from close range with the weakest button and restarts a golf hole at the stroke limit', async () => {
+    const hole = PARK_GOLF_HOLES[0];
+    const round = { holeIndex: 0, strokes: 1, aimAngle: 0, powerStep: 1, holedBanner: null, lastShotNote: '계속' };
+    mocks.values.set('senior_club_golf_round_v1', JSON.stringify({ ...round, ballPos: { x: hole.cup.x + 3, y: hole.cup.y + 12 } }));
+    await render(screens.ParkGolfArcadeScreen);
+    await press('btn-parkgolf-shoot');
+    expect(mocks.arcade.recordParkGolfClear).toHaveBeenCalledWith(2 - hole.par);
+    expect(saved('senior_club_golf_round_v1')).toMatchObject({ strokes: 2, ballPos: { x: hole.cup.x, y: hole.cup.y } });
+
+    // 파+7타째를 놓치면 끝없이 이어지지 않고 처음 자리에서 다시 시작합니다(보상 없음).
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    vi.clearAllMocks();
+    mocks.values.set('senior_club_golf_round_v1', JSON.stringify({ ...round, strokes: hole.par + 6, ballPos: { x: 50, y: 80 } }));
+    await render(screens.ParkGolfArcadeScreen);
+    await press('btn-parkgolf-shoot');
+    expect(saved('senior_club_golf_round_v1')).toMatchObject({ strokes: 0, ballPos: hole.tee, holedBanner: null });
+    expect(container.textContent).toContain(`${hole.par + 7}타까지 쳤어요`);
+    expect(mocks.arcade.recordParkGolfClear).not.toHaveBeenCalled();
   });
 
   it('preserves an alkkagi match on reselect and only changes an active match after confirmation', async () => {
@@ -443,7 +476,8 @@ describe('arcade screens', () => {
     await act(async () => { button.click(); button.click(); });
     expect(mocks.arcade.recordParkGolfClear).toHaveBeenCalledOnce();
     expect(mocks.rpg.recordGameWithNpc).toHaveBeenCalledOnce();
-    expect(saved('senior_club_golf_round_v1').strokes).toBe(3);
+    // 공이 이미 홀컵에 저장된 판(홀인 직후 앱 종료)은 타수를 더하지 않고 마무리합니다.
+    expect(saved('senior_club_golf_round_v1').strokes).toBe(2);
     await press('btn-parkgolf-replay-hole');
     await press('btn-parkgolf-shoot');
     expect(saved('senior_club_golf_round_v1').strokes).toBe(1);
