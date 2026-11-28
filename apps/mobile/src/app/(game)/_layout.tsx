@@ -14,6 +14,8 @@ const PLACE_TITLES = {
   chat: '매화다실 · 사천성',
   me: '명인전당',
   house: '내 집',
+  jegi: '제기차기 마당',
+  stones: '돌탑 쌓는 계곡',
 } as const;
 
 export default function GameLayout() {
