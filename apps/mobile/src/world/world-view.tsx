@@ -22,7 +22,6 @@ import { FARM_PLOTS } from '@/rpg/rpg-logic';
 import {
   BUILDING_SPRITES,
   CROP_SPRITES,
-  FORAGE_SPRITES,
   LIFE_PROP_SPRITES,
   PLAYER_POSE_SPRITES,
   playerSpriteForTier,
@@ -34,6 +33,8 @@ import { useRpg } from '@/rpg/rpg-store';
 import { todayKey } from '@/rpg/daily-reset';
 
 import { forageSpawns, PHOTO_SPOTS } from './explore';
+import { fishingSpots } from './play/fishing-spots';
+import { PLAY_SPRITES } from './play/play-sprites';
 import { cropStage, type GardenPlot, type LifeState } from './life';
 import type { MapDef, MapId } from './maps/map-types';
 import { buildPassGrid, isWalkable, mapHeight, mapWidth, tileAt } from './maps/tiles';
@@ -47,6 +48,8 @@ const PLAYER_SPRITE_DP = 88;
 const PLAYER_ANCHOR_X = PLAYER_SPRITE_DP / 2;
 const PLAYER_ANCHOR_Y = PLAYER_SPRITE_DP - TILE_DP * 0.4;
 const WALK_FRAME_MS = 130;
+/** 채집 풀숲이 좌우로 흔들리는 폭(도) */
+const FORAGE_SWAY_DEG = 5;
 const BOUNDARY_HAPTIC_GAP_MS = 1200;
 /** 카메라 주변에 그려 둘 청크 반경 (가로·세로) */
 const FOCUS_MS = 300;
@@ -251,10 +254,10 @@ export function WorldView({ map, joyX, joyY, onTileChange, onMovementEnd, pose =
         ))}
 
         <Crops map={map} garden={state.life.garden} nowMs={nowMs} chunks={chunks} markerFontSize={markerFontSize} />
-        <ForageLayer map={map} foraged={state.life.foraged} chunks={chunks} day={todayKey(new Date(nowMs))} />
+        <ForageLayer map={map} foraged={state.life.foraged} chunks={chunks} day={todayKey(new Date(nowMs))} breeze={breeze} />
         <Buildings map={map} chunks={chunks} markerFontSize={markerFontSize} />
         <PhotoMarkers map={map} chunks={chunks} markerFontSize={markerFontSize} />
-        <FishingMarker map={map} player={tile} markerFontSize={markerFontSize} />
+        <FishingMarker map={map} player={tile} chunks={chunks} markerFontSize={markerFontSize} />
 
         <VillagePeople key={map.id} map={map} chunks={chunks} active={active} />
 
@@ -320,30 +323,48 @@ const Crops = React.memo(function Crops({ map, garden, nowMs, chunks, markerFont
   );
 });
 
-/** 낚시는 선착장 위에서 할 수 있으므로 가까운 선착장에만 표식을 보여 줍니다. */
-const FishingMarker = React.memo(function FishingMarker({ map, player, markerFontSize }: { map: MapDef; player: { x: number; y: number }; markerFontSize: number }) {
+/**
+ * 낚시 표식: 가까운 선착장 하나와, 지도마다 정해진 물가 몇 곳. 물가 칸 전부에 띄우지는 않습니다
+ * (표식이 없는 물가에서도 서면 행동 버튼으로 낚시할 수 있습니다).
+ */
+const FishingMarker = React.memo(function FishingMarker({ map, player, chunks, markerFontSize }: { map: MapDef; player: { x: number; y: number }; chunks: readonly { cx: number; cy: number }[]; markerFontSize: number }) {
   const docks = useMemo(() => map.layout.flatMap((row, y) => Array.from(row).flatMap((symbol, x) =>
     symbol === 'K' && isWalkable(map, x, y) && tileAt(map, x, y).type === 'dock' ? [{ x, y }] : [])), [map]);
   const nearest = docks.reduce<{ x: number; y: number; distance: number } | null>((best, dock) => {
     const distance = Math.abs(dock.x - player.x) + Math.abs(dock.y - player.y);
     return distance <= 2 && (!best || distance < best.distance) ? { ...dock, distance } : best;
   }, null);
-  if (!nearest) return null;
-  return <View pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"
-    style={[styles.fishingMarker, { left: nearest.x * TILE_DP + 2, top: nearest.y * TILE_DP - 48 }]}>
-    <Text style={[styles.fishingMarkerText, { fontSize: markerFontSize }]}>낚시</Text>
-  </View>;
+  const marks = [
+    ...(nearest ? [{ key: 'dock', x: nearest.x, y: nearest.y, lift: 48 }] : []),
+    ...fishingSpots(map).filter((spot) => isNearVisibleChunks(spot.x, spot.y, chunks))
+      .map((spot) => ({ key: `shore-${spot.x}-${spot.y}`, x: spot.x, y: spot.y, lift: 20 })),
+  ];
+  return <>{marks.map((mark) => (
+    <View key={mark.key} testID={`fishing-marker-${mark.key}`} pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"
+      style={[styles.fishingMarker, { left: mark.x * TILE_DP + 2, top: mark.y * TILE_DP - mark.lift }]}>
+      <Text style={[styles.fishingMarkerText, { fontSize: markerFontSize }]}>낚시</Text>
+    </View>
+  ))}</>;
 });
 
-/** 오늘의 채집물 — 줍거나 날이 바뀔 때만 다시 그립니다. */
-const ForageLayer = React.memo(function ForageLayer({ map, foraged, chunks, day }: { map: MapDef; foraged: LifeState['foraged']; chunks: readonly { cx: number; cy: number }[]; day: string }) {
+/**
+ * 오늘의 채집물은 풀숲에 숨어 있습니다 — 헤치거나 날이 바뀔 때만 다시 그립니다.
+ * 숲의 장식 덤불과 헷갈리지 않게 반짝임 표식을 달고 살짝 흔듭니다. 동작 줄이기(breeze가 0)면 표식만 가만히 보입니다.
+ */
+const ForageLayer = React.memo(function ForageLayer({ map, foraged, chunks, day, breeze }: { map: MapDef; foraged: LifeState['foraged']; chunks: readonly { cx: number; cy: number }[]; day: string; breeze: SharedValue<number> }) {
+  const swayStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${Math.sin(breeze.get() * Math.PI * 2) * FORAGE_SWAY_DEG}deg` }] }));
+  const sparkStyle = useAnimatedStyle(() => ({ opacity: 1 - breeze.get() * 0.5 }));
   return (
     <>
       {forageSpawns(map, day)
         .filter((spawn) => isNearVisibleChunks(spawn.x, spawn.y, chunks) && !(foraged.day === day && foraged.keys.includes(`${map.id}:${spawn.key}`)))
         .map((spawn) => (
-          <Image key={`forage-${spawn.key}`} source={FORAGE_SPRITES[spawn.itemId]}
-            style={[styles.forage, { left: spawn.x * TILE_DP + 6, top: spawn.y * TILE_DP + 6 }]} contentFit="contain" accessibilityIgnoresInvertColors />
+          <Animated.View key={`forage-${spawn.key}`} style={[styles.forage, { left: spawn.x * TILE_DP + 2, top: spawn.y * TILE_DP + 2 }, swayStyle]}>
+            <Image source={PLAY_SPRITES.bush} style={styles.forageBush} contentFit="contain" accessibilityIgnoresInvertColors />
+            <Animated.View style={[styles.forageSpark, sparkStyle]}>
+              <Image source={PLAY_SPRITES.spark} style={styles.forageBush} contentFit="contain" accessibilityIgnoresInvertColors />
+            </Animated.View>
+          </Animated.View>
         ))}
     </>
   );
@@ -396,11 +417,9 @@ const styles = StyleSheet.create({
   viewport: { flex: 1, width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#356347' },
   mapLayer: { position: 'absolute', left: 0, top: 0 },
   tile: { position: 'absolute', width: TILE_DP, height: TILE_DP },
-  forage: {
-    position: 'absolute', width: TILE_DP - 12, height: TILE_DP - 12,
-    borderRadius: 14, borderWidth: 1, borderColor: 'rgba(110, 78, 35, 0.55)',
-    backgroundColor: 'rgba(255, 246, 216, 0.72)',
-  },
+  forage: { position: 'absolute', width: TILE_DP - 4, height: TILE_DP - 4 },
+  forageBush: { width: '100%', height: '100%' },
+  forageSpark: { position: 'absolute', right: -4, top: -6, width: 22, height: 22 },
   photoMarker: { position: 'absolute', minWidth: 44, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: '#76542D', backgroundColor: '#FFF4D7', alignItems: 'center' },
   photoMarkerText: { color: '#573A1F', fontWeight: '700' },
   fishingMarker: { position: 'absolute', minWidth: 44, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: '#1E6F94', backgroundColor: '#E7F5F6', alignItems: 'center' },
