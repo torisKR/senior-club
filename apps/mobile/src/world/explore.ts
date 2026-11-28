@@ -132,8 +132,8 @@ export const PHOTO_SPOTS: readonly PhotoSpot[] = [
   { id: 'plaza', mapId: 'field', x: 27, y: 23, name: '마을 광장', caption: '석등 사이로 마을회관이 보입니다.' },
   { id: 'pond', mapId: 'field', x: 31, y: 33, name: '연못 선착장', caption: '연못에 노을이 내려앉았습니다.' },
   { id: 'sea', mapId: 'seaside', x: 16, y: 18, name: '바닷가 선착장', caption: '파도 소리 너머로 등대가 보입니다.' },
-  { id: 'valley', mapId: 'mountain', x: 43, y: 11, name: '계곡 돌탑 정자', caption: '물소리 곁에 돌탑이 차곡차곡 쌓였습니다.' },
-  { id: 'fair', mapId: 'market', x: 19, y: 19, name: '오일장 마당', caption: '청사초롱 아래 장날 흥이 가득합니다.' },
+  { id: 'valley', mapId: 'mountain', x: 43, y: 11, name: '계곡 물가', caption: '바위 사이로 맑은 계곡물이 흐르고 물가에 기와집이 보입니다.' },
+  { id: 'fair', mapId: 'market', x: 19, y: 19, name: '오일장 마당', caption: '돌 포장 마당 양옆으로 장날 좌판이 늘어섰습니다.' },
 ];
 
 export function photoSpotAt(mapId: MapId, x: number, y: number): PhotoSpot | undefined {
