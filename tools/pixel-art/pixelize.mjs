@@ -8,7 +8,7 @@
  *   3. 그룹 단위 median-cut 팔레트 양자화 (프레임 간 색 튐 방지)
  *   4. 정수배 최근접 이웃 업스케일 (기기에서 다시 부드러워지지 않도록)
  *
- * 사용: node pixelize.mjs [--only player,portrait] [--dry]
+ * 사용: node pixelize.mjs [--only=maps2,play]
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -174,6 +174,60 @@ export const GROUPS = {
       confetti: { path: 'rpg/ui-src/confetti.png', grid: [80, 60] },
       frame_corner: { path: 'rpg/ui-src/frame_corner.png', grid: [24, 24] },
       back_button: { path: 'rpg/ui-src/back_button.png', grid: [44, 32] },
+    },
+  },
+
+  /** 솔숲 산길·오일장터의 타일, 소품, 건물 */
+  maps2: {
+    grid: [48, 48],
+    colors: 48,
+    alpha: true,
+    files: {
+      mt_ground: 'rpg/maps2-src/mt_ground.png',
+      mt_rock: 'rpg/maps2-src/mt_rock.png',
+      mt_stream: 'rpg/maps2-src/mt_stream.png',
+      mt_bridge: 'rpg/maps2-src/mt_bridge.png',
+      mt_steps: 'rpg/maps2-src/mt_steps.png',
+      mt_spring: 'rpg/maps2-src/mt_spring.png',
+      mt_cairn: 'rpg/maps2-src/mt_cairn.png',
+      mt_mushroom_log: 'rpg/maps2-src/mt_mushroom_log.png',
+      mt_pine_big: 'rpg/maps2-src/mt_pine_big.png',
+      mk_paving: 'rpg/maps2-src/mk_paving.png',
+      mk_lantern: 'rpg/maps2-src/mk_lantern.png',
+      mk_crates: 'rpg/maps2-src/mk_crates.png',
+      mk_jar_stack: 'rpg/maps2-src/mk_jar_stack.png',
+      mk_flag_line: 'rpg/maps2-src/mk_flag_line.png',
+      mk_yut_mat: 'rpg/maps2-src/mk_yut_mat.png',
+      b_mt_pavilion: { path: 'rpg/maps2-src/b_mt_pavilion.png', grid: [144, 96] },
+      b_mk_rice_cake: { path: 'rpg/maps2-src/b_mk_rice_cake.png', grid: [144, 96] },
+      b_mk_toy: { path: 'rpg/maps2-src/b_mk_toy.png', grid: [144, 96] },
+    },
+  },
+
+  /** 낚시·제기차기·돌탑·채집의 배경과 기물 */
+  play: {
+    grid: [32, 32],
+    colors: 40,
+    alpha: true,
+    files: {
+      fish_bobber: 'rpg/play-src/fish_bobber.png',
+      fish_shadow: { path: 'rpg/play-src/fish_shadow.png', grid: [48, 24] },
+      fish_water_bg: { path: 'rpg/play-src/fish_water_bg.png', grid: [180, 120] },
+      fish_reel: 'rpg/play-src/fish_reel.png',
+      jegi: 'rpg/play-src/jegi.png',
+      jegi_bg: { path: 'rpg/play-src/jegi_bg.png', grid: [180, 240] },
+      jegi_foot: { path: 'rpg/play-src/jegi_foot.png', grid: [48, 48] },
+      stone_a: { path: 'rpg/play-src/stone_a.png', grid: [48, 24] },
+      stone_b: { path: 'rpg/play-src/stone_b.png', grid: [44, 24] },
+      stone_c: { path: 'rpg/play-src/stone_c.png', grid: [38, 24] },
+      stone_d: { path: 'rpg/play-src/stone_d.png', grid: [46, 24] },
+      stone_e: { path: 'rpg/play-src/stone_e.png', grid: [34, 24] },
+      stones_bg: { path: 'rpg/play-src/stones_bg.png', grid: [180, 240] },
+      bush_rustle: { path: 'rpg/play-src/bush_rustle.png', grid: [48, 48] },
+      basket: { path: 'rpg/play-src/basket.png', grid: [48, 48] },
+      spark_good: 'rpg/play-src/spark_good.png',
+      arrow_aim: { path: 'rpg/play-src/arrow_aim.png', grid: [32, 48] },
+      gauge_frame: { path: 'rpg/play-src/gauge_frame.png', grid: [96, 16] },
     },
   },
 
@@ -477,12 +531,15 @@ export function pixelizeGroup(name, only) {
   return results;
 }
 
-export function pixelizeAll(onlyKeys) {
+export function pixelizeAll(onlyNames) {
   const results = [];
   for (const name of Object.keys(GROUPS)) {
-    const only = onlyKeys ? onlyKeys.filter((k) => GROUPS[name].files[k]) : null;
-    if (onlyKeys && only.length === 0) continue;
-    results.push(...pixelizeGroup(name, only || undefined));
+    if (!onlyNames || onlyNames.includes(name)) {
+      results.push(...pixelizeGroup(name));
+      continue;
+    }
+    const keys = onlyNames.filter((key) => Object.hasOwn(GROUPS[name].files, key));
+    if (keys.length > 0) results.push(...pixelizeGroup(name, keys));
   }
   return results;
 }
