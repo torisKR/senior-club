@@ -167,9 +167,7 @@ export function tickFishing(state: FishingState, dtMs: number, holding: boolean)
   }
 }
 
-const WATER_TILE_TYPES: readonly string[] = ['water', 'stream', 'river', 'sea', 'pond'];
-
-/** 지도 종류와 상관없이, 선착장 위이거나 물 타일 바로 옆이면 낚시할 수 있습니다. */
+/** 지도 종류와 상관없이, 선착장 위이거나 물 타일(강·연못·바다·계곡 모두 'water') 바로 옆이면 낚시할 수 있습니다. */
 export function canFishAt(hereType: string, neighborTypes: readonly string[]): boolean {
-  return hereType === 'dock' || neighborTypes.some((type) => WATER_TILE_TYPES.includes(type));
+  return hereType === 'dock' || neighborTypes.includes('water');
 }

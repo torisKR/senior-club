@@ -49,7 +49,7 @@ vi.mock('@/audio/sound-manager', () => ({ playSfx: vi.fn() }));
 vi.mock('@/arcade/arcade-store', () => ({ useArcade: () => ({ state: { soundEnabled: false }, triggerHaptic: mocks.triggerHaptic }) }));
 vi.mock('@/rpg/rpg-logic', () => ({
   FARM_PLOTS: [{ x: 10, y: 10 }],
-  getVillageTile: (x: number, y: number) => ({ type: mocks.bench && x === 2 && y === 1 ? 'bench' : x === 1 && y === 1 ? 'dock' : mocks.water && x === 21 && y === 20 ? 'stream' : 'grass' }),
+  getVillageTile: (x: number, y: number) => ({ type: mocks.bench && x === 2 && y === 1 ? 'bench' : x === 1 && y === 1 ? 'dock' : mocks.water && x === 21 && y === 20 ? 'water' : 'grass' }),
 }));
 vi.mock('@/world/maps', () => ({ getMap: () => ({ id: 'field', buildings: [] }) }));
 vi.mock('@/rpg/rpg-sprites', () => ({ FISH_SPRITES: {}, FORAGE_SPRITES: {}, LIFE_PROP_SPRITES: {}, POSTCARDS: {} }));
@@ -301,10 +301,11 @@ it('allows resting without silently claiming a reward when saving fails', async 
 });
 
 function PlayScene({ useWorldActivities }: { useWorldActivities: typeof import('./world-activities').useWorldActivities }) {
-  const { actions, overlay, pose } = useWorldActivities((notice) => mocks.notices.push(notice));
+  const { actions, overlay, pose, playing } = useWorldActivities((notice) => mocks.notices.push(notice));
   return createElement('div', null,
     ...actions.map((action) => createElement('button', { key: action.label, 'data-testid': 'action', onClick: action.run }, action.label)),
     createElement('span', { 'data-testid': 'pose' }, String(pose)),
+    createElement('span', { 'data-testid': 'playing' }, String(playing)),
     overlay);
 }
 const find = (id: string) => container.querySelector<HTMLButtonElement>(`[data-testid="${id}"]`);
@@ -388,4 +389,19 @@ it('finds a foraged item by parting bushes, with a bonus pile and a retryable sa
   expect(mocks.notices.at(-1)).toContain('도감에 새로 등록');
   await act(async () => vi.advanceTimersByTime(2000));
   expect(find('forage-bush-0')).toBeNull();
+});
+
+it('reports play panels so the screen can switch the joystick off, but not for a rest', async () => {
+  const { useWorldActivities } = await import('./world-activities');
+  mocks.bench = true;
+  await act(async () => root.render(createElement(PlayScene, { useWorldActivities })));
+  const pick = (label: string) => [...container.querySelectorAll('button')].find((button) => button.textContent === label)!;
+  expect(find('playing')?.textContent).toBe('false');
+  await act(async () => pick('낚싯대 던지기').click());
+  expect(find('playing')?.textContent).toBe('true');
+  // 놀이는 창의 버튼으로만 그만둡니다.
+  await tap('btn-end-activity');
+  expect(find('playing')?.textContent).toBe('false');
+  await act(async () => pick('앉아 쉬기').click());
+  expect(find('playing')?.textContent).toBe('false');
 });

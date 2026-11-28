@@ -150,7 +150,7 @@ describe('물가 판정', () => {
   it('allows fishing from a dock or beside any water tile, whatever the map', () => {
     expect(canFishAt('dock', [])).toBe(true);
     expect(canFishAt('grass', ['grass', 'water'])).toBe(true);
-    expect(canFishAt('bridge', ['stream'])).toBe(true);
+    expect(canFishAt('bridge', ['path', 'water'])).toBe(true);
     expect(canFishAt('grass', ['grass', 'path'])).toBe(false);
   });
 });

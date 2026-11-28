@@ -387,7 +387,10 @@ export function useWorldActivities(onNotice: (text: string) => void, paused = fa
 
   const pose: PlayerPose | null = activity?.kind === 'rest' ? 'sit' : activity?.kind === 'fishing' ? 'fish' : activity?.kind === 'forage' ? 'harvest' : activity?.kind === 'photo' ? 'photo' : celebration.visible ? celebration.pose : null;
 
-  return { action, actions, overlay, pose, nowMs, active, celebration: celebration.visible ? celebration.sequence : null,
+  // 놀이 창(낚시·풀숲 헤치기)이 열려 있는 동안에는 걷기로 취소되지 않게 화면이 조이스틱을 끕니다.
+  const playing = activity?.kind === 'fishing' || activity?.kind === 'forage';
+
+  return { action, actions, overlay, pose, nowMs, active, playing, celebration: celebration.visible ? celebration.sequence : null,
     celebrationProp: celebration.visible ? celebration.prop : null,
     finishCelebration: (key: number) => setCelebration((current) => current.sequence === key ? { ...current, visible: false } : current),
     cancel: () => { setActivity(null); setCelebration((current) => current.visible ? { ...current, visible: false } : current); } };

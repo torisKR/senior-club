@@ -44,7 +44,8 @@ vi.mock('@/fx/use-reduce-motion', () => ({ useReduceMotion: () => mocks.reduceMo
 vi.mock('@/hooks/use-app-state', () => ({ useAppState: () => ({ largeTextEnabled: false }) }));
 vi.mock('@/fx/pixel-fx', () => ({ PixelFx: () => null }));
 vi.mock('@/rpg/rpg-logic', () => ({ FARM_PLOTS: [] }));
-vi.mock('./play/play-sprites', () => ({ PLAY_SPRITES: { bush: 'bush' } }));
+vi.mock('./play/play-sprites', () => ({ PLAY_SPRITES: { bush: 'bush', spark: 'spark' } }));
+vi.mock('./play/fishing-spots', () => ({ fishingSpots: () => [{ x: 5, y: 7 }, { x: 30, y: 7 }] }));
 vi.mock('@/rpg/rpg-sprites', () => ({
   BUILDING_SPRITES: {}, CROP_SPRITES: {}, PLAYER_POSE_SPRITES: {},
   playerSpriteForTier: () => 1, playerTierForCp: () => 0,
@@ -94,6 +95,11 @@ it('stops frame work and clears movement when hidden, then resumes it on return'
   expect(container.querySelector('[data-testid="photo-marker-other"]')).toBeNull();
   // 채집물은 풀숲에 숨어 있어 지도에는 덤불로만 보입니다.
   expect(container.querySelectorAll('[data-source="bush"]')).toHaveLength(1);
+  // 장식 덤불과 구별되게 채집 풀숲마다 반짝임 표식이 붙습니다.
+  expect(container.querySelectorAll('[data-source="spark"]')).toHaveLength(1);
+  // 물가 낚시 표식은 화면 가까이에 있는 것만 그립니다.
+  expect(container.querySelector('[data-testid="fishing-marker-shore-5-7"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="fishing-marker-shore-30-7"]')).toBeNull();
   expect(container.querySelectorAll('[data-source="pebble"]')).toHaveLength(0);
   const firstDay = mocks.forageDays.at(-1);
   await act(async () => root.render(createElement(WorldView, { ...props, nowMs: 86_400_000 } as never)));
