@@ -396,7 +396,8 @@ describe('arcade screens', () => {
     expect(container.textContent).toContain('돌이 굴러갑니다…');
     expect(container.textContent).toContain('남은 알 1개');
     expect(container.textContent).not.toContain('대국 승리!');
-    expect(container.querySelector('[data-testid="btn-alkkagi-flick"]')).toBeNull();
+    await press('btn-alkkagi-flick'); // 굴러가는 동안에는 다시 튕길 수 없습니다
+    expect(mocks.arcade.recordAlkkagiWin).toHaveBeenCalledOnce();
     await act(async () => mocks.animation.finish!({ finished: true }));
     expect(container.textContent).toContain('대국 승리!');
     expect(container.textContent).toContain('남은 알 0개');

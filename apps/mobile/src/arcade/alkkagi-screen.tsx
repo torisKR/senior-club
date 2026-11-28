@@ -415,25 +415,22 @@ export function AlkkagiBoardScreen({ storyChapter, onLeaveStory }: { storyChapte
           <AppText variant="bodyStrong" accessibilityLiveRegion="polite" style={{ color: '#182620' }}>
             {liveBanner}
           </AppText>
-          {moving ? null : (
+          {/* 굴러가는 동안에도 그대로 둡니다 — 카드 높이가 바뀌면 바둑판이 화면에서 밀려납니다. */}
+          <ModeSwitch dragMode={dragMode} stacked={stackControls} onChange={(drag) => { triggerHaptic('light'); setChosenDrag(drag); }} />
+          {dragMode ? null : (
             <>
-              <ModeSwitch dragMode={dragMode} stacked={stackControls} onChange={(drag) => { triggerHaptic('light'); setChosenDrag(drag); }} />
-              {dragMode ? null : (
-                <>
-                  <AppText variant="caption" accessibilityLiveRegion="polite" style={styles.selectionGuide}>
-                    내 돌 ★{activeShooter?.id.slice(1)} · 목표 돌 ◎{activeTarget?.id.slice(1)} 선택 중. 점선이 날아갈 방향과 힘을 보여 줍니다.
-                  </AppText>
-                  <ButtonControls
-                    stacked={stackControls}
-                    powerMode={powerMode}
-                    disabled={pendingOpponent !== null}
-                    onPower={(mode) => { triggerHaptic('light'); setPowerMode(mode); }}
-                    onNextShooter={() => cycle(alivePlayers, activeShooter?.id, setSelectedPlayerId)}
-                    onNextTarget={() => cycle(aliveEnemies, activeTarget?.id, setSelectedTargetId)}
-                    onFlick={handleButtonFlick}
-                  />
-                </>
-              )}
+              <AppText variant="caption" accessibilityLiveRegion="polite" style={styles.selectionGuide}>
+                내 돌 ★{activeShooter?.id.slice(1)} · 목표 돌 ◎{activeTarget?.id.slice(1)} 선택 중. 점선이 날아갈 방향과 힘을 보여 줍니다.
+              </AppText>
+              <ButtonControls
+                stacked={stackControls}
+                powerMode={powerMode}
+                disabled={pendingOpponent !== null}
+                onPower={(mode) => { triggerHaptic('light'); setPowerMode(mode); }}
+                onNextShooter={() => cycle(alivePlayers, activeShooter?.id, setSelectedPlayerId)}
+                onNextTarget={() => cycle(aliveEnemies, activeTarget?.id, setSelectedTargetId)}
+                onFlick={handleButtonFlick}
+              />
             </>
           )}
         </Card>
