@@ -3,7 +3,8 @@ import { act, createElement, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { PARK_GOLF_HOLES, createInitialAlkkagiStones, createSacheonseongBoard, executeAlkkagiFlick, simulateParkGolfShot } from './arcade-logic';
+import { PARK_GOLF_HOLES, createInitialAlkkagiStones, createSacheonseongBoard, executeAlkkagiFlick } from './arcade-logic';
+import { buttonShot, rollParkGolfShot, shotFromDrag } from './park-golf-physics';
 
 const mocks = vi.hoisted(() => {
   const values = new Map<string, string>();
@@ -25,7 +26,10 @@ const mocks = vi.hoisted(() => {
   };
   const textLayout = { width: 393, fontScale: 1, large: false };
   const animation = { reduceMotion: true, values: [] as { value: number }[], stop: vi.fn(), layout: null as null | ((event: { nativeEvent: { layout: { width: number; height: number } } }) => void) };
-  return { values, storage, rpg, arcade, textLayout, animation, makeAttemptId: () => `attempt-${++nextAttempt}` };
+  // 파크골프: 낭독기가 켜져 있으면 버튼 방식이 기본입니다. pan에는 보드의 끌기 처리기가 담깁니다.
+  type Pan = Record<string, (event: unknown, gesture: { dx: number; dy: number }) => unknown>;
+  const golf = { screenReader: true, pan: null as null | Pan };
+  return { values, storage, rpg, arcade, textLayout, animation, golf, makeAttemptId: () => `attempt-${++nextAttempt}` };
 });
 
 vi.mock('react-native', () => ({
@@ -43,6 +47,11 @@ vi.mock('react-native', () => ({
       createElement('div', { 'data-testid': testID, 'data-style': JSON.stringify(style) }, children),
   },
   Easing: { linear: (value: number) => value },
+  PanResponder: { create: (config: NonNullable<typeof mocks.golf.pan>) => { mocks.golf.pan = config; return { panHandlers: {} }; } },
+  AccessibilityInfo: {
+    addEventListener: () => ({ remove: () => {} }),
+    isScreenReaderEnabled: () => Promise.resolve(mocks.golf.screenReader),
+  },
   View: ({ children, testID, style, onLayout }: { children?: ReactNode; testID?: string; style?: unknown; onLayout?: typeof mocks.animation.layout }) => {
     if (onLayout) mocks.animation.layout = onLayout;
     return createElement('div', { 'data-testid': testID, 'data-style': JSON.stringify(style) }, children);
@@ -96,6 +105,7 @@ beforeEach(async () => {
   mocks.animation.reduceMotion = true;
   mocks.animation.values = [];
   mocks.animation.layout = null;
+  Object.assign(mocks.golf, { screenReader: true, pan: null });
   mocks.arcade.saveReadProtected = false;
   mocks.arcade.saveWriteFailed = false;
   Object.assign(mocks.textLayout, { width: 393, fontScale: 1, large: false });
@@ -210,7 +220,8 @@ describe('arcade screens', () => {
 
   it('preserves a golf round on reselect, confirms switching, and plays the displayed preview', async () => {
     await render(screens.ParkGolfArcadeScreen);
-    const preview = simulateParkGolfShot(PARK_GOLF_HOLES[0], PARK_GOLF_HOLES[0].tee, 0, 2);
+    const hole = PARK_GOLF_HOLES[0];
+    const preview = rollParkGolfShot(hole, hole.tee, buttonShot(hole, hole.tee, 0, 2));
     expect(container.textContent).toContain(`점선 예상: 홀컵까지 ${preview.distanceToCup}m`);
     const bunkerStyle = JSON.parse(container.querySelector('[data-testid="parkgolf-bunker"]')!.getAttribute('data-style')!);
     const cupStyle = JSON.parse(container.querySelector('[data-testid="parkgolf-cup"]')!.getAttribute('data-style')!);
@@ -239,14 +250,47 @@ describe('arcade screens', () => {
     expect(mocks.animation.layout).not.toBeNull();
     await act(async () => mocks.animation.layout!({ nativeEvent: { layout: { width: 300, height: 200 } } }));
     await press('btn-parkgolf-shoot');
-    const result = saved('senior_club_golf_round_v1').ballPos;
-    const stoppedBefore = mocks.animation.stop.mock.calls.length;
+    // 공이 구르는 동안에는 타수도 결과도 아직 기록되지 않습니다.
+    expect(mocks.values.has('senior_club_golf_round_v1')).toBe(false);
+    expect(container.textContent).toContain('공이 굴러가고 있어요');
+    const hole = PARK_GOLF_HOLES[0];
+    const result = rollParkGolfShot(hole, hole.tee, buttonShot(hole, hole.tee, 0, 2)).finalPos;
     mocks.animation.reduceMotion = true;
     await render(screens.ParkGolfArcadeScreen);
-    expect(mocks.animation.stop).toHaveBeenCalledTimes(stoppedBefore + 1);
+    expect(saved('senior_club_golf_round_v1').ballPos).toEqual(result);
     expect(mocks.animation.values[0].value).toBeCloseTo(result.x * 3);
     expect(mocks.animation.values[1].value).toBeCloseTo(result.y * 2);
     expect(saved('senior_club_golf_round_v1').strokes).toBe(1);
+  });
+
+  it('shoots the golf ball by pulling back on the course and releasing', async () => {
+    mocks.golf.screenReader = false;
+    await render(screens.ParkGolfArcadeScreen);
+    expect(container.querySelector('[data-testid="btn-parkgolf-shoot"]')).toBeNull();
+    await act(async () => mocks.animation.layout!({ nativeEvent: { layout: { width: 300, height: 200 } } }));
+    const pan = mocks.golf.pan!;
+    expect(pan.onStartShouldSetPanResponder(null, { dx: 0, dy: 0 })).toBe(true);
+    await act(async () => { pan.onPanResponderGrant(null, { dx: 0, dy: 0 }); pan.onPanResponderMove(null, { dx: 0, dy: 4 }); });
+    expect(container.querySelector('[data-testid="parkgolf-power-gauge"]')!.textContent).toContain('조금 더 길게');
+    await act(async () => pan.onPanResponderRelease(null, { dx: 0, dy: 4 }));
+    expect(container.textContent).toContain('너무 짧게 당겼어요');
+    expect(mocks.values.get('senior_club_golf_round_v1') ?? '').not.toContain('"strokes":1');
+
+    // 아래로 40dp(보드 높이의 20%), 오른쪽으로 6dp(2%) 당기면 왼쪽 위로 굴러갑니다.
+    await act(async () => { pan.onPanResponderGrant(null, { dx: 0, dy: 0 }); pan.onPanResponderMove(null, { dx: 6, dy: 40 }); });
+    expect(container.querySelector('[data-testid="parkgolf-power-gauge"]')!.textContent).toMatch(/힘 \d+% · /);
+    expect(container.querySelectorAll('[data-testid="parkgolf-aim-dot"]').length).toBeGreaterThan(2);
+    expect(mocks.arcade.triggerHaptic).toHaveBeenCalledWith('light');
+    await act(async () => pan.onPanResponderRelease(null, { dx: 6, dy: 40 }));
+    const hole = PARK_GOLF_HOLES[0];
+    const expected = rollParkGolfShot(hole, hole.tee, shotFromDrag({ x: 2, y: 20 })!);
+    expect(expected.finalPos.x).toBeLessThan(hole.tee.x);
+    expect(saved('senior_club_golf_round_v1')).toMatchObject({ ballPos: expected.finalPos, strokes: 1 });
+    expect(container.querySelector('[data-testid="parkgolf-power-gauge"]')).toBeNull();
+
+    await press('btn-parkgolf-mode');
+    expect(container.querySelector('[data-testid="btn-parkgolf-shoot"]')).not.toBeNull();
+    expect(pan.onStartShouldSetPanResponder(null, { dx: 0, dy: 0 })).toBe(false);
   });
 
   it('preserves an alkkagi match on reselect and only changes an active match after confirmation', async () => {
@@ -364,7 +408,7 @@ describe('arcade screens', () => {
   it('does not turn a nearby but missing shot into an invisible automatic hole-in', async () => {
     const round = { holeIndex: 0, ballPos: { x: 75, y: 45 }, strokes: 1, aimAngle: 0, powerStep: 2, holedBanner: null, lastShotNote: '계속' };
     mocks.values.set('senior_club_golf_round_v1', JSON.stringify(round));
-    const preview = simulateParkGolfShot(PARK_GOLF_HOLES[0], round.ballPos, 0, 2);
+    const preview = rollParkGolfShot(PARK_GOLF_HOLES[0], round.ballPos, buttonShot(PARK_GOLF_HOLES[0], round.ballPos, 0, 2));
     expect(preview.holed).toBe(false);
     await render(screens.ParkGolfArcadeScreen);
     await press('btn-parkgolf-shoot');
